@@ -1,5 +1,6 @@
 package vip.mate.channel.webchat;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -193,7 +194,11 @@ public class WebChatController {
                 // 保存用户消息（含访客本轮引用的附件）。附件元数据一律服务端按 fileId 回查，
                 // 不信客户端传入；path 用于 Agent 侧工具读取，对外消息视图会被剥离。
                 List<MessageContentPart> userParts = buildUserParts(conversationId, message, request.getAttachmentIds());
-                conversationService.saveMessage(conversationId, "user", message, userParts);
+                if (!request.isInternalSkipUserPersist()) {
+                    // Regenerate reuses the already-persisted seed user row —
+                    // inserting again would duplicate it.
+                    conversationService.saveMessage(conversationId, "user", message, userParts);
+                }
 
                 // 初始化 SSE 流跟踪
                 streamTracker.register(conversationId);
@@ -1381,14 +1386,16 @@ public class WebChatController {
     }
 
     /**
-     * 重新生成最后一条助手回复。
+     * Regenerate the last assistant reply.
      * <p>
-     * 语义:找到会话最后一条 {@code role=user} 消息 → stop 当前流(如有)→ 删除最后一条
-     * {@code role=assistant} 消息 → 用 last user message 重新启动 agent turn。
-     * 实际启动复用 {@link #chatStream},它会重新 saveMessage user(新消息 id,内容相同)。
-     * 这样不重复 100 行 SSE 代码,代价是用户消息多一条(语义上等同"重发")。
+     * Semantics: stop any in-flight stream, rewind the conversation to the last
+     * {@code role=user} message (removing the trailing assistant reply), then
+     * re-run the agent turn from that message. The restart reuses
+     * {@link #chatStream} with {@code internalSkipUserPersist} set, so the
+     * existing user row is used as the seed and no duplicate user message is
+     * inserted.
      * <p>
-     * 没有任何 user 消息时返回 400(无内容可重新生成)。
+     * Returns an error when the conversation has no user message to regenerate from.
      */
     @Operation(summary = "重新生成最后一条助手回复")
     @PostMapping(value = "/sessions/regenerate", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -1425,29 +1432,27 @@ public class WebChatController {
         // right disposable; multi-node is a separate epic.
         streamTracker.requestStop(conversationId);
 
-        MessageEntity lastAssistant = conversationService.findLastMessageByRole(conversationId, "assistant");
-        if (lastAssistant != null) {
-            conversationService.deleteMessageById(lastAssistant.getId());
-        }
-        MessageEntity lastUser = conversationService.findLastMessageByRole(conversationId, "user");
-        if (lastUser == null) {
+        ConversationService.RegenerateSeed seed = conversationService.prepareRegenerate(conversationId);
+        if (seed == null) {
             sendErrorAndComplete(emitter, "No user message to regenerate from");
             return emitter;
         }
 
         log.info("[WebChat] Regenerate: conversationId={}, visitor={}, seedMessageId={}",
-                conversationId, visitorId, lastUser.getId());
+                conversationId, visitorId, seed.seedMessageId());
         audit(channel, visitorId, "webchat.regenerate-session", conversationId,
-                "{\"sessionId\":\"" + sid + "\",\"seedMessageId\":" + lastUser.getId() + "}");
+                "{\"sessionId\":\"" + sid + "\",\"seedMessageId\":" + seed.seedMessageId() + "}");
 
         // Reuse chatStream: it'll resolve the agent again (cheap), re-derive
-        // conversationId, saveMessage user (new id, same content), and start
-        // the agent turn. visitorId echoes through to keep the visitor-scoped
-        // memory owner consistent.
+        // conversationId and start the agent turn. The seed user row is reused
+        // as-is — internalSkipUserPersist stops chatStream from inserting a
+        // duplicate user row. visitorId echoes through to keep the
+        // visitor-scoped memory owner consistent.
         WebChatRequest req = new WebChatRequest();
-        req.setMessage(lastUser.getContent());
+        req.setMessage(seed.content());
         req.setVisitorId(visitorId);
         req.setSessionId(sid);
+        req.setInternalSkipUserPersist(true);
         return chatStream(apiKey, req);
     }
 
@@ -1656,7 +1661,7 @@ public class WebChatController {
             return full;
         }
         return "webchat:" + key8 + ":#"
-                + sha256Hex(visitorId + " " + (sessionId == null ? "" : sessionId)).substring(0, 40);
+                + sha256Hex(visitorId + "\0" + (sessionId == null ? "" : sessionId)).substring(0, 40);
     }
 
     /**
@@ -1917,6 +1922,13 @@ public class WebChatController {
          *  for this conversation. Metadata is resolved server-side; unknown / foreign / expired
          *  ids are dropped. */
         private List<String> attachmentIds;
+        /**
+         * Internal-only regenerate flag: the seed user row is already
+         * persisted, so {@code chatStream} must not insert a duplicate.
+         * Excluded from JSON binding — never client-settable.
+         */
+        @JsonIgnore
+        private boolean internalSkipUserPersist;
     }
 
     /** Compact view of one of a visitor's conversation threads. */

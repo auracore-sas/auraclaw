@@ -7,6 +7,7 @@ import vip.mate.skill.model.SkillEntity;
 import vip.mate.skill.runtime.SkillRuntimeService;
 import vip.mate.skill.runtime.SkillSecurityService;
 import vip.mate.skill.runtime.SkillValidationResult;
+import vip.mate.skill.service.SkillFileService;
 import vip.mate.skill.service.SkillService;
 import vip.mate.skill.workspace.SkillWorkspaceManager;
 
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.when;
 class SkillManageToolWriteFileTest {
 
     private SkillService skillService;
+    private SkillFileService skillFileService;
     private SkillSecurityService securityService;
     private SkillWorkspaceManager workspaceManager;
     private SkillManageTool tool;
@@ -37,14 +39,17 @@ class SkillManageToolWriteFileTest {
     @BeforeEach
     void setUp() {
         skillService = mock(SkillService.class);
+        skillFileService = mock(SkillFileService.class);
         securityService = mock(SkillSecurityService.class);
         workspaceManager = mock(SkillWorkspaceManager.class);
         SkillRuntimeService runtimeService = mock(SkillRuntimeService.class);
-        tool = new SkillManageTool(skillService, securityService, workspaceManager, runtimeService);
+        tool = new SkillManageTool(skillService, skillFileService, securityService, workspaceManager, runtimeService);
     }
 
     private SkillEntity skill(String name, boolean builtin) {
         SkillEntity s = new SkillEntity();
+        s.setId(42L);
+        s.setWorkspaceId(1L);
         s.setName(name);
         s.setBuiltin(builtin);
         s.setSkillContent("---\nname: " + name + "\n---\n# x");
@@ -68,7 +73,23 @@ class SkillManageToolWriteFileTest {
                 null, null, "scripts/run.sh", null);
 
         assertTrue(result.startsWith("File 'scripts/run.sh' written"), result);
-        verify(workspaceManager, times(1)).writeWorkspaceFile("my-skill", "scripts/run.sh", "echo hi");
+        verify(workspaceManager, times(1)).writeWorkspaceFile("my-skill", "scripts/run.sh", "echo hi", 1L);
+        // The canonical store row must be written too, not just the FS cache.
+        verify(skillFileService, times(1)).upsertFile(42L, "scripts/run.sh", "echo hi");
+    }
+
+    @Test
+    @DisplayName("write_file accepts templates/ paths")
+    void writesTemplateFile() {
+        when(skillService.findByName("my-skill")).thenReturn(skill("my-skill", false));
+        scanPasses();
+
+        String result = tool.skill_manage("write_file", "my-skill", "<html></html>",
+                null, null, "templates/report.html", null);
+
+        assertTrue(result.startsWith("File 'templates/report.html' written"), result);
+        verify(workspaceManager, times(1)).writeWorkspaceFile("my-skill", "templates/report.html", "<html></html>", 1L);
+        verify(skillFileService, times(1)).upsertFile(42L, "templates/report.html", "<html></html>");
     }
 
     @Test
@@ -77,7 +98,7 @@ class SkillManageToolWriteFileTest {
         String result = tool.skill_manage("write_file", "my-skill", "body",
                 null, null, null, null);
         assertTrue(result.startsWith("Error"), result);
-        verify(workspaceManager, never()).writeWorkspaceFile(any(), any(), any());
+        verify(workspaceManager, never()).writeWorkspaceFile(any(), any(), any(), any());
     }
 
     @Test
@@ -87,7 +108,7 @@ class SkillManageToolWriteFileTest {
         String result = tool.skill_manage("write_file", "core", "body",
                 null, null, "references/x.md", null);
         assertTrue(result.contains("builtin"), result);
-        verify(workspaceManager, never()).writeWorkspaceFile(any(), any(), any());
+        verify(workspaceManager, never()).writeWorkspaceFile(any(), any(), any(), any());
     }
 
     @Test
@@ -97,7 +118,7 @@ class SkillManageToolWriteFileTest {
         String result = tool.skill_manage("write_file", "ghost", "body",
                 null, null, "references/x.md", null);
         assertTrue(result.contains("not found"), result);
-        verify(workspaceManager, never()).writeWorkspaceFile(any(), any(), any());
+        verify(workspaceManager, never()).writeWorkspaceFile(any(), any(), any(), any());
     }
 
     @Test
@@ -106,7 +127,7 @@ class SkillManageToolWriteFileTest {
         when(skillService.findByName("my-skill")).thenReturn(skill("my-skill", false));
         scanPasses();
         doThrow(new IllegalArgumentException("Unsafe file path rejected: ../etc/passwd"))
-                .when(workspaceManager).writeWorkspaceFile(eq("my-skill"), any(), any());
+                .when(workspaceManager).writeWorkspaceFile(eq("my-skill"), any(), any(), any());
 
         String result = tool.skill_manage("write_file", "my-skill", "body",
                 null, null, "../etc/passwd", null);

@@ -99,9 +99,12 @@ public class ToolExecutionExecutor {
      *         │     when size &gt; perResultThresholdChars and tool is not
      *         │     in the spill exclusion list. Returns a SPILL_MARKER preview
      *         │     on success, or the original string otherwise.
-     *         └─ if no SPILL_MARKER on the return, truncateToolResult(...)
-     *               caps inline to MAX_TOOL_RESULT_CHARS so a multi-MB raw
-     *               body never enters the model prompt.
+     *         ├─ retrieval-excluded tool (load_skill / read_file / ...) →
+     *         │     returned RAW, never inline-truncated: a partial SKILL.md
+     *         │     invites the model to fabricate the omitted span.
+     *         └─ otherwise truncateToolResult(...) caps inline to
+     *               MAX_TOOL_RESULT_CHARS so a multi-MB raw body never
+     *               enters the model prompt.
      *     → enforceTurnBudget(..., perTurnBudgetChars=32000)   // per-turn aggregate
      * </pre>
      * Spill must see the RAW result so the full output is preserved on disk
@@ -132,8 +135,10 @@ public class ToolExecutionExecutor {
      * @param toolUseId        unique within the conversation; becomes the file name
      * @param conversationId   spill files are scoped per conversation; blank/null falls back to "unknown"
      * @param workspaceBasePath where the spill directory lives when set
-     * @return the SPILL_MARKER preview when spill succeeded, otherwise the
-     *         original string (when ≤ threshold) or the inline-truncated string.
+     * @return the SPILL_MARKER preview when spill succeeded; the original
+     *         string when ≤ threshold or when the tool is retrieval-excluded
+     *         (those must reach the model whole); otherwise the
+     *         inline-truncated string.
      */
     static String spillRawOrTruncate(ToolResultStorage storage, int maxTruncateChars,
                                      String result, String toolName, String toolUseId,
@@ -146,6 +151,20 @@ public class ToolExecutionExecutor {
                     result, toolName, toolUseId, safeConv, workspaceBasePath);
             if (candidate != null && candidate.startsWith(ToolResultStorage.SPILL_MARKER_PREFIX)) {
                 return candidate;
+            }
+            // Retrieval-style tools (load_skill, read_file, readSkillFile,
+            // memory reads) are on the spill-exclusion list precisely so their
+            // full output reaches the model. persistIfOversized returns them
+            // unchanged (no spill), so control reaches here — but inline
+            // hard-truncation would silently re-introduce exactly the
+            // incompleteness the exclusion prevents: a chopped SKILL.md makes
+            // the model act on partial instructions, and weak models fabricate
+            // the omitted middle instead of heeding the fidelity note. Return
+            // the raw body; enforceTurnBudget (Layer 3) already skips these
+            // tools and only compacts them as a last resort when the whole
+            // turn blows its aggregate budget and nothing else can be freed.
+            if (storage.isRetrievalExcluded(toolName)) {
+                return result;
             }
         }
         return truncateToolResult(result, maxTruncateChars);
@@ -594,7 +613,7 @@ public class ToolExecutionExecutor {
                             toolCall.id(), toolName, redirect.response()));
                     continue;
                 }
-                String msg = skillAwareNotFoundMessage(toolName);
+                String msg = skillAwareNotFoundMessage(toolName, safeOrigin);
                 log.warn("[ToolExecutor] {}", msg);
                 events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, msg, false));
                 allResponses.add(new ToolResponseMessage.ToolResponse(
@@ -684,7 +703,7 @@ public class ToolExecutionExecutor {
                 return new ToolResponseMessage.ToolResponse(
                         toolCall.id(), toolName, redirect.response());
             }
-            String msg = skillAwareNotFoundMessage(toolName);
+            String msg = skillAwareNotFoundMessage(toolName, replayOriginForRedirect);
             log.warn("[ToolExecutor] Pre-approved {}", msg);
             events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, msg, false));
             return new ToolResponseMessage.ToolResponse(toolCall.id(), toolName, msg);
@@ -1035,7 +1054,10 @@ public class ToolExecutionExecutor {
                 .withWorkspaceBasePath(origin != null ? origin.workspaceBasePath() : null);
 
         if (toolGuardService != null) {
-            GuardEvaluation evaluation = toolGuardService.evaluate(guardCtx);
+            // Defer the NEEDS_APPROVAL audit row: it is written below, once, after
+            // the auto-grant decision, so it carries the resolution outcome
+            // (AUTO_GRANT / SEVERITY_CEILING / NO_GRANT / …) and the pendingId.
+            GuardEvaluation evaluation = toolGuardService.evaluate(guardCtx, true);
 
             if (evaluation.shouldBlock()) {
                 log.warn("[ToolExecutor] Tool call BLOCKED: tool={}, summary={}", toolName, evaluation.summary());
@@ -1049,6 +1071,7 @@ public class ToolExecutionExecutor {
                 // HARD_BLOCK short-circuits to a blocked decision (no approval banner).
                 // APPROVED skips createPending() and lets the tool run as normal.
                 // REQUIRES_HUMAN falls through to the existing manual approval path.
+                String autoOutcome = null;
                 if (autoGrantWired) {
                     AutoApproveResult auto = approvalGrantResolver.tryAutoApprove(guardCtx, evaluation);
                     if (auto.isHardBlocked()) {
@@ -1057,29 +1080,34 @@ public class ToolExecutionExecutor {
                                 + "Please use a safer alternative.";
                         log.warn("[ToolExecutor] Auto-grant HARD_BLOCK: tool={}, reason={}", toolName, auto.reason());
                         events.add(GraphEventPublisher.toolComplete(toolCall.id(), toolName, msg, false));
+                        toolGuardService.recordApprovalAudit(guardCtx, evaluation, null, "HARD_BLOCK");
                         return GuardDecision.blocked(msg);
                     }
                     if (auto.isApproved()) {
                         log.info("[ToolExecutor] Auto-grant APPROVED: tool={}, grantId={}", toolName, auto.grantId());
+                        toolGuardService.recordApprovalAudit(guardCtx, evaluation, null, "AUTO_GRANT");
                         return GuardDecision.allowed();
                     }
-                    // requiresHuman → fall through to legacy human-approval path below.
+                    // requiresHuman → fall through to legacy human-approval path below,
+                    // carrying the denial reason for the audit row.
+                    autoOutcome = auto.reason();
                 }
 
                 // No human can resolve an approval in a non-interactive (scheduled-job)
                 // run, so a pending request would hang the turn until it times out with
                 // no answer. Deny immediately with an actionable message instead.
                 if (origin != null && origin.cronOrigin()) {
+                    toolGuardService.recordApprovalAudit(guardCtx, evaluation, null, autoOutcome);
                     return denyNonInteractiveApproval(toolCall, toolName, events);
                 }
 
                 List<AssistantMessage.ToolCall> remaining = allToolCalls.subList(currentIndex + 1, allToolCalls.size());
-                String approvalResponse = ToolExecutionGuardHelper.handleToolApproval(
+                ToolExecutionGuardHelper.ApprovalRequest approval = ToolExecutionGuardHelper.handleToolApproval(
                         toolCall, toolName, arguments, evaluation,
                         conversationId, agentId, requesterId, approvalService, streamTracker,
                         events, remaining);
-                // Extract pendingId from response (format: "[APPROVAL_PENDING] tool=xxx awaiting user decision")
-                return GuardDecision.needsApproval(approvalResponse, extractPendingId(approvalResponse));
+                toolGuardService.recordApprovalAudit(guardCtx, evaluation, approval.pendingId(), autoOutcome);
+                return GuardDecision.needsApproval(approval.response(), approval.pendingId());
             }
         } else if (toolGuard != null) {
             ToolGuardResult guardResult = toolGuard.check(toolName, arguments);
@@ -1100,7 +1128,9 @@ public class ToolExecutionExecutor {
                         toolCall, toolName, arguments, guardResult,
                         conversationId, agentId, requesterId, approvalService, streamTracker,
                         events, remaining);
-                return GuardDecision.needsApproval(approvalResponse, extractPendingId(approvalResponse));
+                // Legacy path never persisted a pendingId to carry here; the value
+                // is unused downstream (only the boolean awaitingApproval is read).
+                return GuardDecision.needsApproval(approvalResponse, null);
             }
         }
 
@@ -1197,14 +1227,6 @@ public class ToolExecutionExecutor {
     }
 
     /**
-     * 从 approval response 中提取 pendingId（best-effort）
-     */
-    private String extractPendingId(String approvalResponse) {
-        // handleToolApproval 内部已经创建了 pending，这里只做标记
-        return approvalResponse;
-    }
-
-    /**
      * Issue #46 — when a tool callback miss happens, check whether the
      * unrecognized name actually matches an active skill. If it does, return
      * a precise hint telling the LLM the right invocation pattern instead
@@ -1273,10 +1295,34 @@ public class ToolExecutionExecutor {
         return Map.copyOf(result);
     }
 
-    private String skillAwareNotFoundMessage(String toolName) {
+    /**
+     * Best-effort conversation workspace from a {@link ChatOrigin}, with a
+     * {@code WorkspaceLookupCache} fallback for paths (e.g. approval replay)
+     * that carry a conversationId but no workspaceId. A {@code null} result
+     * makes the skill lookup scope to builtin/global only — never another
+     * workspace's skill.
+     */
+    private Long resolveWorkspaceId(ChatOrigin origin) {
+        if (origin == null) return null;
+        if (origin.workspaceId() != null) return origin.workspaceId();
+        return workspaceIdForConversation(origin.conversationId());
+    }
+
+    /**
+     * Resolve a conversation's owning workspace via the lookup cache, or
+     * {@code null} when unavailable. Exposed so sibling graph nodes (e.g.
+     * {@code ActionNode}) that only hold a conversationId can scope skill
+     * resolution to the right workspace without their own cache dependency.
+     */
+    public Long workspaceIdForConversation(String conversationId) {
+        return (workspaceLookupCache != null && conversationId != null)
+                ? workspaceLookupCache.resolveByConversation(conversationId) : null;
+    }
+
+    private String skillAwareNotFoundMessage(String toolName, ChatOrigin origin) {
         if (skillRuntimeService != null && toolName != null && !toolName.isBlank()) {
             try {
-                boolean isSkill = skillRuntimeService.getActiveSkills().stream()
+                boolean isSkill = skillRuntimeService.getActiveSkills(resolveWorkspaceId(origin)).stream()
                         .anyMatch(s -> s.getName() != null && s.getName().equalsIgnoreCase(toolName));
                 if (isSkill) {
                     return String.format(
@@ -1395,7 +1441,9 @@ public class ToolExecutionExecutor {
     private SkillRedirect tryAutoRedirectSkillCall(String toolName, String originalArgs, ChatOrigin origin) {
         if (skillRuntimeService == null || toolName == null || toolName.isBlank()) return null;
         try {
-            boolean isSkill = skillRuntimeService.getActiveSkills().stream()
+            // Scope to the conversation's workspace so an agent is never redirected
+            // into (and handed the SKILL.md content of) another workspace's skill.
+            boolean isSkill = skillRuntimeService.getActiveSkills(resolveWorkspaceId(origin)).stream()
                     .anyMatch(s -> s.getName() != null && s.getName().equalsIgnoreCase(toolName));
             if (!isSkill) return null;
         } catch (Exception e) {

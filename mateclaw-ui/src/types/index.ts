@@ -774,6 +774,10 @@ export interface WorkspaceFile {
   fileSize: number
   enabled: boolean
   sortOrder: number
+  /** Memory subject for PERSONAL rows ("user:42", "feishu:ou_xxx"); empty/null for shared rows */
+  ownerKey?: string | null
+  /** Visibility scope: PERSONAL / TEAM / GLOBAL */
+  scope?: string
   createTime: string
   updateTime: string
 }
@@ -808,6 +812,8 @@ export interface SystemSettings {
   language: 'zh-CN' | 'en-US'
   streamEnabled: boolean
   debugMode: boolean
+  // Default workspace storage root; '' = use the server-side default
+  workspaceStorageRoot?: string
   // 搜索服务配置
   searchEnabled: boolean
   searchProvider: 'serper' | 'tavily'

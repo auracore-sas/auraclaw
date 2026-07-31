@@ -290,6 +290,14 @@ mateclaw:
 
 # MateClaw Agent 配置
 mate:
+  channel:
+    # 入站消息去重：IM 平台在 ack 迟到 / 丢失 / 非 200 时会重投同一条消息，
+    # 不去重则每次重投都会跑一轮完整 Agent 回合，用户看到重复答复。
+    dedup:
+      enabled: true
+      # 需明显长于各平台重投窗口（秒级到分钟级）
+      ttl: 5m
+      max-size: 2000
   agent:
     # Deterministic Markdown cleanup of the final answer (heading spaces, glued
     # ---, table pipe alignment) before persistence / channel delivery. Set to
@@ -329,9 +337,16 @@ mate:
       # exceeds the threshold, gets spilled to a new path, agent reads that one,
       # ad infinitum until MAX_TOOL_CALLS_PER_STEP is hit. Add MCP-provided
       # readers here if they have the same role.
+      # readSkillFile / load_skill deliberately return the full SKILL.md so the
+      # model never misses mandatory sections (API parameter tables etc.);
+      # spilling them defeats that and leaves the model an 800-char preview,
+      # causing wrong-parameter tool calls. Their references/scripts reads are
+      # already self-paginated to 8000 chars, so excluding them stays bounded.
       excluded-tools:
         - read_file
         - read_workspace_memory_file
+        - readSkillFile
+        - load_skill
       # Spill files are deleted after this many days. Default 0 disables the
       # scheduled sweep entirely so a summary/preview that points at a spill
       # path stays valid for the whole life of the conversation. Files are

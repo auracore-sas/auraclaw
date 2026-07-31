@@ -51,8 +51,9 @@ class SkillFileSyncerTest {
         fileService = new SkillFileService(mapper);
         SkillWorkspaceProperties props = new SkillWorkspaceProperties();
         props.setRoot(tmp.toString());
+        props.setBundledSkillsPath("skills");
         workspaceManager = new SkillWorkspaceManager(props, mock(ApplicationEventPublisher.class));
-        syncer = new SkillFileSyncer(skillService, fileService, workspaceManager);
+        syncer = new SkillFileSyncer(skillService, fileService, workspaceManager, props);
     }
 
     @Test
@@ -69,7 +70,7 @@ class SkillFileSyncerTest {
 
         var report = syncer.syncAll();
 
-        Path workspace = tmp.resolve("demo");
+        Path workspace = tmp.resolve("1").resolve("demo");
         assertEquals("print('a')\n", Files.readString(workspace.resolve("scripts/run.py")));
         assertEquals("hello", Files.readString(workspace.resolve("references/notes.md")));
         assertEquals(2, report.filesMaterialized());
@@ -83,7 +84,7 @@ class SkillFileSyncerTest {
         SkillEntity skill = newSkill(10L, "demo");
         when(skillService.listSkills()).thenReturn(List.of(skill));
 
-        Path workspace = tmp.resolve("demo");
+        Path workspace = tmp.resolve("1").resolve("demo");
         Files.createDirectories(workspace.resolve("scripts"));
         Files.writeString(workspace.resolve("scripts/run.py"), "stable");
 
@@ -103,7 +104,7 @@ class SkillFileSyncerTest {
         SkillEntity skill = newSkill(10L, "demo");
         when(skillService.listSkills()).thenReturn(List.of(skill));
 
-        Path workspace = tmp.resolve("demo");
+        Path workspace = tmp.resolve("1").resolve("demo");
         Files.createDirectories(workspace.resolve("scripts"));
         Files.createDirectories(workspace.resolve("references"));
         Files.writeString(workspace.resolve("scripts/run.py"), "legacy");
@@ -129,10 +130,30 @@ class SkillFileSyncerTest {
         verify(mapper, times(2)).insert(any(SkillFileEntity.class));
     }
 
+    @Test
+    @DisplayName("DB and FS empty, builtin skill: backfills from classpath into DB")
+    void backfillsFromClasspathWhenBuiltinAndDbFsEmpty() {
+        SkillEntity skill = newSkill(10L, "pdf");
+        skill.setBuiltin(true);
+        when(skillService.listSkills()).thenReturn(List.of(skill));
+
+        List<SkillFileEntity> after = List.of(
+                newRow(1L, 10L, "scripts/pdftotext.py", "pdf script")
+        );
+        when(mapper.selectList(any())).thenReturn(List.of(), List.of(), after);
+
+        var report = syncer.syncAll();
+
+        assertEquals(1, report.skillsBackfilled());
+        verify(mapper, atLeastOnce()).insert(any(SkillFileEntity.class));
+    }
+
     private static SkillEntity newSkill(Long id, String name) {
         SkillEntity s = new SkillEntity();
         s.setId(id);
         s.setName(name);
+        // Workspace-scoped FS layout: the syncer resolves {root}/{workspaceId}/{name}.
+        s.setWorkspaceId(1L);
         return s;
     }
 

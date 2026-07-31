@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { handleAuthFailure, updateTokenFromHeader } from '@/utils/auth'
+import { WIKI_UPLOAD_TIMEOUT_MS } from '@/utils/wikiUpload'
 import type {
   ApprovalGrant,
   ApprovalGrantPage,
@@ -211,6 +212,9 @@ export const conversationApi = {
     http.delete(`/conversations/${encId(conversationId)}`),
   clearMessages: (conversationId: string) =>
     http.delete(`/conversations/${encId(conversationId)}/messages`),
+  // messageId is a snowflake ID — keep it a string end-to-end (never Number()).
+  rewindMessage: (conversationId: string, messageId: string) =>
+    http.post(`/conversations/${encId(conversationId)}/messages/${messageId}/rewind`),
   rename: (conversationId: string, title: string) =>
     http.put(`/conversations/${encId(conversationId)}/title`, { title }),
   setPinned: (conversationId: string, pinned: boolean) =>
@@ -261,6 +265,18 @@ export const skillApi = {
   refreshRuntime: () => http.post('/skills/runtime/refresh'),
   exportWorkspace: (id: string | number) => http.post(`/skills/${id}/export-workspace`),
   getWorkspaceInfo: (id: string | number) => http.get(`/skills/${id}/workspace`),
+  /**
+   * Bundle files (scripts/ + references/ + templates/) — canonical rows in
+   * mate_skill_file; writes also materialize the workspace cache and
+   * re-resolve the skill.
+   */
+  listFiles: (id: string | number) => http.get(`/skills/${id}/files`),
+  getFileContent: (id: string | number, path: string) =>
+    http.get(`/skills/${id}/files/content`, { params: { path } }),
+  saveFileContent: (id: string | number, path: string, content: string) =>
+    http.put(`/skills/${id}/files/content`, { path, content }),
+  deleteFile: (id: string | number, path: string) =>
+    http.delete(`/skills/${id}/files`, { params: { path } }),
   // RFC-090 §7 + §11.4 — pre-flight requirements + LESSONS.md + reverse lookup
   requirements: (id: string | number) => http.get(`/skills/${id}/requirements`),
   getLessons: (id: string | number) => http.get(`/skills/${id}/lessons`),
@@ -706,6 +722,12 @@ export const agentContextApi = {
     http.put(`/agents/${agentId}/workspace/files/${encodeFilePath(filename)}`, { content }),
   deleteFile: (agentId: string | number, filename: string) =>
     http.delete(`/agents/${agentId}/workspace/files/${encodeFilePath(filename)}`),
+  // Per-owner PERSONAL memory copies written by agents during conversations.
+  // Admin-only on the backend; callers should treat a 403 as "hide the section".
+  listPersonalFiles: (agentId: string | number) =>
+    http.get(`/agents/${agentId}/workspace/memory/personal-files`),
+  getPersonalFile: (agentId: string | number, filename: string, ownerKey: string) =>
+    http.get(`/agents/${agentId}/workspace/memory/personal-file`, { params: { filename, ownerKey } }),
   getPromptFiles: (agentId: string | number) =>
     http.get(`/agents/${agentId}/workspace/prompt-files`),
   setPromptFiles: (agentId: string | number, files: string[]) =>
@@ -790,6 +812,138 @@ export const cronJobApi = {
     http.get('/cron-jobs/active-runs', { params: { conversationId } }),
 }
 
+// ==================== Agent Teams ====================
+// All ids are strings end-to-end (global Long→String Jackson config) — never
+// coerce them to number, Snowflake ids exceed Number.MAX_SAFE_INTEGER.
+
+export interface AgentTeam {
+  id: string
+  name: string
+  description: string | null
+  leadAgentId: string
+  status: string
+  settings: string | null
+  createTime?: string
+}
+
+export interface TeamVO {
+  team: AgentTeam
+  leadName: string | null
+  leadIcon?: string | null
+  memberCount: number
+}
+
+export interface TeamMemberVO {
+  agentId: string
+  name: string
+  role: 'lead' | 'member' | 'reviewer'
+  icon?: string | null
+}
+
+export interface TeamTask {
+  id: string
+  teamId: string
+  taskNumber: number
+  subject: string
+  description: string | null
+  status: string
+  priority: number
+  assigneeAgentId: string | null
+  ownerAgentId: string | null
+  blockedBy: string | null
+  requireApproval: boolean | null
+  progressPercent: number | null
+  progressStep: string | null
+  result: string | null
+  reason: string | null
+  dispatchCount: number
+  conversationId: string | null
+  leadConversationId: string | null
+  metadata: string | null
+  createTime?: string
+  updateTime?: string
+}
+
+export interface TeamTaskDeliverable {
+  name: string
+  url: string
+  time?: string
+}
+
+export interface TeamTaskVO {
+  task: TeamTask
+  assigneeName: string | null
+  ownerName: string | null
+}
+
+export interface TeamTaskComment {
+  id: string
+  taskId: string
+  authorType: string
+  authorId: string
+  commentType: string
+  content: string
+  createTime?: string
+}
+
+export interface TeamTaskEvent {
+  id: string
+  teamId: string
+  taskId: string
+  eventType: string
+  actorType: string | null
+  actorId: string | null
+  detail: string | null
+  createTime?: string
+}
+
+export const teamApi = {
+  list: () => http.get('/teams'),
+  get: (id: string) => http.get(`/teams/${id}`),
+  create: (data: {
+    name: string
+    description?: string
+    leadAgentId: string
+    memberAgentIds: string[]
+  }) => http.post('/teams', data),
+  update: (id: string, data: { name?: string; description?: string; settings?: string }) =>
+    http.put(`/teams/${id}`, data),
+  delete: (id: string) => http.delete(`/teams/${id}`),
+  addMember: (id: string, agentId: string, role: string) =>
+    http.post(`/teams/${id}/members`, { agentId, role }),
+  removeMember: (id: string, agentId: string) => http.delete(`/teams/${id}/members/${agentId}`),
+  listTasks: (id: string, status?: string[], opts?: { limit?: number; offset?: number }) =>
+    http.get(`/teams/${id}/tasks`, {
+      params: {
+        ...(status?.length ? { status: status.join(',') } : {}),
+        ...(opts?.limit != null ? { limit: opts.limit } : {}),
+        ...(opts?.offset != null ? { offset: opts.offset } : {}),
+      },
+    }),
+  taskStats: (id: string) => http.get(`/teams/${id}/tasks/stats`),
+  getTask: (id: string, taskId: string) => http.get(`/teams/${id}/tasks/${taskId}`),
+  createTask: (
+    id: string,
+    data: {
+      subject: string
+      description?: string
+      assigneeAgentId: string
+      priority?: number
+      blockedBy?: string[]
+      requireApproval?: boolean
+    },
+  ) => http.post(`/teams/${id}/tasks`, data),
+  listTaskEvents: (id: string, taskId: string) => http.get(`/teams/${id}/tasks/${taskId}/events`),
+  approveTask: (id: string, taskId: string) => http.post(`/teams/${id}/tasks/${taskId}/approve`),
+  rejectTask: (id: string, taskId: string, reason?: string) =>
+    http.post(`/teams/${id}/tasks/${taskId}/reject`, { reason }),
+  retryTask: (id: string, taskId: string) => http.post(`/teams/${id}/tasks/${taskId}/retry`),
+  cancelTask: (id: string, taskId: string, reason?: string) =>
+    http.post(`/teams/${id}/tasks/${taskId}/cancel`, { reason }),
+  commentTask: (id: string, taskId: string, content: string) =>
+    http.post(`/teams/${id}/tasks/${taskId}/comments`, { content }),
+}
+
 // ==================== Wiki Knowledge Base ====================
 // One row in the cross-KB failure center. ids are strings (global Long→String
 // Jackson config) to avoid Snowflake precision loss.
@@ -840,6 +994,7 @@ export const wikiApi = {
   uploadRaw: (kbId: number, formData: FormData, onProgress?: (pct: number) => void) =>
     http.post(`/wiki/knowledge-bases/${kbId}/raw/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: WIKI_UPLOAD_TIMEOUT_MS,
       onUploadProgress: onProgress
         ? (e) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) }
         : undefined,

@@ -222,6 +222,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { warmRouteChunks } from '@/router'
 import { useIsMobile, useMediaQuery } from '@/composables/useBreakpoint'
 import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '@/stores/useThemeStore'
@@ -376,6 +377,11 @@ onMounted(async () => {
   fetchAutoApproveSummary()
   // Sidebar attention counts (live / security) are driven by
   // useNotificationCenter — it polls when admins are mounted.
+
+  // Warm every lazy route chunk into the browser cache while the tab is
+  // idle, so sidebar navigation never depends on a live chunk fetch while an
+  // agent run keeps the backend busy (issue #515).
+  warmRouteChunks()
 })
 
 onBeforeUnmount(() => {
@@ -472,6 +478,12 @@ const navGroups = computed(() => [
         path: '/agents',
         label: t('nav.agents'),
         icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>`,
+        requiredCapability: 'manage:agents',
+      },
+      {
+        path: '/teams',
+        label: t('nav.teams'),
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
         requiredCapability: 'manage:agents',
       },
       {
