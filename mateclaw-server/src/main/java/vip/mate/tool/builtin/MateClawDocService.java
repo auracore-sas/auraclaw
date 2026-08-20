@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 public class MateClawDocService {
 
     /** 合法语言目录。 */
-    private static final Pattern VALID_LANG = Pattern.compile("^(zh|en)$");
+    private static final Pattern VALID_LANG = Pattern.compile("^(zh|en|es)$");
     /** 合法 slug —— 仅小写字母、数字、连字符、下划线，禁止路径穿越。 */
     private static final Pattern VALID_SLUG = Pattern.compile("^[a-z0-9_-]+$");
     /** 兼容 MateClawDocTool 的旧式 "lang/slug.md" 路径。 */
@@ -39,8 +39,8 @@ public class MateClawDocService {
     /** VitePress 首页，无正文，从用户可见列表中排除。 */
     private static final String INDEX_SLUG = "index";
 
-    /** 一个文档分组：组标题（中/英）+ 该组内文档的有序 slug 列表。 */
-    private record DocGroup(String zhLabel, String enLabel, List<String> slugs) {}
+    /** 一个文档分组：组标题（中/英/西）+ 该组内文档的有序 slug 列表。 */
+    private record DocGroup(String zhLabel, String enLabel, String esLabel, List<String> slugs) {}
 
     /**
      * 帮助文档的分组与顺序，镜像 VitePress 文档站侧栏 (docs/.vitepress/config.ts)：
@@ -49,23 +49,24 @@ public class MateClawDocService {
      * 也提示维护者把它补进对应分组。改了 VitePress 侧栏时，同步更新这里即可保持一致。
      */
     private static final List<DocGroup> STRUCTURE = List.of(
-            new DocGroup("开始", "Start",
+            new DocGroup("开始", "Start", "Inicio",
                     List.of("intro", "quickstart", "desktop")),
-            new DocGroup("使用", "Use",
+            new DocGroup("使用", "Use", "Uso",
                     List.of("chat", "agents", "goals", "wiki", "memory", "multimodal", "model3d",
                             "channels", "webchat", "wecom-tuning", "ambient-ai", "workflow", "triggers")),
-            new DocGroup("扩展", "Extend",
+            new DocGroup("扩展", "Extend", "Extensión",
                     List.of("tools", "skills", "mcp", "acp")),
-            new DocGroup("运维", "Operate",
+            new DocGroup("运维", "Operate", "Operación",
                     List.of("console", "backstage", "docker-deploy", "workspaces", "security", "models", "doctor", "config")),
-            new DocGroup("开发", "Develop",
+            new DocGroup("开发", "Develop", "Desarrollo",
                     List.of("api", "architecture", "contributing")),
-            new DocGroup("参考", "Reference",
+            new DocGroup("参考", "Reference", "Referencia",
                     List.of("releases", "roadmap", "faq")));
 
     /** 未登记文档的兜底分组标题。 */
     private static final String OTHER_ZH = "更多";
     private static final String OTHER_EN = "More";
+    private static final String OTHER_ES = "Más";
 
     /** 开头的 YAML frontmatter 块：`---\n ... \n---`。 */
     private static final Pattern FRONTMATTER = Pattern.compile("^---\\s*\\n.*?\\n---\\s*\\n", Pattern.DOTALL);
@@ -105,11 +106,12 @@ public class MateClawDocService {
         }
 
         boolean en = "en".equals(lang);
+        boolean es = "es".equals(lang);
         List<DocMeta> ordered = new ArrayList<>();
         Set<String> placed = new HashSet<>();
         // 1) 按结构分组、按顺序输出已存在的文档。
         for (DocGroup g : STRUCTURE) {
-            String label = en ? g.enLabel() : g.zhLabel();
+            String label = es ? g.esLabel() : en ? g.enLabel() : g.zhLabel();
             for (String slug : g.slugs()) {
                 Resource r = available.get(slug);
                 if (r == null) {
@@ -120,7 +122,7 @@ public class MateClawDocService {
             }
         }
         // 2) 未登记于结构的文档归入「更多」分组，按字母序，避免遗漏。
-        String otherLabel = en ? OTHER_EN : OTHER_ZH;
+        String otherLabel = es ? OTHER_ES : en ? OTHER_EN : OTHER_ZH;
         available.entrySet().stream()
                 .filter(e -> !placed.contains(e.getKey()))
                 .sorted(Map.Entry.comparingByKey())
