@@ -815,8 +815,8 @@ public class NodeStreamingChatHelper {
                     phase, primaryProviderId, reason);
             if (broadcast) {
                 broadcastDelta(conversationId, "warning",
-                        buildDeltaJson("主模型暂时不可用（" + (primaryOutOfPool ? "已下线" : "冷却中")
-                                + "），直接尝试备选模型..."));
+                        buildDeltaJson("Modelo principal no disponible (" + (primaryOutOfPool ? "fuera del pool" : "en enfriamiento")
+                                + "), probando directamente el modelo alternativo..."));
             }
         }
 
@@ -961,7 +961,7 @@ public class NodeStreamingChatHelper {
                     fallback.getClass().getSimpleName(), conversationId);
             if (broadcast) {
                 broadcastDelta(conversationId, "warning",
-                        buildDeltaJson("主模型不可用，正在切换到备选模型 (" + (i + 1) + "/" + fallbackChain.size() + ")..."));
+                        buildDeltaJson("Modelo principal no disponible, cambiando al modelo alternativo (" + (i + 1) + "/" + fallbackChain.size() + ")..."));
             }
             failoverCount++;
             llmCallCount++;
@@ -997,7 +997,7 @@ public class NodeStreamingChatHelper {
 
         logPerfSummary(phase, conversationId, callStartMs, llmCallCount, retryCount, failoverCount);
         return lastResult != null ? lastResult
-                : buildErrorResult("LLM 调用失败，已达最大重试次数", conversationId, phase);
+                : buildErrorResult("Error en la llamada LLM: se alcanzó el máximo de reintentos", conversationId, phase);
     }
 
     /** D-6: log a structured performance summary for the LLM call phase. */
@@ -1141,9 +1141,9 @@ public class NodeStreamingChatHelper {
                     phase, attempt, MAX_RETRIES, delay, retryTypeRef.get(), conversationId);
             // 广播给前端：用户可见的重试倒计时
             if (broadcast && !emptyResponse) {
-                String cause = overloaded ? "模型服务繁忙" : "请求频率受限";
+                String cause = overloaded ? "El servicio del modelo está ocupado" : "Límite de frecuencia de solicitudes";
                 broadcastDelta(conversationId, "warning",
-                        buildDeltaJson("⏱️ " + cause + "，等待 " + (delay / 1000) + " 秒后重试（第 " + attempt + "/" + MAX_RETRIES + " 次）..."));
+                        buildDeltaJson("⏱️ " + cause + ", reintentando en " + (delay / 1000) + " s (intento " + attempt + "/" + MAX_RETRIES + ")..."));
             }
             // Poll stop flag every 100ms so user Stop is honored mid-backoff.
             long remaining = delay;
@@ -1158,7 +1158,7 @@ public class NodeStreamingChatHelper {
                     Thread.sleep(slice);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    return buildErrorResult("LLM 调用被中断", conversationId, phase);
+                    return buildErrorResult("Llamada LLM interrumpida", conversationId, phase);
                 }
                 remaining -= slice;
             }
@@ -1436,7 +1436,7 @@ public class NodeStreamingChatHelper {
                     subscription.dispose();
                     if (broadcast) {
                         broadcastDelta(conversationId, "warning",
-                                buildDeltaJson("模型在思考阶段停留过久，已自动截断"));
+                                buildDeltaJson("El modelo permaneció demasiado tiempo en la fase de pensamiento; se truncó automáticamente"));
                     }
                     // dispose 后 latch 可能不会 countDown，直接跳出
                     break;
@@ -1451,7 +1451,7 @@ public class NodeStreamingChatHelper {
                     subscription.dispose();
                     if (broadcast) {
                         broadcastDelta(conversationId, "warning",
-                                buildDeltaJson("检测到回答内容反复重复，已自动截断"));
+                                buildDeltaJson("Se detectó contenido repetido en la respuesta; se truncó automáticamente"));
                     }
                     break;
                 }
@@ -1479,13 +1479,13 @@ public class NodeStreamingChatHelper {
                 if (System.currentTimeMillis() > deadlineMs) {
                     subscription.dispose();
                     log.warn("[{}] Stream call timed out for conversation {}", phase, conversationId);
-                    return buildErrorResult("LLM 调用超时", conversationId, phase);
+                    return buildErrorResult("Tiempo de espera de la llamada LLM agotado", conversationId, phase);
                 }
             }
         } catch (InterruptedException e) {
             subscription.dispose();
             Thread.currentThread().interrupt();
-            return buildErrorResult("LLM 调用被中断", conversationId, phase);
+            return buildErrorResult("Llamada LLM interrumpida", conversationId, phase);
         }
 
         // Stream is over (complete, error, or disposed by a guard) — drain the
@@ -1504,7 +1504,7 @@ public class NodeStreamingChatHelper {
                         phase, contentAccum.length(), toolCallAccumulators.size(), error.getMessage());
                 if (broadcast) {
                     broadcastDelta(conversationId, "warning",
-                            buildDeltaJson("LLM 响应中断，使用已生成的部分内容继续"));
+                            buildDeltaJson("Respuesta LLM interrumpida; se continúa con el contenido ya generado"));
                 }
                 return assembleResult(contentAccum, thinkingAccum, toolCallAccumulators,
                         promptTokens.get(), completionTokens.get(),
@@ -1539,7 +1539,7 @@ public class NodeStreamingChatHelper {
                         log.debug("context-limit observer failed: {}", observerError.getMessage());
                     }
                 }
-                return buildErrorResultWithType("Prompt 过长: " + extractUserFriendlyError(error),
+                return buildErrorResultWithType("Prompt demasiado largo: " + extractUserFriendlyError(error),
                         conversationId, phase, errorType);
             }
 
@@ -1560,9 +1560,9 @@ public class NodeStreamingChatHelper {
             // type-appropriate user-facing prefix.
             String friendly = extractUserFriendlyError(error);
             String message = switch (errorType) {
-                case AUTH_ERROR -> "认证失败: " + friendly;
+                case AUTH_ERROR -> "Error de autenticación: " + friendly;
                 case CLIENT_ERROR -> "Bad request: " + friendly;
-                default -> "LLM 调用失败: " + friendly;
+                default -> "Error en la llamada LLM: " + friendly;
             };
             log.error("[{}] LLM call failed (type={}) after {} attempts for conversation {}: {}",
                     phase, errorType, attempt + 1, conversationId, error.getMessage());

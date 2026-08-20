@@ -660,7 +660,7 @@ public class PlanGenerationNode implements NodeAction {
             // Broadcast a lightweight progress token so the frontend shows activity
             // during the silent triage call (typically 1-3 s).
             if (streamingHelper != null) {
-                streamingHelper.broadcastProgress(conversationId, "分析中...");
+                streamingHelper.broadcastProgress(conversationId, "Analizando...");
             }
 
             // Silent streaming call — structured JSON is parsed below; tokens are not forwarded to the client.
