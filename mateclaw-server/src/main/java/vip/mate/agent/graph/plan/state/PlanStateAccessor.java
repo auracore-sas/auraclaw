@@ -105,7 +105,7 @@ public final class PlanStateAccessor {
     // ===== 共享键 =====
 
     public String systemPrompt() {
-        return state.value(MateClawStateKeys.SYSTEM_PROMPT, "你是一个有帮助的AI助手。");
+        return state.value(MateClawStateKeys.SYSTEM_PROMPT, "Eres un asistente de IA útil.");
     }
 
     public String conversationId() {
