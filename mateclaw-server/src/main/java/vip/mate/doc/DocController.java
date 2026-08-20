@@ -64,9 +64,12 @@ public class DocController {
             return "zh";
         }
         String l = lang.toLowerCase();
-        // 前端 locale 形如 zh-CN / en-US，取主语言段。
+        // 前端 locale 形如 zh-CN / en-US / es-ES，取主语言段。
         if (l.startsWith("en")) {
             return "en";
+        }
+        if (l.startsWith("es")) {
+            return "es";
         }
         return "zh";
     }

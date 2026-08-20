@@ -56,7 +56,7 @@ const error = ref<string>('')
 const contentEl = ref<HTMLElement | null>(null)
 
 // 后端文档目录只分 zh / en，取 app locale 的主语言段。
-const lang = computed(() => (locale.value.startsWith('en') ? 'en' : 'zh'))
+const lang = computed(() => (locale.value.startsWith('en') ? 'en' : locale.value.startsWith('es') ? 'es' : 'zh'))
 
 // Wikilink 替换是 chat 专用语义，文档里不需要；关掉避免误伤 [[...]] 文本。
 const rendered = computed(() => renderMarkdown(content.value, { wikilink: 'none' }))
