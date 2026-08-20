@@ -25,6 +25,7 @@ dev      → referencia local de la rama de desarrollo del upstream (no trabajam
 | Archivo | Cambio | Manejo de conflicto en merge |
 |---|---|---|
 | `README.md` | Marca renombrada: `MateClaw` → `AuraClaw` (solo prosa); aviso de fork agregado arriba | Tomar nuestra versión y re-aplicar: `sed -i 's/MateClaw/AuraClaw/g' README.md` |
+| `AGENTS.md` | Contexto para agentes de codificación (nuestro, no existe en upstream) | Sin conflicto (archivo nuevo). Si upstream crea el suyo: conservar NUESTRO |
 | `docs/CUSTOMIZATIONS.md` | Este archivo (nuestro, no existe en upstream) | Sin conflicto (archivo nuevo) |
 | *(futuro)* `mateclaw-ui/...` | Título, i18n `es-ES`, textos visibles | Archivos aditivos (`es-ES.ts`) = sin conflicto; textos en `en-US.ts`/`zh-CN.ts` = re-aplicar |
 
