@@ -1,10 +1,10 @@
 <div align="center">
 
 <p align="center">
-  <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="MateClaw Logo" width="120">
+  <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="AuraClaw Logo" width="120">
 </p>
 
-# MateClaw
+# AuraClaw
 
 <p align="center"><b>Your second brain</b></p>
 
@@ -24,8 +24,10 @@
 
 </div>
 
+> **AuraClaw** — commercial fork of [MateClaw](https://github.com/mateaix/mateclaw) (Apache-2.0), maintained by **Auracore SAS**. Based on upstream `v2.1.0` with branding and enterprise customizations. Upstream updates are integrated via stable tags; see [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) for the customization registry and sync procedure.
+
 <p align="center">
-  <img src="assets/images/preview.png" alt="MateClaw Preview" width="800">
+  <img src="assets/images/preview.png" alt="AuraClaw Preview" width="800">
 </p>
 
 ---
@@ -34,7 +36,7 @@
 
 ---
 
-> **Other personal AI agents are built for one person. MateClaw is the one your IT department can actually sign off on.**
+> **Other personal AI agents are built for one person. AuraClaw is the one your IT department can actually sign off on.**
 >
 > Multi-user workspaces. Approval-gated sensitive actions. Full audit trail. Spring Boot Actuator health monitoring. Per-channel error isolation so one chat platform's outage doesn't take down the rest. One JAR in your environment; you control persisted data, and task content is sent only to model, channel, or tool services you explicitly configure.
 >
@@ -42,7 +44,7 @@
 
 Most AI tools die when their vendor has a bad day. Most forget you the moment the tab closes. Most give you a chatbox and call it a product.
 
-**MateClaw is the whole widget.** One deployment. Reasoning, knowledge, memory, tools, channels — built together, not bolted on. And when your primary model is unavailable, the next healthy provider retries the current request.
+**AuraClaw is the whole widget.** One deployment. Reasoning, knowledge, memory, tools, channels — built together, not bolted on. And when your primary model is unavailable, the next healthy provider retries the current request.
 
 ---
 
@@ -52,7 +54,7 @@ Most AI tools die when their vendor has a bad day. Most forget you the moment th
 
 Primary key expired. Vendor returns 401. Network blip. Quota drained.
 
-Other tools hand you a red error card. MateClaw tries the next healthy provider in configured order — including built-in and OpenAI-compatible options such as DashScope, OpenAI, Anthropic, Gemini, DeepSeek, Kimi, Ollama, LM Studio, and MLX — and attempts to recover the current request. It returns an error only when the available chain is exhausted. A provider health tracker parks bad vendors in a cooldown window so they don't waste seconds on every turn.
+Other tools hand you a red error card. AuraClaw tries the next healthy provider in configured order — including built-in and OpenAI-compatible options such as DashScope, OpenAI, Anthropic, Gemini, DeepSeek, Kimi, Ollama, LM Studio, and MLX — and attempts to recover the current request. It returns an error only when the available chain is exhausted. A provider health tracker parks bad vendors in a cooldown window so they don't waste seconds on every turn.
 
 You don't write a retry script. You drag providers into priority order in **Settings → Models** and watch the health dashboard fill with green dots as requests route around failures in real time.
 
@@ -60,7 +62,7 @@ You don't write a retry script. You drag providers into priority order in **Sett
 
 Upload a PDF, a batch of markdown, a scraped page — raw material in.
 
-MateClaw's **LLM Wiki** digests it into structured pages, builds `[[links]]` between them, and preserves traceable citations for generated content. Open the citation drawer to inspect the corresponding source chunk and verify page or answer references.
+AuraClaw's **LLM Wiki** digests it into structured pages, builds `[[links]]` between them, and preserves traceable citations for generated content. Open the citation drawer to inspect the corresponding source chunk and verify page or answer references.
 
 This is the difference between a warehouse and a library.
 
@@ -122,15 +124,15 @@ RBAC + JWT. **Personal Access Tokens** for headless scripts and CI. **HMAC-SHA-2
 
 Model providers rate-limit, networks fail, keys expire, and services become temporarily unavailable. Betting every AI capability on one provider turns an upstream incident into your own outage.
 
-Once AI enters production, the stable layer should not be tied to one supplier. MateClaw absorbs that uncertainty into one runtime through provider priorities, health tracking, cooldown, and failover.
+Once AI enters production, the stable layer should not be tied to one supplier. AuraClaw absorbs that uncertainty into one runtime through provider priorities, health tracking, cooldown, and failover.
 
-**MateClaw is that layer — built the Spring Boot way.**
+**AuraClaw is that layer — built the Spring Boot way.**
 
 ---
 
-## Why MateClaw
+## Why AuraClaw
 
-| | MateClaw | [OpenClaw](https://github.com/openclaw/openclaw) | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | [Claude Code](https://github.com/anthropics/claude-code) | [Cursor](https://cursor.com) |
+| | AuraClaw | [OpenClaw](https://github.com/openclaw/openclaw) | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | [Claude Code](https://github.com/anthropics/claude-code) | [Cursor](https://cursor.com) |
 |:---|:---:|:---:|:---:|:---:|:---:|
 | **Multi-vendor failover** | **Chain + health tracker + cooldown** | Swap providers via config | Orchestration w/ retry | Anthropic only | One model |
 | **Knowledge digestion** | **LLM Wiki + page-level citations** | Canvas + memory | Skills Hub + memory | — | Code index |
@@ -140,9 +142,9 @@ Once AI enters production, the stable layer should not be tied to one supplier. 
 | **Stack** | **Java (Spring Boot)** | TypeScript | Python | TypeScript | Electron/TS |
 | **License / Price** | **Apache 2.0 · Free** | MIT · Free | MIT · Free | Proprietary · $20–200/mo | Proprietary · $0–200/mo |
 
-**OpenClaw and Hermes Agent are excellent personal AI platforms** — pick either if you're running one user on one laptop, building your own agent from CLI, and treating everything as config files to hand-tune. Both have bigger communities than MateClaw today.
+**OpenClaw and Hermes Agent are excellent personal AI platforms** — pick either if you're running one user on one laptop, building your own agent from CLI, and treating everything as config files to hand-tune. Both have bigger communities than AuraClaw today.
 
-**MateClaw is the version built for teams.** Digital employees, models, and tools sit behind permissions and workspace boundaries. Approval flows can pause risky actions for review, and key operations enter the audit trail. The Admin Runtime Console centralizes active employee and provider state with force-recycle for stuck runs. Spring Boot inside — a natural fit for Java shops already running production services.
+**AuraClaw is the version built for teams.** Digital employees, models, and tools sit behind permissions and workspace boundaries. Approval flows can pause risky actions for review, and key operations enter the audit trail. The Admin Runtime Console centralizes active employee and provider state with force-recycle for stuck runs. Spring Boot inside — a natural fit for Java shops already running production services.
 
 Same "whole widget" philosophy. Different center of gravity.
 
@@ -253,7 +255,7 @@ Plus: in-chat attachment preview (pdf / docx / xlsx / html / text), single-sourc
 
 Full story in the [v2.0.0 release notes](https://claw.mate.vip/docs/en/releases/2.0.0).
 
-**v1.8.0 (shipped 2026-07-12)** — the employee turns *outward and does a whole job*: **Content Studio**, the first flagship scene built end-to-end on MateClaw's own primitives:
+**v1.8.0 (shipped 2026-07-12)** — the employee turns *outward and does a whole job*: **Content Studio**, the first flagship scene built end-to-end on AuraClaw's own primitives:
 
 - **Content Studio — one sentence to a publishable post** — a seeded "Content Studio" employee runs pick-topic → research → draft → illustrate → de-AI → layout → deliver. **WeChat Official Account (公众号)** image-text articles (inline-style HTML → draft box) and **Xiaohongshu (小红书)** image-first notes (≥3 vertical 3:4 cards + online preview) ship first-class
 - **De-AI-ification you can measure** — a heuristic AI-trace score (no LLM, deterministic) drives a detect → rewrite → re-check loop, capped at 3 rounds
