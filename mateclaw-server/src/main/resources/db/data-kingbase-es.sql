@@ -609,7 +609,7 @@ ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, display_name=EXCLUDED.display
 INSERT INTO mate_mcp_server (id, name, description, transport, url, headers_json, command, args_json, env_json, cwd,
     enabled, connect_timeout_seconds, read_timeout_seconds, last_status, last_error,
     last_connected_time, tool_count, builtin, create_time, update_time, deleted)
-VALUES (1000000901, 'filesystem', 'Filesystem MCP for MateClaw workspace', 'stdio', NULL, NULL, 'npx', '["-y","@modelcontextprotocol/server-filesystem","${user.home}"]', '{}', NULL, FALSE, 30, 60, 'disconnected', NULL, NULL, 0, FALSE, NOW(), NOW(), 0)
+VALUES (1000000901, 'filesystem', 'MCP de sistema de archivos para el workspace de AuraClaw', 'stdio', NULL, NULL, 'npx', '["-y","@modelcontextprotocol/server-filesystem","${user.home}"]', '{}', NULL, FALSE, 30, 60, 'disconnected', NULL, NULL, 0, FALSE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, transport=EXCLUDED.transport, url=EXCLUDED.url, headers_json=EXCLUDED.headers_json, command=EXCLUDED.command, args_json=EXCLUDED.args_json, env_json=EXCLUDED.env_json, cwd=EXCLUDED.cwd, enabled=EXCLUDED.enabled, connect_timeout_seconds=EXCLUDED.connect_timeout_seconds, read_timeout_seconds=EXCLUDED.read_timeout_seconds, last_status=EXCLUDED.last_status, last_error=EXCLUDED.last_error, last_connected_time=EXCLUDED.last_connected_time, tool_count=EXCLUDED.tool_count, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 -- Pre-configured MCP Server: GitHub (enable after setting GITHUB_TOKEN env var)
@@ -618,7 +618,7 @@ INSERT INTO mate_mcp_server (
     enabled, connect_timeout_seconds, read_timeout_seconds, last_status, last_error,
     last_connected_time, tool_count, builtin, create_time, update_time, deleted
 )
-VALUES (1000000902, 'github', 'GitHub MCP Server — Search repos/code/issues, manage PRs and files', 'stdio', NULL, NULL, 'npx', '["-y","@modelcontextprotocol/server-github"]', '{"GITHUB_PERSONAL_ACCESS_TOKEN":""}', NULL, FALSE, 30, 60, 'disconnected', NULL, NULL, 0, FALSE, NOW(), NOW(), 0)
+VALUES (1000000902, 'github', 'Servidor MCP de GitHub: busca repos/código/issues y gestiona PRs y archivos', 'stdio', NULL, NULL, 'npx', '["-y","@modelcontextprotocol/server-github"]', '{"GITHUB_PERSONAL_ACCESS_TOKEN":""}', NULL, FALSE, 30, 60, 'disconnected', NULL, NULL, 0, FALSE, NOW(), NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description, transport=EXCLUDED.transport, url=EXCLUDED.url, headers_json=EXCLUDED.headers_json, command=EXCLUDED.command, args_json=EXCLUDED.args_json, env_json=EXCLUDED.env_json, cwd=EXCLUDED.cwd, enabled=EXCLUDED.enabled, connect_timeout_seconds=EXCLUDED.connect_timeout_seconds, read_timeout_seconds=EXCLUDED.read_timeout_seconds, last_status=EXCLUDED.last_status, last_error=EXCLUDED.last_error, last_connected_time=EXCLUDED.last_connected_time, tool_count=EXCLUDED.tool_count, builtin=EXCLUDED.builtin, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 -- Built-in skills: skill metadata

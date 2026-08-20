@@ -626,7 +626,7 @@ INSERT INTO mate_mcp_server (id, name, description, transport, url, headers_json
 VALUES (
     1000000901,
     'filesystem',
-    'Filesystem MCP for MateClaw workspace',
+    'MCP de sistema de archivos para el workspace de AuraClaw',
     'stdio',
     NULL,
     NULL,
@@ -657,7 +657,7 @@ INSERT INTO mate_mcp_server (
 VALUES (
     1000000902,
     'github',
-    'GitHub MCP Server — Search repos/code/issues, manage PRs and files',
+    'Servidor MCP de GitHub: busca repos/código/issues y gestiona PRs y archivos',
     'stdio',
     NULL,
     NULL,
