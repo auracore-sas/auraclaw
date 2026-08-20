@@ -25,6 +25,9 @@ dev      → referencia local de la rama de desarrollo del upstream (no trabajam
 | Archivo | Cambio | Manejo de conflicto en merge |
 |---|---|---|
 | `README.md` | Marca renombrada: `MateClaw` → `AuraClaw` (solo prosa); aviso de fork agregado arriba | Tomar nuestra versión y re-aplicar: `sed -i 's/MateClaw/AuraClaw/g' README.md` |
+| Logo / branding visual | Imagen maestra `assets/branding/auraclaw.png` → derivados `auraclaw_logo*.png`, `favicon.ico`, `build/icon.*` (UI + desktop); archivos `mateclaw_logo*` eliminados; referencias actualizadas en UI, desktop y README | Sin conflicto (archivos renombrados a `auraclaw_*` = superficie ajena al upstream) |
+| `mateclaw-ui/index.html`, i18n `en-US.ts`/`zh-CN.ts`, vistas (Login, About, MainLayout, chat), `types/index.ts`, `WorkflowJsonEditor.vue` | Textos visibles: `MateClaw` → `AuraClaw` | Re-aplicar `sed 's/MateClaw/AuraClaw/g'` sobre estos archivos si upstream los toca |
+| `mateclaw-desktop/branding.config.json` | Nombre/appId/equipo/copyright → AuraClaw (appId: `com.auracore.auraclaw`) | Tomar nuestra versión |
 | `AGENTS.md` | Contexto para agentes de codificación (nuestro, no existe en upstream) | Sin conflicto (archivo nuevo). Si upstream crea el suyo: conservar NUESTRO |
 | `docs/CUSTOMIZATIONS.md` | Este archivo (nuestro, no existe en upstream) | Sin conflicto (archivo nuevo) |
 | *(futuro)* `mateclaw-ui/...` | Título, i18n `es-ES`, textos visibles | Archivos aditivos (`es-ES.ts`) = sin conflicto; textos en `en-US.ts`/`zh-CN.ts` = re-aplicar |

@@ -32,7 +32,7 @@ upstream → https://github.com/mateaix/mateclaw.git                 (repo ofici
 5. **No renombrar identificadores internos** — invisibles al usuario final y crean conflictos masivos en cada merge:
    - Paquetes Java (`vip.mate.*`), nombres de módulos Maven (`mateclaw-server`, `mateclaw-ui`, …)
    - Artefactos/JARs, esquema de BD, contenedores docker, variables de entorno (`MATECLAW_*`)
-   - Rutas de archivos/recursos existentes (ej. `mateclaw-ui/public/logo/mateclaw_logo_s.png`)
+   - Rutas de archivos/recursos existentes (ej. `mateclaw-ui/public/logo/auraclaw_logo_s.png`)
 6. **Branding visible SÍ se cambia** a AuraClaw: README, títulos de UI/desktop, textos visibles, i18n. Todo cambio debe registrarse en `docs/CUSTOMIZATIONS.md`.
 7. **Código nuevo propio va en zonas aisladas** (superficie de conflicto mínima):
    - Paquetes nuevos (`com.auracore.*` o `vip.mate.<dominio-nuevo>`), no editar clases existentes salvo necesidad real

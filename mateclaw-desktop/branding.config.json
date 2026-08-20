@@ -1,9 +1,9 @@
 {
-  "name": "MateClaw",
+  "name": "AuraClaw",
   "tagline": "AI Personal Assistant",
-  "team": "MateClaw Team",
-  "copyright": "Copyright © 2026 MateClaw Team",
-  "appId": "vip.mate.mateclaw",
-  "githubUrl": "https://github.com/matevip/mateclaw",
-  "logoFile": "mateclaw_logo_s.png"
+  "team": "Auracore SAS",
+  "copyright": "Copyright © 2026 Auracore SAS",
+  "appId": "com.auracore.auraclaw",
+  "githubUrl": "https://github.com/auracore-sas/auraclaw",
+  "logoFile": "auraclaw_logo_s.png"
 }
