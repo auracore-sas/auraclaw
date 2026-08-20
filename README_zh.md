@@ -1,7 +1,7 @@
 <div align="center">
 
 <p align="center">
-  <img src="mateclaw-ui/public/logo/auraclaw_logo_s.png" alt="MateClaw Logo" width="120">
+  <img src="mateclaw-ui/public/logo/mateclaw_logo_s.png" alt="MateClaw Logo" width="120">
 </p>
 
 # 太一（MateClaw）

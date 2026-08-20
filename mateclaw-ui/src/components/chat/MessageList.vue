@@ -11,7 +11,7 @@
           <div class="welcome-screen">
             <div class="welcome-logo">
               <div class="welcome-logo__glow"></div>
-              <img src="/logo/auraclaw_logo_s.png" alt="AuraClaw" class="welcome-logo__icon" />
+              <img src="/logo/mateclaw_logo_s.png" alt="AuraClaw" class="welcome-logo__icon" />
             </div>
             <h2 class="welcome-title">Mate<span class="welcome-title-highlight">Claw</span></h2>
             <p class="welcome-subtitle">{{ subtitle }}</p>

@@ -25,7 +25,7 @@ dev      → referencia local de la rama de desarrollo del upstream (no trabajam
 | Archivo | Cambio | Manejo de conflicto en merge |
 |---|---|---|
 | `README.md` | Marca renombrada: `MateClaw` → `AuraClaw` (solo prosa); aviso de fork agregado arriba | Tomar nuestra versión y re-aplicar: `sed -i 's/MateClaw/AuraClaw/g' README.md` |
-| Logo / branding visual | Imagen maestra `assets/branding/auraclaw.png` → derivados `auraclaw_logo*.png`, `favicon.ico`, `build/icon.*` (UI + desktop); archivos `mateclaw_logo*` eliminados; referencias actualizadas en UI, desktop y README | Sin conflicto (archivos renombrados a `auraclaw_*` = superficie ajena al upstream) |
+| Logo / branding visual | Binarios reemplazados **en su lugar** con nombres originales (`mateclaw_logo.png`, `mateclaw_logo_s.png`, `favicon.ico`, `build/icon.*`) — contenido AuraClaw; imagen maestra en `assets/branding/auraclaw.png`; **cero archivos fuente modificados** por el logo | Si upstream cambia el binario del logo: conflicto binario → resolver manualmente: `git checkout --ours <ruta>` + `git add` (rerere NO aplica a binarios) |
 | `mateclaw-ui/index.html`, i18n `en-US.ts`/`zh-CN.ts`, vistas (Login, About, MainLayout, chat), `types/index.ts`, `WorkflowJsonEditor.vue` | Textos visibles: `MateClaw` → `AuraClaw` | Re-aplicar `sed 's/MateClaw/AuraClaw/g'` sobre estos archivos si upstream los toca |
 | `mateclaw-desktop/branding.config.json` | Nombre/appId/equipo/copyright → AuraClaw (appId: `com.auracore.auraclaw`) | Tomar nuestra versión |
 | `AGENTS.md` | Contexto para agentes de codificación (nuestro, no existe en upstream) | Sin conflicto (archivo nuevo). Si upstream crea el suyo: conservar NUESTRO |
@@ -40,9 +40,10 @@ sed -i 's/MateClaw/AuraClaw/g' README.md
 ```
 
 > ⚠️ **No renombrar** por ahora: paquetes Java (`vip.mate.*`), nombres de módulos Maven,
-> artefactos/JARs, esquema de BD, contenedores docker, variables de entorno (`MATECLAW_*`).
+> artefactos/JARs, esquema de BD, contenedores docker, variables de entorno (`MATECLAW_*`),
+> nombres de archivos de logo (`mateclaw_logo_*.png` — se reemplaza solo el CONTENIDO).
 > Son identificadores internos invisibles al usuario final y cambiarlos genera conflictos
-> masivos en cada merge sin beneficio visible.
+> en cada merge sin beneficio visible.
 
 ## 3. Procedimiento de actualización (cuando upstream publique una versión estable)
 

@@ -324,7 +324,7 @@ function createParticles() {
       <div class="logo-section fade-enter">
         <div class="logo-wrap">
           <div class="logo-glow"></div>
-          <img class="logo-img" src="/logo/auraclaw_logo_s.png" alt="MateClaw" />
+          <img class="logo-img" src="/logo/mateclaw_logo_s.png" alt="MateClaw" />
         </div>
         <div class="brand-name">
           <span class="mate">Mate</span><span class="claw">Claw</span>

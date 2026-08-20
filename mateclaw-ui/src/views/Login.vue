@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="login-center">
       <div class="login-logo">
-        <img src="/logo/auraclaw_logo_s.png" alt="AuraClaw" class="logo-image" />
+        <img src="/logo/mateclaw_logo_s.png" alt="AuraClaw" class="logo-image" />
         <h1 class="logo-title">Mate<span class="logo-title-highlight">Claw</span></h1>
       </div>
 
