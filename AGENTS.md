@@ -77,6 +77,32 @@ git add -A && git commit -m "merge: integrate upstream vX.Y.Z"
 git tag vX.Y.Z-mc.1 && git push origin main --tags
 ```
 
+## 5bis. VERSIONADO PROPIO (reglas para no romper el sync con upstream) ⭐
+
+Nuestros releases comerciales usan **tags propios** con sufijo `-mc.N` sobre la línea `main`:
+
+| Tag | Significado | Ejemplo |
+|---|---|---|
+| `vX.Y.Z` | Versión del **upstream** (nunca crear/borrar estos tags en nuestro fork) | v2.1.0, v2.2.0 |
+| `vX.Y.Z-mc.N` | **Nuestro release comercial** sobre esa base upstream | v2.1.0-mc.1, v2.1.0-mc.2 |
+
+**Reglas:**
+1. Cada release nuestro = tag `vX.Y.Z-mc.N` en el commit del merge (o del último cambio) — N incrementa por release sobre la MISMA base upstream
+2. Cuando se integra una versión upstream nueva (ej. v2.2.0), el contador `-mc.N` **se reinicia a 1** (v2.2.0-mc.1)
+3. NUNCA crear tags `vX.Y.Z` sin sufijo en nuestro fork (colisionarían con los tags del upstream al hacer `git fetch upstream --tags`)
+4. Los tags se empujan SIEMPRE con `git push origin main --tags`
+5. Un tag `-mc.N` es inmutable: si hay que corregir algo, se crea `-mc.N+1`, nunca se reescribe el tag
+6. `git fetch upstream --tags` puede traer tags nuevos del upstream — verificar con `git tag | sort -V | tail` antes de cada merge
+
+**Orden del workflow de release:**
+```bash
+# 1. todo el trabajo en main, verificado (compile + tests)
+# 2. commit final del release
+# 3. tag propio:      git tag v2.1.0-mc.2
+# 4. push:            git push origin main --tags
+# 5. (cuando salga v2.2.0 upstream) → sección 5 → tag v2.2.0-mc.1
+```
+
 ## 6. Mapa del código (orientación rápida)
 
 ```
@@ -99,7 +125,9 @@ mateclaw-server/        Backend Spring Boot 3.5 (TODO el negocio)
     plugin/             SDK de plugins
     llm/                Modelos, proveedores, failover multi-vendor
   src/main/resources/db/migration/{h2,postgres,mysql}/   Flyway (V1..V179 upstream; V900+ NUESTRAS)
-mateclaw-ui/            SPA Vue 3 + TS + Element Plus (consola admin) — i18n en src/i18n/locales/{en-US,zh-CN}.ts
+mateclaw-ui/            SPA Vue 3 + TS + Element Plus (consola admin) — i18n en src/i18n/locales/{en-US,zh-CN,es-ES}.ts
+docs/                   CUSTOMIZATIONS.md (registro) · NEXT_SESSION.md (contexto de sesión) · docs/es/ (documentación en español)
+  (NOTA: la UI se sirve DENTRO del JAR — tras cambios de UI hay que reconstruir la imagen Docker)
 mateclaw-desktop/       Electron (JRE 21 embebido, modos local/remoto)
 mateclaw-webchat/       Widget chat embebible (UMD/ES)
 mateclaw-plugin-api/    SDK Java para plugins de terceros
@@ -108,15 +136,21 @@ docs/CUSTOMIZATIONS.md  ⚠️ REGISTRO de personalizaciones — actualizar en c
 
 ## 7. Notas de entorno
 
-- Java 21+ (local: JDK 25), Maven, Node 26. `mvn spring-boot:run` en `mateclaw-server` (puerto 18088); `npm run dev` en `mateclaw-ui` (puerto 5173). Login dev: `admin` / `admin123`.
-- BD: H2 en dev; PostgreSQL 16 en Docker (`docker compose up -d`).
-- El código fuente del upstream tiene comentarios en chino — normal, no traducir (evita diffs inútiles).
-- Ids son Snowflake de 64 bits: no truncar a 32 bits en UI/JSON (hay scripts de verificación).
+- **JDK 21 OBLIGATORIO para el server** (Lombok no soporta JDK 25): `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`
+- Entorno híbrido del usuario: Docker = infra (postgres→127.0.0.1:5435, searxng→127.0.0.1:8088); server dev `nohup /tmp/launch-mateclaw.sh > /tmp/mateclaw-server.log 2>&1 &` (puerto 18088); UI dev `nohup /tmp/launch-ui.sh > /tmp/mateclaw-ui.log 2>&1 &` (puerto 5174 — el 5173 lo usa otro proyecto)
+- Antes de correr el server local: `mvn -N install` (pom padre) + `mvn install -DskipTests -pl mateclaw-plugin-api` (dependencia del reactor)
+- **`.env` con variables vacías rompe Spring local** (ej. `MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB=`) — el script de lanzamiento las filtra
+- BD: H2 en dev (default); PostgreSQL 16 en Docker. Login dev: `admin` / `admin123` (idioma por defecto: es-ES)
+- El código fuente del upstream tiene comentarios en chino — normal, no traducir (evita diffs inútiles)
+- NO traducir marcadores de protocolo ni regex de errores del server (`[错误]`, `[任务指令]`, `来源：`, patrones de clasificación) — rompen el parsing
+- Ids son Snowflake de 64 bits: no truncar a 32 bits en UI/JSON (hay scripts de verificación)
 
 ## 8. Checklist de fin de sesión
 
 - [ ] ¿Tocaste algo del registro (`docs/CUSTOMIZATIONS.md`)? → actualizarlo
+- [ ] ¿Actualizaste `docs/NEXT_SESSION.md` con lo avanzado y lo pendiente?
 - [ ] ¿Commit con formato convencional y mensaje claro?
 - [ ] ¿Compiló (`mvn compile`)? ¿Tests del área afectada pasan?
 - [ ] ¿Pusheado a `origin/main` (o branch feature mergeada)?
+- [ ] ¿Es un release? → tag propio `vX.Y.Z-mc.N` (ver sección 5bis) + `git push origin main --tags`
 - [ ] ¿No tocaste `upstream` ni ramas ajenas?
