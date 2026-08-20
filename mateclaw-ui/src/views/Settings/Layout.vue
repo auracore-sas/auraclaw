@@ -144,7 +144,7 @@ const sections = computed(() => [
   {
     id: 'agent-context',
     path: '/settings/agent-context',
-    label: t('nav.agentContext', '智能体上下文'),
+    label: t('nav.agentContext', 'Contexto del agente'),
     icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
   },
   {
@@ -195,7 +195,7 @@ const sections = computed(() => [
   {
     id: 'proxy',
     path: '/settings/proxy',
-    label: t('settings.sections.proxy', '网络代理'),
+    label: t('settings.sections.proxy', 'Proxy de red'),
     icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
   },
   // Desktop-only entry: the local tools bridge exists only inside the
@@ -204,7 +204,7 @@ const sections = computed(() => [
     ? [{
         id: 'local-tools',
         path: '/settings/local-tools',
-        label: t('settings.sections.localTools', '本地工具'),
+        label: t('settings.sections.localTools', 'Herramientas locales'),
         icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
       }]
     : []),

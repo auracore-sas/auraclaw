@@ -29,10 +29,10 @@
         <div class="setting-control">
           <select v-model="settings.videoProvider" class="form-input" :disabled="!settings.videoEnabled">
             <option value="auto">{{ t('settings.videoProviderOptions.auto') }}</option>
-            <option value="dashscope">DashScope (通义万相)</option>
-            <option value="zhipu-cogvideo">智谱 CogVideoX</option>
+            <option value="dashscope">DashScope (Tongyi Wanxiang)</option>
+            <option value="zhipu-cogvideo">Zhipu CogVideoX</option>
             <option value="fal">fal.ai (Kling/Runway/Luma)</option>
-            <option value="kling">快手可灵 Kling</option>
+            <option value="kling">Kuaishou Kling</option>
             <option value="runway">Runway</option>
             <option value="minimax">MiniMax (Hailuo)</option>
           </select>
@@ -59,7 +59,7 @@
       <!-- DashScope -->
       <div class="provider-section">
         <div class="provider-header">
-          <span class="provider-name">DashScope (通义万相)</span>
+          <span class="provider-name">DashScope (Tongyi Wanxiang)</span>
           <span class="provider-tag">{{ t('settings.videoProviderTags.reuseLlmKey') }}</span>
         </div>
         <div class="settings-card">
@@ -78,7 +78,7 @@
       <!-- 智谱 CogVideo -->
       <div class="provider-section">
         <div class="provider-header">
-          <span class="provider-name">智谱 CogVideoX</span>
+          <span class="provider-name">Zhipu CogVideoX</span>
           <span class="provider-tag tag-free">{{ t('settings.videoProviderTags.freeQuota') }}</span>
         </div>
         <div class="settings-card">
@@ -142,7 +142,7 @@
       <!-- 快手可灵 -->
       <div class="provider-section">
         <div class="provider-header">
-          <span class="provider-name">快手可灵 Kling</span>
+          <span class="provider-name">Kuaishou Kling</span>
         </div>
         <div class="settings-card">
           <div class="setting-item setting-item-vertical">

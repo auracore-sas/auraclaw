@@ -294,7 +294,7 @@
                 <input
                   v-model.trim="form.note"
                   class="form-input"
-                  :placeholder="dialogWorkspaceWide ? '请说明为什么需要全工具白名单' : ''"
+                  :placeholder="dialogWorkspaceWide ? 'Explica por qué necesitas una lista blanca de todas las herramientas' : ''"
                 />
               </div>
               <div v-if="requiresPassword" class="form-group form-group--full">

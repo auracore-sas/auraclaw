@@ -1,14 +1,14 @@
 const SOURCE_LABELS: Record<string, string> = {
   web: 'Web',
-  feishu: '飞书',
-  dingtalk: '钉钉',
+  feishu: 'Feishu',
+  dingtalk: 'DingTalk',
   telegram: 'Telegram',
   discord: 'Discord',
-  wecom: '企业微信',
-  weixin: '微信',
+  wecom: 'WeChat Work',
+  weixin: 'WeChat',
   qq: 'QQ',
   slack: 'Slack',
-  cron: '定时任务',
+  cron: 'Tarea programada',
 }
 
 const ICON_CHANNELS = ['web', 'feishu', 'dingtalk', 'telegram', 'discord', 'wecom', 'weixin', 'qq', 'slack', 'cron']

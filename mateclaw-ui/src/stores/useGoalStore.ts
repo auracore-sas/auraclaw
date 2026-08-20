@@ -213,7 +213,7 @@ export const useGoalStore = defineStore('goal', () => {
         // the GoalSystemLine has a title + score to render.
         recentTerminalByConv.value[conversationId] = {
           status: 'completed',
-          title: goal?.title || '目标',
+          title: goal?.title || 'Objetivo',
           score: data?.score != null ? Number(data.score) : (goal?.completionScore ?? null),
           at: Date.now(),
         }
@@ -229,7 +229,7 @@ export const useGoalStore = defineStore('goal', () => {
         lastTerminalEventAtByConv.value[conversationId] = Date.now()
         recentTerminalByConv.value[conversationId] = {
           status: 'exhausted',
-          title: goal?.title || '目标',
+          title: goal?.title || 'Objetivo',
           reason: data?.reason,
           at: Date.now(),
         }

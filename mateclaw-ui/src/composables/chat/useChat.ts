@@ -905,7 +905,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       }
       currentAssistantId.value = null
     }
-    const errorMessage = data.message || '请求失败'
+    const errorMessage = data.message || 'La solicitud falló'
     error.value = new Error(errorMessage)
     streamPhase.value = 'idle'
     phaseInfo.value = null
@@ -1708,7 +1708,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
           // by metadata.segments, not metadata.toolCalls).
           const approved = data.decision === 'approved'
           const successFlag = approved
-          const resultText = approved ? '[已批准]' : '[已拒绝]'
+          const resultText = approved ? '[Aprobado]' : '[Rechazado]'
           const toolCalls = (metadata?.toolCalls || []).map((tc: any) => {
             const wasPending = tc.status === 'awaiting_approval' || tc.status === 'running'
             if (wasPending) {
@@ -1843,13 +1843,13 @@ export function useChat(options: UseChatOptions): UseChatReturn {
 
     // Failure path — surface error so user knows the task is over.
     if (!data.success) {
-      const taskLabel = data.taskType === 'music_generation' ? '音乐'
-        : data.taskType === 'video_generation' ? '视频'
-        : data.taskType === 'image_generation' ? '图片'
-        : '任务'
+      const taskLabel = data.taskType === 'music_generation' ? 'Música'
+        : data.taskType === 'video_generation' ? 'Video'
+        : data.taskType === 'image_generation' ? 'Imagen'
+        : 'Tarea'
       addMessage({
         role: 'assistant',
-        content: `${taskLabel}生成失败: ${data.errorMessage || '未知错误'}`,
+        content: `Error al generar ${taskLabel}: ${data.errorMessage || 'error desconocido'}`,
         contentParts: [],
         status: 'completed',
         conversationId: streamConversationId,
@@ -2317,7 +2317,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       }
       currentAssistantId.value = null
       streamPhase.value = 'idle'
-      error.value = e instanceof Error ? e : new Error('重连失败: ' + String(e))
+      error.value = e instanceof Error ? e : new Error('Error de reconexión: ' + String(e))
     }
   }
 

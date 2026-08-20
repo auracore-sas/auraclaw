@@ -220,7 +220,7 @@ function renderProductCards(rawCode: string): string {
 
   const cards = items.map((it) => {
     const href = typeof it.url === 'string' && SAFE_LINK_RE.test(it.url) ? it.url : ''
-    const name = escapeHtml(String(it.name ?? '').trim()) || '商品'
+    const name = escapeHtml(String(it.name ?? '').trim()) || 'Producto'
     const img = typeof it.imageUrl === 'string' && /^https?:/i.test(it.imageUrl) ? it.imageUrl : ''
     const now = formatPrice(it.price)
     const wasNum = typeof it.originalPrice === 'number' ? it.originalPrice : Number(it.originalPrice)
@@ -246,15 +246,15 @@ function renderProductCards(rawCode: string): string {
     // The whole card is the anchor, but a visible CTA makes the "tap to buy"
     // affordance explicit (an `<a>` can't legally wrap a `<button>`, so this is
     // a styled span). Only shown when there's a real buy URL.
-    const platformWord = platform || '商家'
+    const platformWord = platform || 'tienda'
     const buyCta = href
-      ? `<span class="product-card__buy">去${platformWord}购买<span class="product-card__buy-arrow">→</span></span>`
+      ? `<span class="product-card__buy">Comprar en ${platformWord}<span class="product-card__buy-arrow">→</span></span>`
       : ''
     const body = `<div class="product-card__body">`
       + `<div class="product-card__name">${name}</div>`
       + priceLine
       + (meta ? `<div class="product-card__meta">${meta}</div>` : '')
-      + (low ? `<div class="product-card__low">历史最低 ${low}</div>` : '')
+      + (low ? `<div class="product-card__low">Mínimo histórico ${low}</div>` : '')
       + (advice ? `<div class="product-card__advice">${advice}</div>` : '')
       + buyCta
       + `</div>`

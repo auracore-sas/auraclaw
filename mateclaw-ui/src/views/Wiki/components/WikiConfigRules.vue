@@ -11,23 +11,23 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
               </svg>
-              <span>处理规则</span>
+              <span>Reglas de procesamiento</span>
               <span class="cfg-modal__kb">{{ kbName }}</span>
             </div>
             <div class="cfg-modal__mode-switch">
               <button :class="['mode-btn', { active: mode === 'guided' }]" @click="mode = 'guided'">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                向导
+                Asistente
               </button>
               <button :class="['mode-btn', { active: mode === 'source' }]" @click="switchToSource">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                源码
+                Código fuente
               </button>
             </div>
             <div class="cfg-modal__actions">
-              <button class="btn-cfg-reset" @click="resetRules">重置</button>
+              <button class="btn-cfg-reset" @click="resetRules">Restablecer</button>
               <button class="btn-cfg-save" :disabled="saving" @click="save">
-                {{ saving ? '保存中…' : '保存' }}
+                {{ saving ? 'Guardando…' : 'Guardar' }}
               </button>
               <button class="btn-cfg-close" @click="emit('close')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -43,7 +43,7 @@
             <!-- ── Guided mode ── -->
             <div v-if="mode === 'guided'" class="guided-wrap">
               <div class="guided-intro">
-                选择启用的规则 — AI 在生成页面时会严格遵循。选中即生效，不需要写配置文件。
+                Selecciona las reglas activas: la IA las sigue estrictamente al generar páginas. Se aplican al seleccionarlas; no necesitas escribir archivos de configuración.
               </div>
 
               <div v-for="cat in categories" :key="cat.id" class="rule-cat">
@@ -68,7 +68,7 @@
                   <textarea
                     v-model="customExtra"
                     class="custom-rules-textarea"
-                    placeholder="# 自定义规则&#10;&#10;- 用 Markdown 写额外规则…"
+                    placeholder="# Reglas personalizadas&#10;&#10;- Escribe reglas adicionales en Markdown…"
                     rows="5"
                   />
                 </div>
@@ -78,10 +78,10 @@
               <div class="guided-preview">
                 <div class="guided-preview__header">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  生成预览
-                  <button class="guided-preview__edit" @click="switchToSource">切换到源码编辑</button>
+                  Generar vista previa
+                  <button class="guided-preview__edit" @click="switchToSource">Cambiar a edición de código</button>
                 </div>
-                <pre class="guided-preview__content">{{ generatedContent || '（未选择任何规则）' }}</pre>
+                <pre class="guided-preview__content">{{ generatedContent || '(ninguna regla seleccionada)' }}</pre>
               </div>
             </div>
 
@@ -89,8 +89,8 @@
             <div v-else class="source-wrap">
               <div class="source-bar">
                 <span class="source-lang">Markdown</span>
-                <span class="source-lines">{{ sourceContent.split('\n').length }} 行</span>
-                <button class="source-back" @click="mode = 'guided'">← 返回向导</button>
+                <span class="source-lines">{{ sourceContent.split('\n').length }} líneas</span>
+                <button class="source-back" @click="mode = 'guided'">← Volver al asistente</button>
               </div>
               <textarea
                 ref="sourceEl"
@@ -141,61 +141,61 @@ const categories = reactive<Category[]>([
   {
     id: 'quality',
     icon: '✦',
-    title: '质量',
+    title: 'Calidad',
     rules: [
-      { id: 'q1', label: '宁少勿多，拒绝浅页', active: true,
-        text: '- 宁可生成更少但完整的页面，而非大量浅薄的条目' },
-      { id: 'q2', label: '一页一概念', active: true,
-        text: '- 每个页面聚焦一个概念、实体或流程' },
-      { id: 'q3', label: '至少 3 句实质内容', active: true,
-        text: '- 页面必须包含至少 3 句有实质内容的表述，否则不予创建' },
-      { id: 'q4', label: '优先更新已有页面', active: true,
-        text: '- 若概念已存在于 Wiki，更新而非重复创建' },
+      { id: 'q1', label: 'Menos pero mejor: nada de páginas superficiales', active: true,
+        text: '- Prefiere generar menos páginas pero completas, en lugar de muchas entradas superficiales' },
+      { id: 'q2', label: 'Un concepto por página', active: true,
+        text: '- Cada página se enfoca en un concepto, entidad o proceso' },
+      { id: 'q3', label: 'Mínimo 3 frases con contenido real', active: true,
+        text: '- La página debe tener al menos 3 frases con contenido sustancial; si no, no se crea' },
+      { id: 'q4', label: 'Priorizar actualizar páginas existentes', active: true,
+        text: '- Si el concepto ya existe en el Wiki, actualízalo en lugar de crearlo de nuevo' },
     ],
   },
   {
     id: 'format',
     icon: '❑',
-    title: '格式',
+    title: 'Formato',
     rules: [
-      { id: 'f1', label: '顶部摘要段', active: true,
-        text: '- 每个页面顶部包含一段摘要（1-2 句话概括核心含义）' },
-      { id: 'f2', label: '使用 [[Wiki 链接]]', active: true,
-        text: '- 在内容中使用 [[页面标题]] 语法建立页面间的双向链接' },
-      { id: 'f3', label: '清晰的 Markdown 结构', active: false,
-        text: '- 使用 ## 和 ### 标题组织内容结构' },
-      { id: 'f4', label: '避免列表堆砌', active: false,
-        text: '- 优先用段落叙述而非大量无序列表' },
+      { id: 'f1', label: 'Resumen inicial', active: true,
+        text: '- Cada página comienza con un resumen (1-2 frases que resumen el significado central)' },
+      { id: 'f2', label: 'Usar [[enlaces Wiki]]', active: true,
+        text: '- Usa la sintaxis [[título de página]] para crear enlaces bidireccionales entre páginas' },
+      { id: 'f3', label: 'Estructura Markdown clara', active: false,
+        text: '- Organiza el contenido con encabezados ## y ###' },
+      { id: 'f4', label: 'Evitar acumulación de listas', active: false,
+        text: '- Prefiere párrafos narrativos sobre listas interminables' },
     ],
   },
   {
     id: 'update',
     icon: '↻',
-    title: '更新策略',
+    title: 'Estrategia de actualización',
     rules: [
-      { id: 'u1', label: '合并而非替换', active: true,
-        text: '- 将新信息合并到已有页面，不覆盖现有内容' },
-      { id: 'u2', label: '保留人工编辑', active: true,
-        text: '- 保留 last_updated_by = manual 的内容，不自动改写' },
-      { id: 'u3', label: '标注矛盾信息', active: false,
-        text: '- 遇到与已有内容矛盾的新信息时，用 "Note:" 明确标注而非静默覆盖' },
+      { id: 'u1', label: 'Fusionar, no reemplazar', active: true,
+        text: '- Fusiona la información nueva en la página existente sin sobrescribir' },
+      { id: 'u2', label: 'Respetar ediciones manuales', active: true,
+        text: '- Conserva el contenido con last_updated_by = manual; no lo reescribas automáticamente' },
+      { id: 'u3', label: 'Marcar información contradictoria', active: false,
+        text: '- Ante información nueva que contradice la existente, márcala con "Nota:" en lugar de sobrescribirla en silencio' },
     ],
   },
   {
     id: 'language',
-    icon: '文',
-    title: '语言',
+    icon: 'Id',
+    title: 'Idioma',
     rules: [
-      { id: 'l1', label: '与原材料语言一致', active: true,
-        text: '- 以与原始材料相同的语言编写 Wiki 页面' },
-      { id: 'l2', label: '术语跨页保持一致', active: true,
-        text: '- 同一概念在所有页面中使用相同术语，避免同义词混用' },
+      { id: 'l1', label: 'Mismo idioma que el material original', active: true,
+        text: '- Escribe las páginas Wiki en el mismo idioma del material original' },
+      { id: 'l2', label: 'Terminología consistente entre páginas', active: true,
+        text: '- Usa el mismo término para el mismo concepto en todas las páginas; evita mezclar sinónimos' },
     ],
   },
   {
     id: 'custom',
     icon: '+',
-    title: '自定义规则',
+    title: 'Reglas personalizadas',
     rules: [],
   },
 ])

@@ -23,8 +23,8 @@
     <!-- Filter bar (glass) -->
     <div class="filters glass">
       <el-select v-model="platformFilter" :placeholder="t('contentCalendar.allPlatforms')" clearable @change="reload" class="platform-select">
-        <el-option label="公众号" value="gzh" />
-        <el-option label="小红书" value="xhs" />
+        <el-option label="Cuenta Oficial WeChat" value="gzh" />
+        <el-option label="Xiaohongshu" value="xhs" />
       </el-select>
       <button class="refresh-btn" @click="reload">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -38,17 +38,17 @@
         <el-table-column :label="t('contentCalendar.platform')" width="110">
           <template #default="{ row }">
             <span class="platform-pill" :class="row.platform === 'gzh' ? 'pill-gzh' : 'pill-xhs'">
-              {{ row.platform === 'gzh' ? '公众号' : '小红书' }}
+              {{ row.platform === 'gzh' ? 'Cuenta Oficial WeChat' : 'Xiaohongshu' }}
             </span>
           </template>
         </el-table-column>
         <el-table-column :label="t('contentCalendar.colTitle')" min-width="240">
           <template #default="{ row }">
             <a v-if="row.previewUrl" :href="row.previewUrl" target="_blank" rel="noopener" class="title-link">
-              {{ row.title || '(无标题)' }}
+              {{ row.title || '(sin título)' }}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="ext-icon"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
-            <span v-else>{{ row.title || '(无标题)' }}</span>
+            <span v-else>{{ row.title || '(sin título)' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="topic" :label="t('contentCalendar.topic')" min-width="150" show-overflow-tooltip>

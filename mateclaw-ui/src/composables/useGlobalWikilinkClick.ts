@@ -81,7 +81,7 @@ export function useGlobalWikilinkClick() {
       const res: any = await wikiApi.lookupPage({ title, slug: title })
       const matches: LookupMatch[] = res.data || res || []
       if (matches.length === 0) {
-        mcToast.info(`未找到匹配的 wiki 页面：${title}`)
+        mcToast.info(`No se encontró una página wiki que coincida: ${title}`)
         return
       }
       if (matches.length === 1) {
@@ -92,17 +92,17 @@ export function useGlobalWikilinkClick() {
       // not a picker, so we show a numbered list and prompt with the
       // first match by default while toasting how to refine.
       const ok = await mcConfirm({
-        title: `多个 KB 有「${title}」`,
+        title: `Varias KB contienen «${title}»`,
         message: matches
           .map((m, i) => `${i + 1}. ${m.kbName} → ${m.title}`)
-          .join('\n') + `\n\n打开第一个 (${matches[0].kbName})？`,
-        confirmText: '打开第一个',
+          .join('\n') + `\n\n¿Abrir la primera (${matches[0].kbName})?`,
+        confirmText: 'Abrir la primera',
         tone: 'primary',
       })
       if (ok) await openMatch(matches[0])
     } catch (err: any) {
       console.error('[wikilink] lookup failed', err)
-      mcToast.error('Wiki 链接跳转失败')
+      mcToast.error('Error al navegar al enlace Wiki')
     }
   }
 

@@ -17,7 +17,7 @@
     <span
       v-else-if="parsed.kind === 'pixelart'"
       class="skill-icon__missing"
-      :title="`pi:${parsed.name}（未找到）`"
+      :title="`pi:${parsed.name} (no encontrado)`"
     >?</span>
     <img
       v-else-if="parsed.kind === 'url'"

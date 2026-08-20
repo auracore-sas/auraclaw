@@ -29,8 +29,8 @@
         <div class="setting-control">
           <select v-model="settings.imageProvider" class="form-input" :disabled="!settings.imageEnabled">
             <option value="auto">{{ t('settings.imageProviderOptions.auto') }}</option>
-            <option value="dashscope">DashScope (通义万相)</option>
-            <option value="zhipu-cogview">智谱 CogView</option>
+            <option value="dashscope">DashScope (Tongyi Wanxiang)</option>
+            <option value="zhipu-cogview">Zhipu CogView</option>
             <option value="openai">OpenAI (DALL-E)</option>
             <option value="fal">fal.ai (Flux)</option>
             <option value="google-imagen">Google Gemini Image (Nano Banana)</option>
@@ -59,7 +59,7 @@
       <!-- DashScope -->
       <div class="provider-section">
         <div class="provider-header">
-          <span class="provider-name">DashScope (通义万相)</span>
+          <span class="provider-name">DashScope (Tongyi Wanxiang)</span>
           <span class="provider-tag">{{ t('settings.imageProviderTags.reuseLlmKey') }}</span>
         </div>
         <div class="settings-card">
@@ -97,7 +97,7 @@
       <!-- 智谱 CogView -->
       <div class="provider-section">
         <div class="provider-header">
-          <span class="provider-name">智谱 CogView</span>
+          <span class="provider-name">Zhipu CogView</span>
           <span class="provider-tag tag-free">{{ t('settings.imageProviderTags.freeQuota') }}</span>
           <span class="provider-tag">{{ t('settings.imageProviderTags.sharedWithVideo') }}</span>
         </div>

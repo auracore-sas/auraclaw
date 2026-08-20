@@ -269,11 +269,11 @@ const renderedSkillMd = computed(() => {
     const req = !!form.citation_required
     ctx.citation_string = req ? 'required' : 'optional'
     ctx.citation_instruction = req
-      ? '**每条建议必须标明引用的 KB 出处** ({{citation}} 自动注入)。'
-      : '如有 KB 引用，按 {{citation}} 标注；否则可省略。'
+      ? '**Cada sugerencia debe indicar la KB de origen citada** ({{citation}} se inyecta automáticamente).'
+      : 'Si hay referencias de KB, márcalas con {{citation}}; si no, se pueden omitir.'
   }
   if ('output_language' in form) {
-    ctx.output_language_label = form.output_language === 'zh' ? '中文' : 'English'
+    ctx.output_language_label = form.output_language === 'zh' ? 'Chino' : 'Inglés'
   }
   out = out.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_match, k) => ctx[k] ?? '')
   return out

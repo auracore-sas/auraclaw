@@ -383,8 +383,8 @@ const suggestions = computed(() => {
   // Agent-type-aware defaults
   if (agent?.agentType === 'plan_execute') {
     return [
-      t('chat.suggestionPlan1', '帮我制定一个完整的项目计划'),
-      t('chat.suggestionPlan2', '分步骤帮我完成一个复杂任务'),
+      t('chat.suggestionPlan1', 'Ayúdame a crear un plan de proyecto completo'),
+      t('chat.suggestionPlan2', 'Ayúdame paso a paso a completar una tarea compleja'),
       t('chat.suggestionIntro'),
       t('chat.suggestionWeather'),
     ]
@@ -1414,20 +1414,20 @@ const goalSystemLineTitle = computed(() => {
   if (!t) return ''
   // The leading icon is owned by GoalSystemLine (✦ / ⚠) so we don't
   // prepend one here — doing so produced "✦ 🎉 …" double-glyph titles.
-  return t.status === 'completed' ? `目标达成 · ${t.title}` : `这次的预算用完了 · ${t.title}`
+  return t.status === 'completed' ? `Objetivo logrado · ${t.title}` : `El presupuesto se agotó · ${t.title}`
 })
 const goalSystemLineDetail = computed(() => {
   const t = goalTerminalForCurrent.value
   if (!t) return ''
   if (t.status === 'completed') {
     return t.score != null
-      ? `已完成 · final score ${t.score.toFixed(2)}`
-      : '已完成 · 总结已存入长期记忆'
+      ? `Completado · puntuación final ${t.score.toFixed(2)}`
+      : 'Completado · el resumen se guardó en la memoria de largo plazo'
   }
   // exhausted
-  if (t.reason === 'turn_budget') return '预算轮数用完。'
-  if (t.reason === 'llm_call_budget') return 'LLM 调用预算用完。'
-  return '预算耗尽。'
+  if (t.reason === 'turn_budget') return 'Se agotaron las rondas de presupuesto.'
+  if (t.reason === 'llm_call_budget') return 'Se agotó el presupuesto de llamadas LLM.'
+  return 'Presupuesto agotado.'
 })
 
 // True when the current conversation's message stream already contains a
@@ -1485,7 +1485,7 @@ const showGoalSetPrompt = computed(() => {
 const goalSuggestedTitle = computed(() => {
   const firstUser = messages.value.find(m => m.role === 'user')
   const raw = (firstUser?.content || '').trim()
-  if (!raw) return '新目标'
+  if (!raw) return 'Nuevo objetivo'
   // 80 char clip mirrors GoalController.create validation.
   return raw.length > 80 ? raw.slice(0, 77) + '...' : raw
 })

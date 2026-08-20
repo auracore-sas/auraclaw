@@ -109,12 +109,12 @@
                 <span
                   v-if="convGoalStatus(conv.conversationId) === 'active'"
                   class="conv-goal-dot"
-                  :title="t('goal.sidebarActive', '此对话有正在进行的目标')"
+                  :title="t('goal.sidebarActive', 'Esta conversación tiene un objetivo activo')"
                 ></span>
                 <span
                   v-if="hasUnread(conv)"
                   class="conv-unread-dot"
-                  :title="t('chat.hasUnread', '有新内容')"
+                  :title="t('chat.hasUnread', 'Contenido nuevo')"
                 ></span>
                 <span
                   v-if="conv.streamStatus === 'running'"
@@ -264,7 +264,7 @@ const groupedConversations = computed(() => {
   // reachable in one glance even after a busy day pushes others ahead.
   const pinned: Conversation[] = []
   const groups: { label: string; items: Conversation[] }[] = [
-    { label: t('chat.datePinned', '置顶'), items: pinned },
+    { label: t('chat.datePinned', 'Fijado'), items: pinned },
     { label: t('chat.dateToday'), items: [] },
     { label: t('chat.dateYesterday'), items: [] },
     { label: t('chat.dateLast7Days'), items: [] },

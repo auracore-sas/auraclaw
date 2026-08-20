@@ -28,7 +28,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 
 // Excel sheet names, shown under the ring as the step advances. These mirror the
 // server-side sheet titles (which are emitted in Chinese in the workbook itself).
-const stepLabels = ['概览汇总', 'Token用量', '技能统计', '用户统计', '用户对话', '安全与审计', '渠道统计', '模型配置', '定时任务']
+const stepLabels = ['Resumen general', 'Uso de tokens', 'Estadísticas de skills', 'Estadísticas de usuarios', 'Conversaciones de usuarios', 'Seguridad y auditoría', 'Estadísticas de canales', 'Configuración de modelos', 'Tareas programadas']
 const stepLabel = computed(() => stepLabels[step.value - 1] || '')
 
 const RADIUS = 52

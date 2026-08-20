@@ -305,7 +305,7 @@ async function stopListening() {
     // firing (suspended AudioContext) or the recording was so short no
     // sample buffer landed. Surface a clear hint instead of a silent idle.
     console.warn('[TalkMode] stop returned no audio (recording too short or context suspended)')
-    mcToast.warning(t('talk.tooShort') || '录音过短，请按住按钮多说几秒')
+    mcToast.warning(t('talk.tooShort') || 'Grabación demasiado corta: mantén presionado el botón unos segundos más')
     state.value = 'idle'
     return
   }

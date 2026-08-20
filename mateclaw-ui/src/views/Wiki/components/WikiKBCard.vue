@@ -103,7 +103,7 @@ const iconStyle = computed(() => ({
   background: kbAccent(props.kb),
   color: kbAccentFg(props.kb),
 }))
-const relative = computed(() => relativeTime(props.kb.updateTime, locale.value.startsWith('zh')))
+const relative = computed(() => relativeTime(props.kb.updateTime, locale.value))
 </script>
 
 <style scoped>
