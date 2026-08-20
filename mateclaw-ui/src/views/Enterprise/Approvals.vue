@@ -57,7 +57,7 @@
         <div class="sla-card">
           <div class="sla-value">2.4h</div>
           <div class="sla-label">{{ t('enterprise.approvals.slaAvg') }}</div>
-          <div class="sla-delta good">-18% vs 上周</div>
+          <div class="sla-delta good">-18% vs la semana pasada</div>
         </div>
         <div class="sla-card">
           <div class="sla-value">96%</div>
@@ -107,21 +107,21 @@ interface Item {
 }
 
 const items: Item[] = [
-  { id: '1', kind: 'contract', risk: 'high', title: 'Acme MSA 续约审批',
-    requester: '李法务', target: 'Acme Corp (买方)', reason: '赔偿条款偏离 Playbook',
-    evidence: 'AI 已审：3 条偏离 · Legal Playbook v3.1', sla: 'SLA 4h 内', mine: true },
-  { id: '2', kind: 'tool', risk: 'high', title: 'web_search 调用授权',
-    requester: '销售情报员 Agent', target: 'Acme Corp 公司信息抓取', reason: '触发金融行业敏感关键词',
-    evidence: '工具守卫规则 R-082 · 历史误报率 < 2%', sla: 'SLA 1h 内', mine: true },
-  { id: '3', kind: 'transformation', risk: 'medium', title: '风险点提取 transformation 批量应用',
-    requester: '王法务', target: '37 份新增合同', reason: '批量任务超过 10 份阈值',
-    evidence: '历史成功率 94% · 单次平均耗时 23s', sla: 'SLA 2h 内', mine: true },
-  { id: '4', kind: 'access', risk: 'low', title: 'BlueWave KB 读取权限',
-    requester: '新员工 周明', target: 'BlueWave 客户库（含 PII）', reason: '团队入职流程',
-    evidence: '入职单 #2026-0421 · 主管 王经理已 OK', sla: 'SLA 1d 内', mine: false },
-  { id: '5', kind: 'contract', risk: 'medium', title: 'FinChen NDA 审批',
-    requester: '李法务', target: 'FinChen 金融', reason: '仲裁地条款',
-    evidence: 'AI 已审：1 条偏离', sla: 'SLA 8h 内', mine: false },
+  { id: '1', kind: 'contract', risk: 'high', title: 'Aprobación renovación MSA Acme',
+    requester: 'L. Fernández (Legal)', target: 'Acme Corp (comprador)', reason: 'Cláusula de indemnización fuera del Playbook',
+    evidence: 'IA revisó: 3 desviaciones · Legal Playbook v3.1', sla: 'SLA 4h', mine: true },
+  { id: '2', kind: 'tool', risk: 'high', title: 'Autorización de llamada web_search',
+    requester: 'Agente de Inteligencia de Ventas', target: 'Recopilación de info de Acme Corp', reason: 'Palabras clave sensibles del sector financiero',
+    evidence: 'Regla de Tool Guard R-082 · tasa histórica de falsos positivos < 2%', sla: 'SLA 1h', mine: true },
+  { id: '3', kind: 'transformation', risk: 'medium', title: 'Aplicación masiva de la transformación extracción de riesgos',
+    requester: 'M. Wong (Legal)', target: '37 contratos nuevos', reason: 'Tarea masiva supera el umbral de 10 documentos',
+    evidence: 'Éxito histórico 94% · tiempo medio por ejecución 23s', sla: 'SLA 2h', mine: true },
+  { id: '4', kind: 'access', risk: 'low', title: 'Permiso de lectura KB BlueWave',
+    requester: 'M. Zhou (nuevo empleado)', target: 'Base de clientes BlueWave (incluye PII)', reason: 'Proceso de onboarding del equipo',
+    evidence: 'Formulario de ingreso #2026-0421 · supervisor G. Wang OK', sla: 'SLA 1d', mine: false },
+  { id: '5', kind: 'contract', risk: 'medium', title: 'Aprobación NDA FinChen',
+    requester: 'L. Fernández (Legal)', target: 'FinChen Finanzas', reason: 'Cláusula de sede de arbitraje',
+    evidence: 'IA revisó: 1 desviación', sla: 'SLA 8h', mine: false },
 ]
 
 const filteredItems = computed(() => {

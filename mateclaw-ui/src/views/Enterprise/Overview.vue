@@ -137,20 +137,20 @@ interface QueueItem {
 }
 
 const queue: QueueItem[] = [
-  { id: 'msa-acme-2026q2', title: 'Acme Corp - MSA 续约（赔偿条款异常）', type: '合同审查', owner: '李法务', eta: '今天', risk: 'high', status: 'ai_reviewed' },
-  { id: 'nda-vendora',     title: 'Vendor A NDA - 非常规竞业条款',     type: '合同审查', owner: '王法务', eta: '今天', risk: 'high', status: 'pending_legal' },
-  { id: 'signal-acme-jd',  title: 'Acme 招了新 CTO，10 月 14 日',     type: '情报信号', owner: '张销售', eta: '6 小时前', risk: 'low', status: 'signal' },
-  { id: 'q2-vendor-cmp',   title: 'Q2 供应商条款横向对比',             type: '合同对比', owner: '李法务', eta: '昨天', risk: 'medium', status: 'ai_reviewed' },
-  { id: 'msa-bayer-renew', title: 'Bayer MSA - 自动续约条款偏离 playbook', type: '合同审查', owner: '王法务', eta: '昨天', risk: 'medium', status: 'ai_reviewed' },
-  { id: 'signal-zerto-pr', title: 'Zerto 发布与我们竞品的新版本',       type: '情报信号', owner: '张销售', eta: '昨天', risk: 'low', status: 'signal' },
-  { id: 'nda-finchen',     title: 'FinChen NDA - 仲裁地条款',           type: '合同审查', owner: '李法务', eta: '前天', risk: 'low', status: 'approved' },
+  { id: 'msa-acme-2026q2', title: 'Acme Corp - Renovación MSA (anomalía en cláusula de indemnización)', type: 'Revisión de contrato', owner: 'L. Fernández (Legal)', eta: 'Hoy', risk: 'high', status: 'ai_reviewed' },
+  { id: 'nda-vendora',     title: 'Vendor A NDA - cláusula de no competencia no estándar', type: 'Revisión de contrato', owner: 'M. Wong (Legal)', eta: 'Hoy', risk: 'high', status: 'pending_legal' },
+  { id: 'signal-acme-jd',  title: 'Acme contrató un nuevo CTO, 14 de octubre', type: 'Señal de inteligencia', owner: 'J. Chang (Ventas)', eta: 'hace 6 h', risk: 'low', status: 'signal' },
+  { id: 'q2-vendor-cmp',   title: 'Q2 comparativa de cláusulas de proveedores', type: 'Comparación de contratos', owner: 'L. Fernández (Legal)', eta: 'Ayer', risk: 'medium', status: 'ai_reviewed' },
+  { id: 'msa-bayer-renew', title: 'Bayer MSA - cláusula de renovación automática fuera del playbook', type: 'Revisión de contrato', owner: 'M. Wong (Legal)', eta: 'Ayer', risk: 'medium', status: 'ai_reviewed' },
+  { id: 'signal-zerto-pr', title: 'Zerto lanzó una nueva versión que compite con la nuestra', type: 'Señal de inteligencia', owner: 'J. Chang (Ventas)', eta: 'Ayer', risk: 'low', status: 'signal' },
+  { id: 'nda-finchen',     title: 'FinChen NDA - cláusula de sede de arbitraje', type: 'Revisión de contrato', owner: 'L. Fernández (Legal)', eta: 'Anteayer', risk: 'low', status: 'approved' },
 ]
 
 const filteredQueue = computed(() => {
   switch (activeFilter.value) {
     case 'high': return queue.filter(q => q.risk === 'high')
     case 'pending': return queue.filter(q => q.status === 'pending_legal' || q.status === 'ai_reviewed')
-    case 'today': return queue.filter(q => q.eta === '今天' || q.eta.includes('小时'))
+    case 'today': return queue.filter(q => q.eta === 'Hoy' || q.eta.includes('h'))
     default: return queue
   }
 })
@@ -176,14 +176,14 @@ function statusLabel(s: QueueItem['status']): string {
 
 interface Evidence { id: string; quote: string; source: string; age: string; kind: 'playbook' | 'precedent' | 'source' }
 const recentEvidence: Evidence[] = [
-  { id: 'e1', quote: '本协议双方因履行本协议发生的争议，应当先行协商解决',
-    source: 'Acme MSA · 第 8.2 条 · 第 14 页', age: '12 分钟前', kind: 'source' },
-  { id: 'e2', quote: '我司标准合同要求对方承担因数据泄露产生的全部直接和间接损失',
-    source: 'Legal Playbook · 数据保护条款 v3.1', age: '今天 09:42', kind: 'playbook' },
-  { id: 'e3', quote: '类似案件 2025-06 与 Zerto 谈判，最终采用阶梯式赔偿上限',
-    source: '历史合同 · Zerto MSA 2025', age: '今天 09:12', kind: 'precedent' },
-  { id: 'e4', quote: 'Acme 在 LinkedIn 上招聘 Privacy Counsel，1 个职位',
-    source: 'LinkedIn 信号 · 10 月 14 日', age: '6 小时前', kind: 'source' },
+  { id: 'e1', quote: 'Las disputas entre las partes derivadas de este acuerdo se resolverán primero mediante negociación',
+    source: 'Acme MSA · cláusula 8.2 · pág. 14', age: 'hace 12 min', kind: 'source' },
+  { id: 'e2', quote: 'Nuestro contrato estándar exige que la contraparte asuma todas las pérdidas directas e indirectas por filtración de datos',
+    source: 'Legal Playbook · cláusula de protección de datos v3.1', age: 'Hoy 09:42', kind: 'playbook' },
+  { id: 'e3', quote: 'Caso similar: negociación con Zerto en 2025-06, se adoptó un tope de indemnización escalonado',
+    source: 'Contratos históricos · Zerto MSA 2025', age: 'Hoy 09:12', kind: 'precedent' },
+  { id: 'e4', quote: 'Acme está contratando un Privacy Counsel en LinkedIn, 1 puesto',
+    source: 'Señal de LinkedIn · 14 de octubre', age: 'hace 6 h', kind: 'source' },
 ]
 
 const pipeline = [
