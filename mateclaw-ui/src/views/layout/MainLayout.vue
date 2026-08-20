@@ -421,6 +421,7 @@ const themeOptions = computed<{ value: ThemeMode; label: string; icon: string }[
 const localeOptions = computed<{ value: AppLocale; label: string; short: string }[]>(() => [
   { value: 'zh-CN', label: t('settings.languageOptions.zhCN'), short: '中' },
   { value: 'en-US', label: t('settings.languageOptions.enUS'), short: 'EN' },
+  { value: 'es-ES', label: t('settings.languageOptions.esES'), short: 'ES' },
 ])
 
 // Capability-gated nav. Each item declares a capability or globalAdmin flag;

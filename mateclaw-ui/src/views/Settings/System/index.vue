@@ -15,6 +15,7 @@
           <select v-model="settings.language" class="form-input">
             <option value="zh-CN">{{ t('settings.languageOptions.zhCN') }}</option>
             <option value="en-US">{{ t('settings.languageOptions.enUS') }}</option>
+            <option value="es-ES">{{ t('settings.languageOptions.esES') }}</option>
           </select>
         </div>
       </div>

@@ -1491,6 +1491,7 @@ export default {
     languageOptions: {
       zhCN: 'Simplified Chinese',
       enUS: 'English',
+      esES: 'Español',
     },
   },
   agentContext: {

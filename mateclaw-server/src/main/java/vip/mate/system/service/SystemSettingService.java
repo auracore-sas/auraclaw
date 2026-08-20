@@ -163,7 +163,7 @@ public class SystemSettingService {
 
     public SystemSettingsDTO getSettings() {
         SystemSettingsDTO dto = new SystemSettingsDTO();
-        dto.setLanguage(getValue(LANGUAGE_KEY, "zh-CN"));
+        dto.setLanguage(getValue(LANGUAGE_KEY, "es-ES"));
         dto.setStreamEnabled(Boolean.parseBoolean(getValue(STREAM_ENABLED_KEY, "true")));
         dto.setDebugMode(Boolean.parseBoolean(getValue(DEBUG_MODE_KEY, "false")));
         dto.setShowThinking(Boolean.parseBoolean(getValue(SHOW_THINKING_KEY, "true")));
@@ -618,7 +618,7 @@ public class SystemSettingService {
     }
 
     public String getLanguage() {
-        return getValue(LANGUAGE_KEY, "zh-CN");
+        return getValue(LANGUAGE_KEY, "es-ES");
     }
 
     public String saveLanguage(String language) {

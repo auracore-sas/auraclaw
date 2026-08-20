@@ -3,10 +3,10 @@ import { compileToFunction, registerMessageCompiler } from '@intlify/core-base'
 import { ref } from 'vue'
 import { settingsApi } from '@/api'
 
-export type AppLocale = 'zh-CN' | 'en-US'
+export type AppLocale = 'zh-CN' | 'en-US' | 'es-ES'
 
 const STORAGE_KEY = 'mateclaw_locale'
-const DEFAULT_LOCALE: AppLocale = 'zh-CN'
+const DEFAULT_LOCALE: AppLocale = 'es-ES'
 
 export const currentLocale = ref<AppLocale>(DEFAULT_LOCALE)
 
@@ -45,7 +45,9 @@ async function loadLocaleMessages(locale: AppLocale) {
   if (loadedLocales.has(locale)) return
   const messages = locale === 'zh-CN'
     ? (await import('./locales/zh-CN')).default
-    : (await import('./locales/en-US')).default
+    : locale === 'es-ES'
+      ? (await import('./locales/es-ES')).default
+      : (await import('./locales/en-US')).default
   i18n.global.setLocaleMessage(locale, messages)
   loadedLocales.add(locale)
 }
@@ -54,7 +56,13 @@ function normalizeLocale(locale?: string | null): AppLocale {
   if (locale === 'en' || locale === 'en-US') {
     return 'en-US'
   }
-  return 'zh-CN'
+  if (locale === 'es' || locale === 'es-ES' || locale === 'es-419' || locale === 'es-MX') {
+    return 'es-ES'
+  }
+  if (locale === 'zh' || locale === 'zh-CN') {
+    return 'zh-CN'
+  }
+  return DEFAULT_LOCALE
 }
 
 export async function applyLocale(locale?: string | null) {

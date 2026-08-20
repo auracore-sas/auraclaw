@@ -839,7 +839,7 @@ export interface ModelConfig {
 }
 
 export interface SystemSettings {
-  language: 'zh-CN' | 'en-US'
+  language: 'zh-CN' | 'en-US' | 'es-ES'
   streamEnabled: boolean
   debugMode: boolean
   // Whether chat renders the model's reasoning ("thinking") blocks; default true
