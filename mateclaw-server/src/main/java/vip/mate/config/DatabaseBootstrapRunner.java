@@ -99,7 +99,7 @@ public class DatabaseBootstrapRunner implements ApplicationRunner {
     /**
      * Initialize seed data with the given locale.
      *
-     * @param locale "zh-CN" or "en-US"
+     * @param locale "zh-CN", "en-US" or "es-ES"
      * @return true if initialization was performed, false if already initialized or in progress
      */
     public boolean initWithLocale(String locale) {
@@ -119,13 +119,16 @@ public class DatabaseBootstrapRunner implements ApplicationRunner {
             }
             String scriptName;
             if (isMySQL()) {
-                scriptName = "en-US".equals(locale) ? "db/data-mysql-en.sql" : "db/data-mysql-zh.sql";
+                scriptName = "en-US".equals(locale) ? "db/data-mysql-en.sql"
+                    : "es-ES".equals(locale) ? "db/data-mysql-es.sql" : "db/data-mysql-zh.sql";
             } else if (isKingbase() || isPostgres()) {
                 // PostgreSQL-family seed (covers both PostgreSQL and KingbaseES,
                 // which share the same ON CONFLICT / SERIAL-free DDL dialect).
-                scriptName = "en-US".equals(locale) ? "db/data-kingbase-en.sql" : "db/data-kingbase-zh.sql";
+                scriptName = "en-US".equals(locale) ? "db/data-kingbase-en.sql"
+                    : "es-ES".equals(locale) ? "db/data-kingbase-es.sql" : "db/data-kingbase-zh.sql";
             } else {
-                scriptName = "en-US".equals(locale) ? "db/data-en.sql" : "db/data-zh.sql";
+                scriptName = "en-US".equals(locale) ? "db/data-en.sql"
+                    : "es-ES".equals(locale) ? "db/data-es.sql" : "db/data-zh.sql";
             }
             log.info("Initializing database with locale={} using {}", locale, scriptName);
             runScript(scriptName);
