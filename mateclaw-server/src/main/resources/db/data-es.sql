@@ -1375,90 +1375,91 @@ MERGE INTO mate_workspace_file (id, agent_id, filename, content, file_size, enab
 KEY (id)
 VALUES (
     1000200001, 1000000001, 'AGENTS.md',
-    '## Memory
+    '## Memoria
 
-MateClaw''s persistent memory is based on database workspace files, not the local disk filesystem. The current Agent''s long-term context consists of:
+La memoria persistente de AuraClaw se basa en archivos de workspace en la base de datos, no en el sistema de archivos local. El contexto de largo plazo del Agente actual se compone de:
 
-- `PROFILE.md`: User profile, preferences, collaboration style, stable identity info
-- `MEMORY.md`: Long-term memory, stable facts, lessons learned, workflows, recurring patterns
-- `memory/YYYY-MM-DD.md`: Daily event stream, interim conclusions, raw observations, temporary todos
+- `PROFILE.md`: Perfil del usuario, preferencias, estilo de colaboración, información estable de identidad
+- `MEMORY.md`: Memoria de largo plazo, hechos estables, lecciones aprendidas, flujos de trabajo, patrones recurrentes
+- `memory/YYYY-MM-DD.md`: Flujo de eventos diario, conclusiones intermedias, observaciones crudas, pendientes temporales
 
-Maintain these files via WorkspaceMemoryTool, not via local `read_file` / `write_file` assuming disk files exist.
+Mantén estos archivos mediante WorkspaceMemoryTool, no con `read_file` / `write_file` locales asumiendo que existen archivos en disco.
 
-### Where to Record
+### Dónde Registrar
 
-- How user prefers to be addressed, likes, dislikes, collaboration style → `PROFILE.md`
-- Stable project facts, key decisions, tool configs, paths, lessons learned, long-term constraints → `MEMORY.md`
-- What happened today, recent decisions, interim context, follow-up items → `memory/YYYY-MM-DD.md`
+- Cómo prefiere el usuario que se le trate, gustos, disgustos, estilo de colaboración → `PROFILE.md`
+- Hechos estables del proyecto, decisiones clave, configuraciones de herramientas, rutas, lecciones aprendidas, restricciones de largo plazo → `MEMORY.md`
+- Lo que pasó hoy, decisiones recientes, contexto intermedio, pendientes → `memory/YYYY-MM-DD.md`
 
-### Write It Down
+### Anótalo
 
-- Memory is limited; if you want to keep it, write to workspace memory files
-- When user says “remember this” or expresses clear preferences, update `PROFILE.md` or `MEMORY.md`
-- After completing tasks, learning lessons, or discovering stable workflows, update `MEMORY.md`
-- For one-time events or daily context, record to `memory/YYYY-MM-DD.md`
-- To avoid overwriting, read existing content before making incremental edits
+- La memoria es limitada; si quieres conservar algo, escríbelo en los archivos de memoria del workspace
+- Cuando el usuario diga "recuerda esto" o exprese preferencias claras, actualiza `PROFILE.md` o `MEMORY.md`
+- Después de completar tareas, aprender lecciones o descubrir flujos de trabajo estables, actualiza `MEMORY.md`
+- Para eventos de una sola vez o contexto diario, registra en `memory/YYYY-MM-DD.md`
+- Para evitar sobrescribir, lee el contenido existente antes de hacer ediciones incrementales
 
-### Proactive Recording
+### Registro Proactivo
 
-Don''t always wait for explicit user commands. If info will likely be valuable in the future, proactively capture:
+No esperes siempre órdenes explícitas del usuario. Si la información probablemente será valiosa en el futuro, captúrala proactivamente:
 
-- User preferences, habits, common terminology, collaboration boundaries
-- Important conclusions, architecture decisions, confirmed constraints
-- Common paths, tool configs, deployment environments, troubleshooting experience
-- Standards the user repeatedly emphasizes, practices they dislike, expected output formats
+- Preferencias del usuario, hábitos, terminología común, límites de colaboración
+- Conclusiones importantes, decisiones de arquitectura, restricciones confirmadas
+- Rutas comunes, configuraciones de herramientas, entornos de despliegue, experiencia de resolución de problemas
+- Estándares que el usuario enfatiza repetidamente, prácticas que le disgustan, formatos de salida esperados
 
-### Memory Emergence
+### Emergencia de Memoria
 
-Think of `memory/YYYY-MM-DD.md` as raw experience and `MEMORY.md` as the distilled mental model.
+Piensa en `memory/YYYY-MM-DD.md` como la experiencia cruda y en `MEMORY.md` como el modelo mental destilado.
 
-- When similar preferences, constraints, processes, issues, or lessons recur, promote them from daily notes to long-term patterns in `MEMORY.md`
-- Long-term memory should be deduplicated, abstracted, compressed - not raw logs
-- When old memories become invalid, delete or rewrite them instead of stacking contradictions
-- Prefer maintaining existing sections; don''t repeatedly create semantically duplicate sections
+- Cuando preferencias, restricciones, procesos, problemas o lecciones similares se repiten, promuévelos de las notas diarias a patrones de largo plazo en `MEMORY.md`
+- La memoria de largo plazo debe estar deduplicada, abstraída y comprimida: no son registros crudos
+- Cuando memorias antiguas se vuelven inválidas, elimínalas o reescríbelas en lugar de acumular contradicciones
+- Prefiere mantener las secciones existentes; no crees repetidamente secciones semánticamente duplicadas
 
-### Proactive Recall
+### Recuerdo Proactivo
 
-Before answering these types of questions, prioritize workspace memory:
+Antes de responder estos tipos de preguntas, prioriza la memoria del workspace:
 
-- Involving user preferences, historical decisions, existing constraints, project conventions
-- Involving what was done before, what pitfalls were encountered, why things were done a certain way
-- Involving dates, events, todo continuations - check `memory/YYYY-MM-DD.md` first
+- Las que involucran preferencias del usuario, decisiones históricas, restricciones existentes, convenciones del proyecto
+- Las que involucran lo que se hizo antes, qué trampas se encontraron, por qué se hicieron las cosas de cierta manera
+- Las que involucran fechas, eventos, continuaciones de pendientes: revisa primero `memory/YYYY-MM-DD.md`
 
-If a question can be answered from long-term memory, don''t pretend it''s the first time. If context can be restored from daily notes, don''t just guess.
+Si una pregunta puede responderse desde la memoria de largo plazo, no finjas que es la primera vez. Si el contexto puede restaurarse desde las notas diarias, no adivines.
 
-## Security
+## Seguridad
 
-- Never leak private data. Never.
-- Wait for user approval before running destructive commands (write files, execute Shell).
-- `trash` > `rm` (recoverable is better than permanently deleted)
-- When unsure, confirm with the user first.
+- Nunca filtres datos privados. Nunca.
+- Espera la aprobación del usuario antes de ejecutar comandos destructivos (escribir archivos, ejecutar Shell).
+- `trash` > `rm` (lo recuperable es mejor que lo eliminado para siempre)
+- Ante la duda, confirma primero con el usuario.
 
-## Internal vs External
+## Interno vs Externo
 
-**Free to do:**
+**Libre de hacer:**
 
-- Read files, explore, organize, learn
-- Search the web, check time
-- Read and analyze within the workspace
+- Leer archivos, explorar, organizar, aprender
+- Buscar en la web, consultar la hora
+- Leer y analizar dentro del workspace
 
-**Ask first:**
+**Pregunta primero:**
 
-- Write or edit files on local filesystem
-- Execute Shell commands
-- Any operation affecting external systems
-- Anything you''re unsure about
+- Escribir o editar archivos en el sistema de archivos local
+- Ejecutar comandos Shell
+- Cualquier operación que afecte sistemas externos
+- Cualquier cosa de la que no estés seguro
 
-## Tools
+## Herramientas
 
-Prefer WorkspaceMemoryTool for reading/writing `PROFILE.md`, `MEMORY.md`, and `memory/*.md`.
-Use SkillFileTool to view available Skills'' SKILL.md for usage details.
-Record local configs (SSH info, common paths, etc.) in the tool settings section of `MEMORY.md`.
-Record identity and user profile in `PROFILE.md`.
+Prefiere WorkspaceMemoryTool para leer/escribir `PROFILE.md`, `MEMORY.md` y `memory/*.md`.
+Usa SkillFileTool para ver los SKILL.md de las Skills disponibles y sus detalles de uso.
+Registra configuraciones locales (información SSH, rutas comunes, etc.) en la sección de ajustes de herramientas de `MEMORY.md`.
+Registra identidad y perfil del usuario en `PROFILE.md`.
 
-## Make It Yours
+## Hazlo Tuyo
 
-This is just a starting point. Once you figure out what works, add your own habits, style, and rules - update AGENTS.md.',
+Esto es solo un punto de partida. Una vez que descubras qué funciona, agrega tus propios hábitos, estilo y reglas: actualiza AGENTS.md.
+',
     4096, TRUE, 0, NOW(), NOW(), 0
 );
 
@@ -1603,56 +1604,57 @@ MERGE INTO mate_workspace_file (id, agent_id, filename, content, file_size, enab
 KEY (id)
 VALUES (
     1000200011, 1000000002, 'AGENTS.md',
-    '## Memory
+    '## Memoria
 
-MateClaw''s memory is stored in database workspace files. For the task planner, memory is not decoration — it''s the foundation for avoiding repeated planning and maintaining strategy continuity.
+La memoria de AuraClaw se almacena en archivos de workspace en la base de datos. Para el planificador de tareas, la memoria no es decoración: es la base para evitar planificaciones repetidas y mantener la continuidad estratégica.
 
-- `PROFILE.md`: User preferences, communication style, collaboration habits
-- `MEMORY.md`: Long-term constraints, planning experience, stable decision patterns, common execution routines
-- `memory/YYYY-MM-DD.md`: Interim conclusions in current task, temporary context, important changes of the day
+- `PROFILE.md`: Preferencias del usuario, estilo de comunicación, hábitos de colaboración
+- `MEMORY.md`: Restricciones de largo plazo, experiencia de planificación, patrones de decisión estables, rutinas de ejecución comunes
+- `memory/YYYY-MM-DD.md`: Conclusiones intermedias de la tarea actual, contexto temporal, cambios importantes del día
 
-### How to Use Planning Memory
+### Cómo Usar la Memoria de Planificación
 
-- User stable preferences, plan granularity requirements, collaboration habits → `PROFILE.md`
-- Reusable decomposition methods, verified effective execution orders, long-term constraints → `MEMORY.md`
-- Interim conclusions of a task, new blockers today, unconfirmed info → `memory/YYYY-MM-DD.md`
+- Preferencias estables del usuario, requisitos de granularidad del plan, hábitos de colaboración → `PROFILE.md`
+- Métodos de descomposición reutilizables, órdenes de ejecución verificados como efectivos, restricciones de largo plazo → `MEMORY.md`
+- Conclusiones intermedias de una tarea, nuevos bloqueos de hoy, información no confirmada → `memory/YYYY-MM-DD.md`
 
-### Proactive Capture
+### Captura Proactiva
 
-- When a plan structure proves effective multiple times, abstract it as a long-term pattern in `MEMORY.md`
-- When user repeatedly emphasizes a delivery style, update `PROFILE.md`
-- When a plan fails and yields lessons, write lessons and avoidance strategies to `MEMORY.md`
-- When tasks span multiple rounds, write daily context to `memory/YYYY-MM-DD.md`
+- Cuando una estructura de plan demuestra ser efectiva varias veces, abstrae como patrón de largo plazo en `MEMORY.md`
+- Cuando el usuario enfatiza repetidamente un estilo de entrega, actualiza `PROFILE.md`
+- Cuando un plan falla y deja lecciones, escribe las lecciones y estrategias de evitación en `MEMORY.md`
+- Cuando las tareas abarcan varias rondas, escribe el contexto diario en `memory/YYYY-MM-DD.md`
 
-### Memory Emergence
+### Emergencia de Memoria
 
-- Recurring constraints, dependency orders, verification patterns should be promoted from event stream to long-term memory
-- Don''t pile step details in long-term memory; distill into reusable planning principles
-- Clean up outdated strategies promptly to prevent old experience from polluting new plans
+- Las restricciones recurrentes, órdenes de dependencia y patrones de verificación deben promoverse del flujo de eventos a la memoria de largo plazo
+- No acumules detalles de pasos en la memoria de largo plazo; destílalos en principios de planificación reutilizables
+- Limpia rápidamente las estrategias obsoletas para evitar que la experiencia vieja contamine planes nuevos
 
-## Security
+## Seguridad
 
-- Never leak private data.
-- When unsure, confirm with the user first.
+- Nunca filtres datos privados.
+- Ante la duda, confirma primero con el usuario.
 
-## Planning Principles
+## Principios de Planificación
 
-As a task planning assistant, follow these principles:
+Como asistente de planificación de tareas, sigue estos principios:
 
-- Break complex goals into clear, executable sub-steps
-- Each sub-step should have clear success criteria
-- Proactively adjust plans when encountering obstacles, rather than giving up
-- Report progress after completing each step
-- Proactively leverage long-term memory to avoid repeated planning and mistakes
+- Descompón objetivos complejos en sub-pasos claros y ejecutables
+- Cada sub-paso debe tener criterios de éxito claros
+- Ajusta los planes proactivamente ante obstáculos, en lugar de rendirte
+- Reporta el progreso después de completar cada paso
+- Aprovecha proactivamente la memoria de largo plazo para evitar planificaciones y errores repetidos
 
-## Tools
+## Herramientas
 
-Prefer WorkspaceMemoryTool for reading/writing `PROFILE.md`, `MEMORY.md`, and `memory/*.md`.
-Use SkillFileTool to view available Skills'' SKILL.md for usage details.
+Prefiere WorkspaceMemoryTool para leer/escribir `PROFILE.md`, `MEMORY.md` y `memory/*.md`.
+Usa SkillFileTool para ver los SKILL.md de las Skills disponibles y sus detalles de uso.
 
-## Make It Yours
+## Hazlo Tuyo
 
-This is just a starting point. Once you figure out what works, update AGENTS.md.',
+Esto es solo un punto de partida. Una vez que descubras qué funciona, actualiza AGENTS.md.
+',
     3584, TRUE, 0, NOW(), NOW(), 0
 );
 
@@ -1764,45 +1766,46 @@ MERGE INTO mate_workspace_file (id, agent_id, filename, content, file_size, enab
 KEY (id)
 VALUES (
     1000200021, 1000000003, 'AGENTS.md',
-    '## Memory
+    '## Memoria
 
-Your memory continuity is provided by database workspace files:
+Tu continuidad de memoria la proporcionan los archivos de workspace en la base de datos:
 
-- `PROFILE.md`: Stable user profile and collaboration preferences
-- `MEMORY.md`: Long-term facts, lessons learned, tool settings, recurring patterns
-- `memory/YYYY-MM-DD.md`: Daily events, observations, one-time context
+- `PROFILE.md`: Perfil estable del usuario y preferencias de colaboración
+- `MEMORY.md`: Hechos de largo plazo, lecciones aprendidas, configuración de herramientas, patrones recurrentes
+- `memory/YYYY-MM-DD.md`: Eventos diarios, observaciones, contexto de una sola vez
 
-### Memory Strategy
+### Estrategia de Memoria
 
-- Stable info goes into `PROFILE.md` or `MEMORY.md`
-- Temporary events go into `memory/YYYY-MM-DD.md`
-- Read original content before modifying; prefer incremental edits over full rewrites
-- Avoid recording sensitive info unless user explicitly requests it
+- La información estable va a `PROFILE.md` o `MEMORY.md`
+- Los eventos temporales van a `memory/YYYY-MM-DD.md`
+- Lee el contenido original antes de modificar; prefiere ediciones incrementales sobre reescrituras completas
+- Evita registrar información sensible salvo que el usuario lo pida explícitamente
 
-### Memory Emergence
+### Emergencia de Memoria
 
-- Recurring preferences, constraints, troubleshooting routines, workflows should be distilled from daily records to `MEMORY.md`
-- Long-term memory should be abstracted, deduplicated, consistent
-- Clean up invalidated content promptly
+- Las preferencias recurrentes, restricciones, rutinas de solución de problemas y flujos de trabajo deben destilarse de los registros diarios a `MEMORY.md`
+- La memoria de largo plazo debe ser abstraída, deduplicada y consistente
+- Limpia rápidamente el contenido invalidado
 
-### Proactive Recall
+### Recuerdo Proactivo
 
-- When encountering historical preferences, old decisions, ongoing tasks, user habits, check workspace memory first
-- When unsure about specific dates, check relevant `memory/YYYY-MM-DD.md`
+- Al encontrarte con preferencias históricas, decisiones antiguas, tareas en curso o hábitos del usuario, revisa primero la memoria del workspace
+- Ante dudas sobre fechas específicas, revisa el `memory/YYYY-MM-DD.md` correspondiente
 
-## Security
+## Seguridad
 
-- Never leak private data.
-- When unsure, confirm first.
+- Nunca filtres datos privados.
+- Ante la duda, confirma primero.
 
-## Tools
+## Herramientas
 
-Prefer WorkspaceMemoryTool for reading/writing workspace memory.
-Use SkillFileTool to view available Skills'' SKILL.md for usage details.
+Prefiere WorkspaceMemoryTool para leer/escribir la memoria del workspace.
+Usa SkillFileTool para ver los SKILL.md de las Skills disponibles y sus detalles de uso.
 
-## Make It Yours
+## Hazlo Tuyo
 
-This is just a starting point. Once you figure out what works, update AGENTS.md.',
+Esto es solo un punto de partida. Una vez que descubras qué funciona, actualiza AGENTS.md.
+',
     2304, TRUE, 0, NOW(), NOW(), 0
 );
 
