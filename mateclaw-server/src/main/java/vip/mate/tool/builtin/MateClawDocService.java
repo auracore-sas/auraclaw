@@ -50,14 +50,14 @@ public class MateClawDocService {
      */
     private static final List<DocGroup> STRUCTURE = List.of(
             new DocGroup("开始", "Start", "Inicio",
-                    List.of("intro", "quickstart", "desktop")),
+                    List.of("intro", "quickstart", "user-guide", "desktop")),
             new DocGroup("使用", "Use", "Uso",
                     List.of("chat", "agents", "goals", "wiki", "memory", "multimodal", "model3d",
                             "channels", "webchat", "wecom-tuning", "ambient-ai", "workflow", "triggers")),
             new DocGroup("扩展", "Extend", "Extensión",
                     List.of("tools", "skills", "mcp", "acp")),
             new DocGroup("运维", "Operate", "Operación",
-                    List.of("console", "backstage", "docker-deploy", "workspaces", "security", "models", "doctor", "config")),
+                    List.of("console", "backstage", "docker-deploy", "workspaces", "security", "models", "doctor", "config", "operational-export")),
             new DocGroup("开发", "Develop", "Desarrollo",
                     List.of("api", "architecture", "contributing")),
             new DocGroup("参考", "Reference", "Referencia",
