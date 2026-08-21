@@ -75,11 +75,16 @@ Notas de la traducción:
 - Ya no hay slugs faltantes en `es/`, pero el fallback sigue siendo útil para robustez futura (nuevos docs en `en/` sin traducción inmediata)
 - Opción: en `MateClawDocService.read()`, si el slug no existe en `es`, leer de `en` (y quizás listar con un marcador de idioma)
 
-### P4 — Prompts internos del LLM en chino (~2,370 líneas)
-- Prompts de agentes/wiki/workflows siguen en chino (funcionan; el modelo responde en español por instrucción). Traducirlos es un cambio coordinado de comportamiento — requiere pruebas
+### P4/P5 — Prompts internos del LLM y marcadores de protocolo (AVANZADO — ver notas)
 
-### P5 — Marcadores de protocolo (opcional, coordinado)
-- `[错误]`, `[等待审批]`, `[任务指令]`, `来源：`, `## 自定义`, regex de errores — españolizarlos requiere traducir también las fuentes que los generan (server + prompts)
+**Marcadores de protocolo (P5): COMPLETO.** Emisión en español (`[Error]`, `Fuentes:`, `[Pendiente de aprobación]`, `[Instrucción de tarea]`, `[Resumen de observaciones de herramientas]`) + parsing **bilingüe** (chino legacy + español) en backend y frontend, para no romper BD histórica ni streams. Templates de error LLM y `DelegateAgentTool` en español. Commits: `60ecc2a9` (marcadores + frontend + prompts graph/context/memory), `10649a45` (prompts wiki/skill/research). Tests del área verdes (SourceEvidenceLedger, ChannelErrorClassifier, aprobación).
+
+**Prompts (P4): 60/60 .txt traducidos** al español (o ya neutros en inglés). Contratos preservados: schemas JSON, reglas `[[slug]]`, formato FILE-block, frontmatter YAML, placeholders, marcadores literales (los caracteres chinos restantes son ejemplos de slug o marcadores inyectados por el sistema).
+
+**Pendiente/verificación recomendada:**
+- ⚠️ Cambio de comportamiento del LLM: los prompts traducidos requieren **pruebas de regresión** en una instancia real (chat, wiki digest, memory, research, cron) — el modelo debe seguir produciendo el mismo JSON/estructura con instrucciones en español
+- Verificar que los marcadores `Fuentes:`/`[Error]` se renderizan bien en la UI y que la BD con datos chinos históricos sigue parseando
+- No commitear nada de esto sin re-aplicar la tolerancia bilingüe si se vuelve a tocar (ver CUSTOMIZATIONS.md)
 
 ### P6 — CI/CD (del plan original)
 - Pipeline GitHub Actions: build + tests + empaquetado desktop (hoy no existe; validar con `mvn compile` JDK 21 y `vue-tsc --noEmit`)

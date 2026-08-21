@@ -142,7 +142,7 @@ docs/CUSTOMIZATIONS.md  ⚠️ REGISTRO de personalizaciones — actualizar en c
 - **`.env` con variables vacías rompe Spring local** (ej. `MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB=`) — el script de lanzamiento las filtra
 - BD: H2 en dev (default); PostgreSQL 16 en Docker. Login dev: `admin` / `admin123` (idioma por defecto: es-ES)
 - El código fuente del upstream tiene comentarios en chino — normal, no traducir (evita diffs inútiles)
-- NO traducir marcadores de protocolo ni regex de errores del server (`[错误]`, `[任务指令]`, `来源：`, patrones de clasificación) — rompen el parsing
+- **Marcadores de protocolo**: se emiten en español (`[Error]`, `Fuentes:`, `[Pendiente de aprobación]`, `[Instrucción de tarea]`) con parsing **bilingüe** en el server y frontend (acepta la variante china legacy `[错误]`/`来源：`/… para BD histórica y streams en vuelo). **No eliminar la variante legacy del parsing** ni tocar los marcadores de forma aislada — siempre cambiar emisión + parsing juntos (ver `docs/CUSTOMIZATIONS.md`).
 - Ids son Snowflake de 64 bits: no truncar a 32 bits en UI/JSON (hay scripts de verificación)
 
 ## 8. Checklist de fin de sesión
