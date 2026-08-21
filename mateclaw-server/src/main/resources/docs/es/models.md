@@ -89,7 +89,7 @@ Muchos productos atornillan Gemini como "solo otro endpoint OpenAI-compatible" y
 - **Saneamiento de JSON Schema** — quita automáticamente las palabras clave de JSON Schema que Gemini rechaza, para que las definiciones de herramientas no sean rechazadas
 - **Sonda de vitalidad al arrancar** — envía una solicitud ligera al inicio para confirmar que las credenciales y el modelo son alcanzables
 
-Configúralo en `Ajustes → Modelos → Agregar Proveedor`, elige el proveedor **Gemini**, pega tu clave API. Modelos de ejemplo: `gemini-2.5-flash`, `gemini-3-pro-image-preview`, `gemini-2.5-flash-image`. La generación de imágenes corre por la misma ruta nativa — ver [Multimodal → Generación de imágenes](./multimodal#image-generation-six-providers).
+Configúralo en `Ajustes → Modelos → Agregar Proveedor`, elige el proveedor **Gemini**, pega tu clave API. Modelos de ejemplo: `gemini-2.5-flash`, `gemini-3-pro-image-preview`, `gemini-2.5-flash-image`. La generación de imágenes corre por la misma ruta nativa — ver [Multimodal → Generación de imágenes](./multimodal).
 
 ---
 
@@ -381,7 +381,7 @@ El desplegable solo lista modelos que **realmente soportan la modalidad relevant
 - El primario no tiene visión + sidecar de visión configurado → estrategia SIDECAR, captions a texto
 - El primario no tiene visión + sin sidecar → salta el adjunto + dile al usuario que configure uno
 
-Para el flujo de usuario final (insignia, pista sobre la caja de entrada) ver [Chat → ¿El modelo principal no ve imágenes? Enrutamiento con "sidecar multimodal"](./chat#primary-model-cant-see-images-multimodal-sidecar-routing).
+Para el flujo de usuario final (insignia, pista sobre la caja de entrada) ver [Chat → ¿El modelo principal no ve imágenes? Enrutamiento con "sidecar multimodal"](./chat).
 
 ---
 
@@ -418,7 +418,7 @@ El failover decide *a quién cambiar*; 2.0.0 también hace que *cómo se recuper
 
 Antes de 1.5.0, la "prioridad por agente" solo afectaba el **orden de failover** — el modelo primario seguía siendo el default global. 1.5.0 hace que esa preferencia **realmente decida la selección del modelo primario**. La precedencia completa es:
 
-1. **Gana un modelo fijado por conversación** — el ModelSelector del encabezado del chat ligó un modelo a esta conversación, así se usa (ver [selección de modelo por conversación](./chat#per-conversation-model-selection))
+1. **Gana un modelo fijado por conversación** — el ModelSelector del encabezado del chat ligó un modelo a esta conversación, así se usa (ver [selección de modelo por conversación](./chat))
 2. **luego el override de modelo por agente (`modelName`)** — el empleado tiene un modelo fijado
 3. **luego el modelo por defecto global**
 4. **solo cuando ninguno de esos está definido entra el enrutamiento por proveedor preferido** — eligiendo el modelo primario del proveedor preferido

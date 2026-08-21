@@ -288,7 +288,7 @@ DashScope / OpenAI / varios gateways de LLM ocasionalmente producen en el intern
 
 Antes estos aparecían como texto rojo de `LLM call failed` sin reintento.
 
-Arreglo: clasificar todos estos como `SERVER_ERROR`, enrutar por el reintento de backoff exponencial existente: 3s → 6s → 12s (con jitter) hasta 5 intentos. Ver [Motor de agentes](./agents#error-recovery).
+Arreglo: clasificar todos estos como `SERVER_ERROR`, enrutar por el reintento de backoff exponencial existente: 3s → 6s → 12s (con jitter) hasta 5 intentos. Ver [Motor de agentes](./agents).
 
 ### Keepalive
 

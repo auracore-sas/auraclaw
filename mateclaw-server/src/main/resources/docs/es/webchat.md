@@ -195,7 +195,7 @@ Cuando un agente ligado a WebChat llama a una herramienta protegida por [Tool Gu
 - **Aprobar** `POST /sessions/approve` — con `sessionId` + `pendingId`. La auth reutiliza visitorToken + propiedad de la conversación; el `pendingId` se **valida estrictamente como perteneciente a esta sesión** (si no, 404), cerrando un IDOR entre visitantes. Aprobar **re-ejecuta** la llamada a herramienta suspendida y reanuda como SSE.
 - **Denegar** `POST /sessions/deny` — con `sessionId` + `pendingId`, devuelve JSON síncrono, sin re-ejecución.
 
-Ambos transmiten un evento SSE `tool_approval_resolved` (ver [Eventos de progreso opcionales](#optional-realtime-progress-events) arriba) para que el SDK / frontend limpie el banner de aprobación en tiempo real.
+Ambos transmiten un evento SSE `tool_approval_resolved` (ver **Eventos de progreso opcionales** arriba) para que el SDK / frontend limpie el banner de aprobación en tiempo real.
 
 > Si aparece una aprobación depende de si las reglas de Tool Guard ligadas del agente definen `require_approval` para alguna herramienta. Obtén `pendingId` del evento `tool_approval_requested`.
 

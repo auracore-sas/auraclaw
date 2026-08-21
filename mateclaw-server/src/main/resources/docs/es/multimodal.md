@@ -24,7 +24,7 @@ Configura una vez. Úsalo en todas partes.
 La herramienta de generación de imágenes auto-elige el proveedor configurado como default, o puedes forzar uno específico por llamada. La generación asíncrona devuelve un id de job que el agente consulta; cuando la imagen aterriza, se adjunta al **mensaje original del asistente**, no a uno nuevo.
 
 ::: tip Nuevo en 1.3.0
-DashScope Wanxiang se enchufó al **endpoint unificado de generación multimodal** (`multimodal-generation/generation`) en v1.3.0, agregando 14 modelos de imagen — 6 de los cuales **soportan edición de imágenes**. Ver [Edición de imágenes](#image-edit) abajo.
+DashScope Wanxiang se enchufó al **endpoint unificado de generación multimodal** (`multimodal-generation/generation`) en v1.3.0, agregando 14 modelos de imagen — 6 de los cuales **soportan edición de imágenes**. Ver **Edición de imágenes** abajo.
 :::
 
 #### Edición de imágenes
@@ -64,10 +64,10 @@ Un catálogo de modelos más completo vive en [Modelos](./models#two-dashscope-v
 #### Nano Banana
 
 ::: tip Nuevo en 1.4.0
-La generación de imágenes de Google corre a través de **Nano Banana Pro** (`gemini-3-pro-image-preview`) vía el [camino nativo de Gemini](./models#native-gemini), no un shim de compatibilidad OpenAI.
+La generación de imágenes de Google corre a través de **Nano Banana Pro** (`gemini-3-pro-image-preview`) vía el [camino nativo de Gemini](./models), no un shim de compatibilidad OpenAI.
 :::
 
-Como usa el endpoint nativo `generateContent`, la herramienta de imágenes pasa las imágenes de entrada como **partes inline** directo al modelo — así que Nano Banana no es solo texto-a-imagen, **también soporta edición de imágenes** (imagen-a-imagen). Funciona exactamente como [Edición de imágenes](#image-edit) arriba: pasa el parámetro `image` / `images` para referenciar una o más imágenes fuente.
+Como usa el endpoint nativo `generateContent`, la herramienta de imágenes pasa las imágenes de entrada como **partes inline** directo al modelo — así que Nano Banana no es solo texto-a-imagen, **también soporta edición de imágenes** (imagen-a-imagen). Funciona exactamente como **Edición de imágenes** arriba: pasa el parámetro `image` / `images` para referenciar una o más imágenes fuente.
 
 - **Nano Banana Pro** — `gemini-3-pro-image-preview` (default)
 - **Nano Banana** — `gemini-2.5-flash-image` (otro modelo de imagen de Google)
@@ -185,7 +185,7 @@ Funciona como esperarías: la imagen aparece dentro de la misma burbuja donde el
 ## Entrada multimodal: ¿el primario no la habla? Usa un sidecar
 
 ::: tip Añadido en 1.3.0
-Esta página trata sobre **generación (salida)**. El lado de la **entrada** — subir una imagen a un modelo principal solo-texto — corre por un camino separado de "sidecar multimodal". Ver [Chat → ¿El modelo principal no ve imágenes?](./chat#primary-model-cant-see-images-multimodal-sidecar-routing) y [Modelos → Sidecar multimodal (a nivel de sistema)](./models#multimodal-sidecar-system-wide).
+Esta página trata sobre **generación (salida)**. El lado de la **entrada** — subir una imagen a un modelo principal solo-texto — corre por un camino separado de "sidecar multimodal". Ver [Chat → ¿El modelo principal no ve imágenes?](./chat) y [Modelos → Sidecar multimodal (a nivel de sistema)](./models).
 :::
 
 En resumen: configura un modelo de visión bajo **Ajustes → Modelos → Sidecar multimodal**. Cuando el modelo principal no puede manejar una imagen subida, el runtime la describe vía el sidecar primero y alimenta la descripción al chat principal. El primario se mantiene barato; la decisión de enrutamiento es totalmente visible en la UI de chat (insignia en la burbuja, pista sobre la caja de entrada).

@@ -124,7 +124,7 @@ Proactivo = permisos más estrictos necesarios. Un agente disparado por cron cor
 
 Así que:
 
-- **Los agentes de cron no evaden Tool Guard.** Las llamadas a herramientas que necesitan aprobación siguen pausándose y esperando a que apruebes en tu IM. Ver [flujo de aprobación](./security#approval-workflow-human-in-the-loop).
+- **Los agentes de cron no evaden Tool Guard.** Las llamadas a herramientas que necesitan aprobación siguen pausándose y esperando a que apruebes en tu IM. Ver [flujo de aprobación](./security).
 - Si no quieres que te interrumpan, pon las herramientas sensibles en `deny` en lugar de `require_approval` — el agente se detendrá en seco en lugar de enviarte una solicitud de aprobación.
 - **Cada corrida de cron está en el log de auditoría** (`mate_audit_event`) — qué tarea a qué hora usó qué herramienta para hacer qué.
 

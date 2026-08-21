@@ -177,7 +177,7 @@ El mecanismo es **automático** — sin cableado manual. Durante la planificaci�
 
 - La delegación se registra en `mate_sub_plan.assigned_agent_id`; una insignia azul — **"Delegado a &lt;nombre del empleado&gt;"** — aparece debajo del paso en el panel de detalle del plan
 - Los pasos delegados se ejecutan en una **sub-conversación** acotada a la conversación del plan padre — **no** se filtran a la lista de conversaciones de nivel superior como sesiones independientes
-- La delegación por paso comparte la misma semántica que el sistema de [Objetivos](./goals) y el [árbol de delegación multinivel](#multi-level-subagent-delegation-tree) de arriba: el padre descompone el trabajo, los especialistas hacen su parte
+- La delegación por paso comparte la misma semántica que el sistema de [Objetivos](./goals) y el **árbol de delegación multinivel** de arriba: el padre descompone el trabajo, los especialistas hacen su parte
 
 ---
 
@@ -262,7 +262,7 @@ Abre la pestaña Herramientas del editor de empleados digitales y obtienes:
 
 UI: `Agentes → elige empleado → Herramientas`.
 
-Detalles de implementación: ver [MCP](./mcp#per-agent-tool-binding).
+Detalles de implementación: ver [MCP](./mcp).
 
 ### Ligadura de base de conocimiento (KB principal por agente)
 
@@ -397,8 +397,8 @@ Estas son cosas que el runtime hace para que los agentes no fallen de formas que
 - **Limpieza de streams obsoletos** — todo stream SSE abierto se rastrea, los abandonados se cosechan automáticamente.
 - **Reintento 429** — los errores de límite de tasa del LLM disparan reintentos automáticos con backoff.
 - **Detección de repetición** — los agentes que buclean sobre la misma llamada a herramienta son forzados a salir.
-- **Detección de estancamiento + re-planificación** — en modo Plan-and-Execute, cuando un paso lanza una excepción o falla repetidamente dentro de un bucle de herramientas, el runtime descarta el plan actual, lleva la razón del fallo de vuelta al nodo de planificación y **re-planifica** para rodear el paso roto — en lugar de empujar un resultado basura hacia adelante. Ver [Objetivos · Detección de estancamiento y re-planificación](./goals#stall-detection-and-re-planning).
-- **Continuación dura en el tope de iteraciones** — un empleado con un objetivo activo que llega a su límite de iteraciones puede **reanudar con un presupuesto de iteraciones fresco y completo** en lugar de detenerse y esperar a que envíes otro mensaje. Ver [Objetivos · Continuación dura](./goals#hard-continuation-on-the-iteration-cap).
+- **Detección de estancamiento + re-planificación** — en modo Plan-and-Execute, cuando un paso lanza una excepción o falla repetidamente dentro de un bucle de herramientas, el runtime descarta el plan actual, lleva la razón del fallo de vuelta al nodo de planificación y **re-planifica** para rodear el paso roto — en lugar de empujar un resultado basura hacia adelante. Ver [Objetivos · Detección de estancamiento y re-planificación](./goals).
+- **Continuación dura en el tope de iteraciones** — un empleado con un objetivo activo que llega a su límite de iteraciones puede **reanudar con un presupuesto de iteraciones fresco y completo** en lugar de detenerse y esperar a que envíes otro mensaje. Ver [Objetivos · Continuación dura](./goals).
 - **Timeouts de herramientas configurables** — una herramienta lenta no puede congelar un turno.
 - **Monitor de salud de canales** — los adaptadores de canal que fallan reinician con backoff exponencial.
 

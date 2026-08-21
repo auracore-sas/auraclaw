@@ -633,7 +633,7 @@ La barra de herramientas de la vista de grafo del Wiki gana un toggle **Grafo de
 - Clic en un nodo carga su **ego-grafo**: el panel derecho lista los alias de la entidad, sus relaciones y las **páginas wiki que la mencionan** (cada una es un enlace clicable).
 - Los colores siguen una paleta terrosa compartida que coincide con el grafo de tipos de página. Como el grafo renderiza en canvas y no puede leer variables CSS, la paleta se resuelve desde los estilos calculados del tema actual en runtime, para que tanto el modo claro como el oscuro muestren colores de etiqueta correctos.
 
-Las tres tablas subyacentes se describen en la sección [Modelo de datos](#data-model-if-you-re-curious) más abajo.
+Las tres tablas subyacentes se describen en la sección **Modelo de datos** más abajo.
 
 ---
 

@@ -21,7 +21,7 @@ Los segmentos llegan progresivamente. Se persisten en la base de datos en tiempo
 
 Antes esto no era cierto. Ahora sí.
 
-Las referencias en la respuesta también son vivas: los enlaces wiki `[[slug]]` y los **marcadores de citas** `[1]` / `[2]` que aparecen cuando el agente responde desde una base de conocimiento son clicables — cada uno navega directamente a la página wiki correspondiente. Cada línea de la lista "Fuentes:" al final de una respuesta también es totalmente clicable. Ver [LLM Wiki · Clic desde el chat](./wiki#click-through-from-chat).
+Las referencias en la respuesta también son vivas: los enlaces wiki `[[slug]]` y los **marcadores de citas** `[1]` / `[2]` que aparecen cuando el agente responde desde una base de conocimiento son clicables — cada uno navega directamente a la página wiki correspondiente. Cada línea de la lista "Fuentes:" al final de una respuesta también es totalmente clicable. Ver [LLM Wiki · Clic desde el chat](./wiki).
 
 ---
 

@@ -374,7 +374,7 @@ Cuando las entradas estructuradas `user` / `feedback` se inyectan en el prompt d
 
 ### Consolidación nocturna (encoge archivos en la capa de almacenamiento)
 
-El presupuesto de inyección trunca al inyectar, pero los archivos en disco siguen creciendo. **La consolidación** los compacta en la capa de almacenamiento: un job nocturno (default 03:30, con su propio horario independiente de [Soñar](#consolidation-and-dreaming)) recorre el bucket compartido de cada agente y todos los buckets por dueño, y cuando el conteo de entradas excede el umbral llama al LLM para fusionar entradas casi-duplicadas u obsoletas y escribe el resultado de vuelta.
+El presupuesto de inyección trunca al inyectar, pero los archivos en disco siguen creciendo. **La consolidación** los compacta en la capa de almacenamiento: un job nocturno (default 03:30, con su propio horario independiente de **Soñar**) recorre el bucket compartido de cada agente y todos los buckets por dueño, y cuando el conteo de entradas excede el umbral llama al LLM para fusionar entradas casi-duplicadas u obsoletas y escribe el resultado de vuelta.
 
 Un **invariante de seguridad**: el conteo de entradas tras la consolidación solo puede disminuir — si el modelo alucina entradas adicionales, esa escritura se salta por completo.
 
@@ -385,7 +385,7 @@ Un **invariante de seguridad**: el conteo de entradas tras la consolidación sol
 
 Disparo manual: `POST /api/v1/memory/{agentId}/structured-consolidation` — devuelve estadísticas incluyendo `ownersConsolidated`, `updated`, `entriesBefore` y `entriesAfter`.
 
-> No confundas esto con [Soñar](#consolidation-and-dreaming): Soñar fusiona notas diarias en `MEMORY.md` (promoviendo lo que importa); la consolidación deduplica y recorta las entradas estructuradas `user` / `feedback`. Dos jobs distintos, dos horarios distintos.
+> No confundas esto con **Soñar**: Soñar fusiona notas diarias en `MEMORY.md` (promoviendo lo que importa); la consolidación deduplica y recorta las entradas estructuradas `user` / `feedback`. Dos jobs distintos, dos horarios distintos.
 
 ### Tope de archivo (tope duro determinista al reescribir)
 

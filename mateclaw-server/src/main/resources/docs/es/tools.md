@@ -199,7 +199,7 @@ El skill `skills/docx` **se queda** — es bueno **editando .docx existentes** (
 
 ### ImageGenerateTool — soporte de edición de imágenes desde 1.3.0
 
-En v1.2.0 esta herramienta era solo texto-a-imagen. v1.3.0 agrega dos parámetros — `image` y `images` — para **edición con entrada multi-imagen**. Ver [Multimodal](./multimodal#image-edit).
+En v1.2.0 esta herramienta era solo texto-a-imagen. v1.3.0 agrega dos parámetros — `image` y `images` — para **edición con entrada multi-imagen**. Ver [Multimodal](./multimodal).
 
 ### WorkspaceMemoryTool
 
