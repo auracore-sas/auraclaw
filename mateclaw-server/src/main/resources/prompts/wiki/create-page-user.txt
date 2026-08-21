@@ -1,26 +1,26 @@
-## 知识库处理规则
+## Reglas de procesamiento de la base de conocimiento
 
 {config}
 
-## 已有 Wiki 页面索引（用于建立 [[slug]] 链接；每行格式 `[[slug]] — 标题 — 摘要`）
+## Índice de páginas Wiki existentes (para crear enlaces [[slug]]; cada línea con el formato `[[slug]] — Título — Resumen`)
 
 {existing_pages}
 
-## 待生成页面的 metadata
+## Metadata de la página a generar
 
 slug：`{page_slug}`
-标题：{page_title}
-摘要：{page_summary}
+Título: {page_title}
+Resumen: {page_summary}
 
-## 原始材料
+## Material crudo
 
-标题：{raw_title}
+Título: {raw_title}
 
 {raw_content}
 
 ---
 
-请为上面 metadata 描述的**这一个页面**生成完整的 markdown 内容（按 system 中规定的 JSON 格式输出）。
-- 只生成这一个 slug 对应的页面，不要顺便生成其他页面
-- 内容必须基于原始材料中与该主题相关的信息
-- 适当使用 [[slug]] 链接到其他相关页面（slug 必须来自上文索引）
+Genera el contenido markdown completo para **esta única página** descrita por la metadata de arriba (según el formato JSON definido en el mensaje de sistema).
+- Solo genera la página del slug indicado; no generes otras páginas de paso
+- El contenido debe basarse en la información del material crudo relacionada con ese tema
+- Usa apropiadamente [[slug]] para enlazar a otras páginas relacionadas (el slug debe venir del índice de arriba)

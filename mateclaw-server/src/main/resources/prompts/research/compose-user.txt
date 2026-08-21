@@ -1,14 +1,12 @@
-## 研究主题 / Topic
+## Tema de investigación
 {topic}
 
-## 已写好的段落 / Drafted sections
-
+## Secciones ya redactadas
 {sections}
 
-## 使用过的材料 / Materials used
-
+## Materiales utilizados
 {materials_ref}
 
 ---
 
-请组装为一份 Markdown 格式的综合研究报告（语言跟随 topic）。
+Ensambla un informe de investigación de síntesis en formato Markdown (idioma coherente con el topic).

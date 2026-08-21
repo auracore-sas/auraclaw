@@ -1,25 +1,25 @@
-## 知识库处理规则
+## Reglas de procesamiento de la base de conocimiento
 
 {config}
 
-## 待合并的现有 Wiki 页面
+## Página Wiki existente a fusionar
 
 slug：`{page_slug}`
-标题：{page_title}
-最近编辑者：{page_last_updated_by}
+Título: {page_title}
+Último editor: {page_last_updated_by}
 
-### 现有内容
+### Contenido actual
 
 {page_content}
 
-## 新材料
+## Material nuevo
 
-标题：{raw_title}
+Título: {raw_title}
 
 {raw_content}
 
 ---
 
-请把新材料中与本页面主题相关的信息合并进**这一个页面**，输出完整的 JSON（按 system 规则）。
-- 如果新材料对本页面无新增信息：原 content 原样返回即可。
-- 不要输出其他页面，不要 diff，不要追加。
+Fusiona en **esta única página** la información del material nuevo relacionada con el tema de esta página, y emite el JSON completo (según las reglas del mensaje de sistema).
+- Si el material nuevo no aporta información nueva a esta página: devuelve el content original tal cual.
+- No emitas otras páginas, ni diffs, ni anexiones.

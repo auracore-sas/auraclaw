@@ -1,21 +1,21 @@
-## 知识库处理规则
+## Reglas de procesamiento de la base de conocimiento
 
 {config}
 
-## 已有 Wiki 页面索引（用于建立 [[slug]] 链接；每行格式 `[[slug]] — 标题 — 摘要`）
+## Índice de páginas Wiki existentes (para crear enlaces [[slug]]; cada línea con el formato `[[slug]] — Título — Resumen`)
 
 {existing_pages}
 
-## 待消化的原始材料
+## Material crudo a digerir
 
-标题：{raw_title}
+Título: {raw_title}
 
 {raw_content}
 
 ---
 
-请根据以上原始材料：
-1. 根据材料内容的丰富程度，创建合适数量的高质量页面（不追求数量，宁少勿多）
-2. 如果已有页面与新材料相关，更新这些页面（不要重复创建已有概念的页面）
-3. 确保页面间有充分的 [[slug]] 双向链接（slug 必须存在于本次输出的 pages 中，或上文索引中）
-4. 每个页面聚焦单一主题，内容完整且有实质价值
+Según el material crudo anterior:
+1. Crea un número adecuado de páginas de alta calidad según la riqueza del contenido (no persigas cantidad, mejor menos pero mejor)
+2. Si las páginas existentes se relacionan con el material nuevo, actualiza esas páginas (no crees de nuevo páginas de conceptos ya existentes)
+3. Asegúrate de que haya enlaces bidireccionales [[slug]] suficientes entre páginas (el slug debe existir en las páginas de esta salida o en el índice de contexto)
+4. Cada página se enfoca en un único tema, con contenido completo y de valor sustancial

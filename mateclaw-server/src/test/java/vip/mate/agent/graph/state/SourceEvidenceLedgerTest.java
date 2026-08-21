@@ -230,7 +230,7 @@ class SourceEvidenceLedgerTest {
 
         String rendered = ledger.appendWikiSourceTable("Use the package manager [1].");
 
-        assertTrue(rendered.contains("来源："));
+        assertTrue(rendered.contains("Fuentes:"));
         assertTrue(rendered.contains("[1] Install Guide - Linux - page 12"));
         assertTrue(ledger.validateAnswer(rendered).valid());
     }
@@ -290,8 +290,8 @@ class SourceEvidenceLedgerTest {
                 [1] MAST-Data数据集
                 """);
 
-        assertTrue(rendered.contains("来源："),
-                "来源： header must be present: " + rendered);
+        assertTrue(rendered.contains("Fuentes:"),
+                "Fuentes: header must be present: " + rendered);
         assertTrue(rendered.contains("[1] MAST-Data数据集"),
                 "source line content must be preserved: " + rendered);
         assertTrue(ledger.validateAnswer(rendered).valid());

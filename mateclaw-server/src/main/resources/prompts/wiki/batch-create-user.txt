@@ -1,31 +1,31 @@
-## 知识库处理规则
+## Reglas de procesamiento de la base de conocimiento
 
 {config}
 
 {document_map_section}
 
-## 已有 Wiki 页面索引（强保证，可直接链接；每行格式 `[[slug]] — 标题 — 摘要`）
+## Índice de páginas Wiki existentes (garantía fuerte, puedes enlazar directamente; cada línea con el formato `[[slug]] — Título — Resumen`)
 
 {existing_pages}
 
-## 本批次将一并创建的页面（计划中，可能可被链接；slug 见下方 pages_to_create）
+## Páginas que se crearán en este mismo lote (en planificación, pueden ser enlazables; el slug está en pages_to_create abajo)
 
-链接到这一类的页面**不保证成功**：本批次中的页面可能因去重 / 合并 / 失败而最终未落库，对应的 `[[slug]]` 会在 lint 中被标记为死链，由人工后续修复。需要交叉引用时**优先**链接到上文「已有 Wiki 页面索引」中的页面。
+Enlazar a este tipo de páginas **no tiene garantía de éxito**: las páginas de este lote pueden no llegar a persistirse por deduplicación / fusión / fallo, y el `[[slug]]` correspondiente se marcará como enlace muerto en el lint, que un humano corregirá después. Cuando necesites referencias cruzadas, **prioriza** enlazar a las páginas del «Índice de páginas Wiki existentes» de arriba.
 
 ```json
 {pages_to_create}
 ```
 
-## 原始材料
+## Material crudo
 
-标题：{raw_title}
+Título: {raw_title}
 
 {raw_content}
 
 ---
 
-请为上面 `pages_to_create` 数组中的**每一个页面**生成完整的 markdown 内容。
-- 按 system 中规定的 FILE 块格式输出，每个页面一个 FILE 块
-- 每个页面的内容必须基于原始材料中与该主题相关的信息
-- 适当使用 [[slug]] 链接到相关页面（slug 必须出自上文「已有 Wiki 页面索引」或本批次 `pages_to_create` 中的 slug）
-- 不要遗漏任何一个页面
+Genera el contenido markdown completo para **cada página** del arreglo `pages_to_create` de arriba.
+- Emite según el formato de bloques FILE definido en el mensaje de sistema, un bloque FILE por página
+- El contenido de cada página debe basarse en la información del material crudo relacionada con ese tema
+- Usa apropiadamente [[slug]] para enlazar a páginas relacionadas (el slug debe venir del «Índice de páginas Wiki existentes» de arriba o de los slugs de este lote `pages_to_create`)
+- No omitas ninguna página
