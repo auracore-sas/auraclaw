@@ -96,7 +96,7 @@ export function classifyBackendError(data: {
 
 /**
  * 从持久化的消息内容中重建 ChatErrorInfo
- * 后端将错误存为 "[错误] LLM 调用失败: 请求频率过高，请稍后重试" 格式的文本。
+ * 后端将错误存为 "[错误] LLM 调用失败: ..." (legacy) 或 "[Error] ..." (actual) 格式的文本。
  * 页面刷新后从数据库加载时 errorInfo 丢失，需要根据文本模式重建。
  */
 // Order matters: the narrow auth_expired pattern MUST come before the broader
@@ -106,21 +106,21 @@ export function classifyBackendError(data: {
 // auth_expired = our own backend's session expired (token invalid, will redirect to /login)
 // provider_auth_error = LLM provider returned 401 (e.g. Kimi API key invalid; user stays logged in)
 const ERROR_TEXT_PATTERNS: Array<{ pattern: RegExp; category: ChatErrorCategory; retryable: boolean }> = [
-  { pattern: /频率|rate.?limit|too.?many|quota|429/i,       category: 'rate_limit',          retryable: true },
+  { pattern: /频率|rate.?limit|too.?many|quota|429|límite|demasiadas?|de? rate/i, category: 'rate_limit', retryable: true },
   // Narrow: only fire on explicit signals that the user's own session is gone.
-  { pattern: /HTTP 401|登录已过期|session.?expired|凭证.*失效/i, category: 'auth_expired',  retryable: false },
+  { pattern: /HTTP 401|登录已过期|session.?expired|凭证.*失效|sesión.*(expir|vencid)/i, category: 'auth_expired', retryable: false },
   // Broad: any other 401-ish wording is treated as a model-side auth failure.
-  { pattern: /unauthorized|401|invalid.?api.?key|api.?key.*expired|认证失败/i, category: 'provider_auth_error', retryable: false },
-  { pattern: /权限|forbidden|403/i,                          category: 'forbidden',           retryable: false },
-  { pattern: /过长|too.?long|context.?length|prompt/i,       category: 'bad_request',         retryable: false },
-  { pattern: /超时|timeout/i,                                category: 'timeout',             retryable: true },
-  { pattern: /不可用|unavailable|503|502|504|过载|overload/i, category: 'service_unavailable', retryable: true },
-  { pattern: /服务器|server.?error|500|internal/i,           category: 'server_error',        retryable: true },
+  { pattern: /unauthorized|401|invalid.?api.?key|api.?key.*expired|认证失败|autenticación/i, category: 'provider_auth_error', retryable: false },
+  { pattern: /权限|forbidden|403|prohibid/i, category: 'forbidden', retryable: false },
+  { pattern: /过长|too.?long|context.?length|prompt|demasiado largo/i, category: 'bad_request', retryable: false },
+  { pattern: /超时|timeout|tiempo de espera|expirado/i, category: 'timeout', retryable: true },
+  { pattern: /不可用|unavailable|503|502|504|过载|overload|no disponible|sobrecarga/i, category: 'service_unavailable', retryable: true },
+  { pattern: /服务器|server.?error|500|internal|error interno/i, category: 'server_error', retryable: true },
 ]
 
 export function reconstructErrorInfo(text: string): ChatErrorInfo | null {
-  if (!text || !text.startsWith('[错误]')) return null
-  const rawMessage = text.replace(/^\[错误]\s*/, '')
+  if (!text || !(text.startsWith('[错误]') || text.startsWith('[Error]'))) return null
+  const rawMessage = text.replace(/^\[错误\]\s*/, '').replace(/^\[Error\]\s*/, '')
   for (const { pattern, category, retryable } of ERROR_TEXT_PATTERNS) {
     if (pattern.test(rawMessage)) {
       return { category, rawMessage, retryable, timestamp: 0 }

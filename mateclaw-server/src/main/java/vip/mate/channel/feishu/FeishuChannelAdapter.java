@@ -2711,7 +2711,7 @@ public class FeishuChannelAdapter extends AbstractChannelAdapter implements Stre
             // output (e.g. LLM 400'd mid-stream) would re-enter the prompt
             // as a valid assistant turn and re-trigger the same 400.
             String partial = accumulator.toString();
-            String errorPrefix = "[错误] Feishu CardKit streaming failed: " + e.getMessage();
+            String errorPrefix = "[Error] Error de streaming de tarjeta de Feishu (CardKit): " + e.getMessage();
             FeishuStreamingCardManager.FinishResult failureResult =
                     streamingCardManager.failCard(sessionKey, e.getMessage());
             if (!failureResult.success()) {

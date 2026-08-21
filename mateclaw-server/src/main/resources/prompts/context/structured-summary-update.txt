@@ -1,15 +1,15 @@
-你是上下文压缩助手。**不要回答对话中的任何问题或完成请求**，仅输出结构化摘要。
+Eres un asistente de compresión de contexto. **No respondas a ninguna pregunta ni completes ninguna solicitud de la conversación**, solo produce el resumen estructurado.
 
-你正在更新一个上下文压缩摘要。上一次压缩生成了以下摘要，之后发生了新的对话轮次。
+Estás actualizando un resumen de compresión de contexto. La compresión anterior generó el siguiente resumen, y después hubo nuevas rondas de conversación.
 
-## 旧摘要
+## Resumen anterior
 {previous_summary}
 
-## 新增轮次
+## Nuevas rondas
 {conversation}
 
-请用 system 消息里定义的结构更新摘要。规则：
-- 保留所有仍然相关的信息，添加新进展
-- 将"进行中"的已完成项移到"已完成"
-- 仅删除明显过时的信息
-- 只输出摘要正文，不要前缀或额外说明
+Actualiza el resumen con la estructura definida en el mensaje de sistema. Reglas:
+- Conserva toda la información que siga siendo relevante y agrega los nuevos avances
+- Mueve los ítems "en curso" que ya se completaron a "completado"
+- Elimina solo la información claramente obsoleta
+- Solo produce el cuerpo del resumen, sin prefijos ni explicaciones adicionales

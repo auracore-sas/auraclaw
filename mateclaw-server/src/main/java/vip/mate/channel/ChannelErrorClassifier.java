@@ -29,6 +29,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class ChannelErrorClassifier {
 
+    /** Legacy error prefix (Chinese, kept for historical DB rows & in-flight streams). */
+    public static final String ERROR_PREFIX_LEGACY = "[错误] ";
+    /** Current error prefix (Spanish). */
+    public static final String ERROR_PREFIX = "[Error] ";
+
+    /**
+     * @return {@code true} if the text carries the error-content prefix in
+     *         either the legacy Chinese form or the current Spanish form.
+     */
+    public static boolean hasErrorPrefix(String text) {
+        return text != null
+                && (text.startsWith(ERROR_PREFIX_LEGACY) || text.startsWith(ERROR_PREFIX));
+    }
+
     /**
      * @return {@code true} if the reply text matches one of the known
      *         LLM-side error surfaces and should NOT be treated as a real
@@ -38,14 +52,21 @@ public class ChannelErrorClassifier {
         if (reply == null || reply.isBlank()) {
             return false;
         }
-        return reply.startsWith("[错误] ")
+        return hasErrorPrefix(reply)
                 || reply.contains("Bad request:")
                 || reply.contains("LLM 调用失败:")
                 || reply.contains("LLM 调用超时")
                 || reply.contains("LLM 调用被中断")
                 || reply.contains("Prompt 过长:")
                 || reply.contains("认证失败:")
-                || reply.contains("LLM 返回空响应");
+                || reply.contains("LLM 返回空响应")
+                // Spanish error-message templates (current emission language).
+                || reply.contains("Error en la llamada LLM:")
+                || reply.contains("Llamada LLM agotó el tiempo")
+                || reply.contains("Llamada LLM interrumpida")
+                || reply.contains("Prompt demasiado largo:")
+                || reply.contains("Error de autenticación:")
+                || reply.contains("Respuesta vacía del LLM");
     }
 
     /** Map a classification result to the {@code mate_message.status} value. */

@@ -1,6 +1,6 @@
-用户原始问题：{question}
+Pregunta original del usuario: {question}
 
-已收集的信息：
+Información recopilada:
 {context}
 
-请基于以上信息给出最终回答。
+Responde con una respuesta final basándote en la información anterior.

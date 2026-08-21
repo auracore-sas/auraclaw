@@ -1,5 +1,5 @@
-以下是需要压缩的对话轮次：
+A continuación están las rondas de conversación que deben comprimirse:
 
 {conversation}
 
-请生成结构化交接摘要。
+Genera el resumen estructurado de entrega.

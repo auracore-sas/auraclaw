@@ -11,6 +11,7 @@ import org.springframework.ai.content.Media;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.MimeType;
 import reactor.core.publisher.Flux;
+import vip.mate.channel.ChannelErrorClassifier;
 import vip.mate.agent.context.ChatOrigin;
 import vip.mate.agent.context.ChatOriginHolder;
 import vip.mate.approval.ApprovalPlaceholderUtil;
@@ -556,7 +557,7 @@ public abstract class BaseAgent {
         // Both providers' 400 then re-persist a fresh "[错误] " row, repeat.
         if ("assistant".equals(entity.getRole())
                 && ("error".equals(entity.getStatus())
-                        || (entity.getContent() != null && entity.getContent().startsWith("[错误] ")))) {
+                        || (entity.getContent() != null && ChannelErrorClassifier.hasErrorPrefix(entity.getContent())))) {
             log.debug("[{}] Filtering error assistant message from history: msgId={} status={}",
                     agentName, entity.getId(), entity.getStatus());
             return null;
@@ -664,7 +665,7 @@ public abstract class BaseAgent {
         if ("assistant".equals(role)
                 && ("error".equals(entity.getStatus())
                         || (entity.getContent() != null
-                                && entity.getContent().startsWith("[错误] ")))) return true;
+                                && ChannelErrorClassifier.hasErrorPrefix(entity.getContent())))) return true;
         return false;
     }
 

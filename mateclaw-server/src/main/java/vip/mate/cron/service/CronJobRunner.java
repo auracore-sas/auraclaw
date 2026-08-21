@@ -318,7 +318,7 @@ public class CronJobRunner {
         }
         sb.append("- 如果确认本次确实无需执行、也没有新内容可汇报，")
           .append("请仅回复 \"").append(CRON_SILENT_MARKER).append("\"，不要附加任何其它文字。\n\n");
-        sb.append("[任务指令]\n").append(body);
+        sb.append("[Instrucción de tarea]\n").append(body);
         return sb.toString();
     }
 }

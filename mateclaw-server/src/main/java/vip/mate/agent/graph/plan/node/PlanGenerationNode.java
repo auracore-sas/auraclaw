@@ -218,6 +218,8 @@ public class PlanGenerationNode implements NodeAction {
             Pattern.compile("(?i)</?\\s*memory-context\\s*>");
     /** Marker that introduces the real instruction inside a scheduled-run wrapper. */
     private static final String CRON_TASK_MARKER = "[任务指令]";
+    /** Spanish form emitted by {@code CronJobRunner}; legacy Chinese rows still parsed. */
+    private static final String CRON_TASK_MARKER_ES = "[Instrucción de tarea]";
     /** Suffix appended by a goal-driven re-plan pass; not part of the user's ask. */
     private static final String FOLLOWUP_MARKER = "[Follow-up guidance]";
 
@@ -240,9 +242,12 @@ public class PlanGenerationNode implements NodeAction {
         }
         String s = MEMORY_CONTEXT_BLOCK.matcher(goal).replaceAll("");
         s = MEMORY_CONTEXT_TAG.matcher(s).replaceAll("");
-        int task = s.lastIndexOf(CRON_TASK_MARKER);
+        int taskCn = s.lastIndexOf(CRON_TASK_MARKER);
+        int taskEs = s.lastIndexOf(CRON_TASK_MARKER_ES);
+        int task = Math.max(taskCn, taskEs);
         if (task >= 0) {
-            s = s.substring(task + CRON_TASK_MARKER.length());
+            String marker = task == taskEs ? CRON_TASK_MARKER_ES : CRON_TASK_MARKER;
+            s = s.substring(task + marker.length());
         }
         int followup = s.indexOf(FOLLOWUP_MARKER);
         if (followup >= 0) {

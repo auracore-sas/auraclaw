@@ -105,7 +105,7 @@ public class WikiContextService {
                 "is and what they are working on, rely on <memory-context> instead; it takes " +
                 "precedence over these pages. Use wiki_read_page(slug) for full content. When using " +
                 "information from these pages in your answer, always cite the source page title, " +
-                "e.g. 「来源：[[页面标题]]」or「(来源：页面标题)」.]\n\n");
+                "e.g. 「Fuentes: [[page title]]」or「(Fuentes: page title)」.]\n\n");
         int totalChars = 0;
         int maxChars = properties.getMaxContextChars();
         int totalTokens = TokenEstimator.estimateTokens(sb.toString());

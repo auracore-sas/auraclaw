@@ -441,7 +441,7 @@ public class DingTalkChannelAdapter extends AbstractChannelAdapter implements St
             // (e.g. LLM 400'd mid-stream) would re-enter the prompt as a
             // valid assistant turn and re-trigger the same 400.
             String partial = contentAccumulator.toString();
-            String errorPrefix = "[错误] AI Card streaming failed: " + e.getMessage();
+            String errorPrefix = "[Error] Error de streaming de tarjeta AI (DingTalk): " + e.getMessage();
             if (!partial.isBlank()) {
                 return errorPrefix + "\n\n（已生成的部分内容，已忽略）\n" + partial;
             }

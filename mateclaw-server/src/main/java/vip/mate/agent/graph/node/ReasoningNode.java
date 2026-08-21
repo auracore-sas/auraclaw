@@ -1127,7 +1127,7 @@ public class ReasoningNode implements NodeAction {
             return reasonOutput()
                     .needsToolCall(false)
                     .shouldSummarize(false)
-                    .finalAnswer("[错误] " + result.errorMessage())
+                    .finalAnswer("[Error] " + result.errorMessage())
                     .llmCallCount(nextLlmCallCount)
                     .finishReason(FinishReason.ERROR_FALLBACK)
                     .contentStreamed(true)

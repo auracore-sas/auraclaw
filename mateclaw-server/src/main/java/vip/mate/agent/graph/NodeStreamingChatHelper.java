@@ -1901,8 +1901,8 @@ public class NodeStreamingChatHelper {
             broadcastDelta(conversationId, "warning",
                     buildDeltaJson(errorMsg));
         }
-        AssistantMessage errorMessage = new AssistantMessage("[错误] " + errorMsg);
-        return new StreamResult("[错误] " + errorMsg, "", errorMessage,
+        AssistantMessage errorMessage = new AssistantMessage("[Error] " + errorMsg);
+        return new StreamResult("[Error] " + errorMsg, "", errorMessage,
                 List.of(), false, 0, 0, false, errorMsg, ErrorType.UNKNOWN);
     }
 
@@ -1917,15 +1917,15 @@ public class NodeStreamingChatHelper {
             String errorJson = buildErrorEventJson(errorMsg, conversationId, errorType);
             streamTracker.broadcast(conversationId, "error", errorJson);
         }
-        AssistantMessage errorMessage = new AssistantMessage("[错误] " + errorMsg);
-        return new StreamResult("[错误] " + errorMsg, "", errorMessage,
+        AssistantMessage errorMessage = new AssistantMessage("[Error] " + errorMsg);
+        return new StreamResult("[Error] " + errorMsg, "", errorMessage,
                 List.of(), false, 0, 0, false, errorMsg, errorType);
     }
 
     private StreamResult buildEmptyResponseResult() {
         return new StreamResult("", "", new AssistantMessage(""),
                 List.of(), false, 0, 0, false,
-                "LLM 返回空响应", ErrorType.EMPTY_RESPONSE);
+                "Respuesta vacía del LLM", ErrorType.EMPTY_RESPONSE);
     }
 
     /** 构建 error 事件的 JSON payload */
@@ -1993,32 +1993,33 @@ public class NodeStreamingChatHelper {
 
         // ↓↓↓ 具体错误翻译（优先级由高到低）↓↓↓
 
-        // Ollama / 其他 provider 在模型不支持 function calling 时返回此文案：
-        //   "<model> does not support tools"
-        // 这不是模型坏，而是用户选错了模型 —— 给出可操作的切换建议。
+        // Ollama / other providers return this when the model doesn't support
+        // function calling: "<model> does not support tools". Not a broken
+        // model — the user picked the wrong one; give an actionable switch hint.
         if (bodySample.contains("does not support tools") || msg.contains("does not support tools")) {
-            return "当前模型不支持工具调用（function calling）。请在 设置 → 模型 里切换到支持 tools 的模型，"
-                    + "例如 qwen3、qwen2.5:7b+、llama3.1:8b+、mistral-nemo、command-r 等。";
+            return "El modelo actual no soporta llamadas a herramientas (function calling). "
+                    + "Cambia en Ajustes → Modelos a un modelo con soporte de tools, "
+                    + "por ejemplo qwen3, qwen2.5:7b+, llama3.1:8b+, mistral-nemo, command-r, etc.";
         }
 
         // Volcano Engine Ark — model exists but the user's account hasn't activated it.
         // Body shape: {"error":{"code":"ModelNotOpen","message":"Your account ... has not activated the model X. Please activate the model service in the Ark Console..."}}
         if (combined.contains("ModelNotOpen")) {
             String modelId = extractArkModelName(combined);
-            String suffix = modelId != null ? "「" + modelId + "」" : "";
-            return "火山方舟（Volcano Ark）尚未为该账号开通模型" + suffix
-                    + "。请前往 Ark 控制台 → 模型广场，对该模型点击「开通服务」后重试。"
-                    + "（控制台：https://console.volcengine.com/ark）";
+            String suffix = modelId != null ? " «" + modelId + "»" : "";
+            return "Volcano Ark (火山方舟) aún no ha activado el modelo" + suffix
+                    + " para esta cuenta. Ve a la consola de Ark → Plaza de modelos y haz clic en «Activar servicio» para ese modelo, luego reintenta."
+                    + " (Consola: https://console.volcengine.com/ark)";
         }
 
         // Volcano Engine Ark — model id doesn't exist for the user's region/key.
         // Body shape: {"error":{"code":"InvalidEndpointOrModel.NotFound","message":"The model or endpoint X does not exist or you do not have access to it..."}}
         if (combined.contains("InvalidEndpointOrModel")) {
             String modelId = extractArkModelName(combined);
-            String suffix = modelId != null ? "「" + modelId + "」" : "";
-            return "火山方舟（Volcano Ark）找不到模型" + suffix
-                    + "。原因可能是模型 ID 不在当前区域，或你的账号没有访问权限。"
-                    + "建议在 设置 → 模型 里点「刷新模型」重新发现，或在 Ark 控制台创建「推理接入点」(ep-XXX) 后使用该 ID。";
+            String suffix = modelId != null ? " «" + modelId + "»" : "";
+            return "Volcano Ark (火山方舟) no encuentra el modelo" + suffix
+                    + ". Puede deberse a que el ID del modelo no está en la región actual, o que tu cuenta no tiene acceso."
+                    + " Sugerencia: en Ajustes → Modelos pulsa «Refrescar modelos» para redescubrirlos, o crea un «punto de entrada de inferencia» (ep-XXX) en la consola de Ark y usa ese ID.";
         }
 
         // DashScope "url error" is really "model name not mapped to any valid endpoint".

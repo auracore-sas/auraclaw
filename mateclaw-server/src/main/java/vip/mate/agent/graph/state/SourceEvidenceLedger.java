@@ -221,22 +221,23 @@ public record SourceEvidenceLedger(
                 result = replaceSourceLine(result, index, canonicalLine);
             } else {
                 if (additions.isEmpty()) {
-                    additions.append("\n\n来源：");
+                    additions.append("\n\nFuentes:");
                 }
                 additions.append("\n").append(canonicalLine);
             }
         }
 
-        // If source lines were normalized in-place but no 来源： header
+        // If source lines were normalized in-place but no sources header
         // exists, insert one before the first source line so the frontend
-        // preprocessWikiCitations() can locate the source table.
-        if (additions.isEmpty() && !result.contains("来源：")) {
+        // preprocessWikiCitations() can locate the source table. Both the
+        // legacy Chinese header and the current Spanish one are recognized.
+        if (additions.isEmpty() && !result.contains("来源：") && !result.contains("Fuentes:")) {
             Matcher firstSource = Pattern
                     .compile("(?m)^\\[")
                     .matcher(result);
             if (firstSource.find()) {
                 int pos = firstSource.start();
-                result = result.substring(0, pos) + "\n\n来源：\n" + result.substring(pos);
+                result = result.substring(0, pos) + "\n\nFuentes:\n" + result.substring(pos);
             }
         }
 

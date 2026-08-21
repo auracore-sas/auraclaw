@@ -1,24 +1,24 @@
-## 当前日期
+## Fecha de hoy
 {today}
 
-## 现有 PROFILE.md 内容
+## Contenido actual de PROFILE.md
 ```
 {profile}
 ```
 
-## 现有 MEMORY.md 内容
+## Contenido actual de MEMORY.md
 ```
 {memory}
 ```
 
-## 今日 daily note ({daily_filename}) 现有内容
+## Contenido actual de la daily note de hoy ({daily_filename})
 ```
 {daily}
 ```
 
-## 对话记录
+## Registro de la conversación
 {transcript}
 
 ---
 
-请分析以上对话，判断是否有新信息需要保存到记忆文件中。严格输出 JSON 格式。
+Analiza la conversación anterior y determina si hay información nueva que deba guardarse en los archivos de memoria. Genera estrictamente en formato JSON.

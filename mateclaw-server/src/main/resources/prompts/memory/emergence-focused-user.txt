@@ -1,27 +1,27 @@
-## 现有 MEMORY.md 内容
+## Contenido actual de MEMORY.md
 ```
 {memory}
 ```
 
-## Focused Dream 主题
+## Tema del Focused Dream
 
-本次整合的重点主题：**{topic}**
+Tema central de esta integración: **{topic}**
 
-请优先提炼与该主题直接相关的记忆（约 60% 权重），同时也关注非主题类的高分候选（约 40% 权重），避免因主题聚焦而遗漏重要信息。
+Prioriza la extracción de memorias directamente relacionadas con este tema (aproximadamente 60% de peso), pero también presta atención a los candidatos de alto puntaje no relacionados con el tema (aproximadamente 40% de peso), para no perder información importante por el enfoque temático.
 
-## 高分召回候选（按评分排序）
+## Candidatos de recuperación de alto puntaje (ordenados por puntuación)
 
 {scored_candidates}
 
-## 最近 {day_range} 天的 daily notes（补充参考）
+## Daily notes de los últimos {day_range} días (referencia complementaria)
 
 {daily_notes}
 
 ---
 
-请围绕主题 "{topic}" 分析以上内容，将相关的稳定信息整合到 MEMORY.md 中。
-非主题类的高分候选如有重要内容也一并整合。
+Analiza el contenido anterior en torno al tema "{topic}" e integra en MEMORY.md la información estable relacionada.
+Los candidatos de alto puntaje no relacionados con el tema también se integran si contienen contenido importante.
 
-**重要**：MEMORY.md 中含有 `<!-- user-edited -->` 标记的段落是用户手动编辑过的，不要覆盖或修改这些段落的内容，只在其后追加新信息。
+**Importante**: los párrafos de MEMORY.md que contienen la marca `<!-- user-edited -->` fueron editados manualmente por el usuario; no sobrescribas ni modifiques el contenido de esos párrafos, solo agrega información nueva después de ellos.
 
-严格输出 JSON 格式。
+Genera estrictamente en formato JSON.

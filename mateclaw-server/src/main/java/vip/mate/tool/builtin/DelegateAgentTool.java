@@ -229,20 +229,20 @@ public class DelegateAgentTool {
             @Nullable ToolContext ctx) {
 
         if (agentName == null || agentName.isBlank()) {
-            return "[错误] 请指定目标 Agent 名称。" + availableAgentsHint();
+            return "[Error] Especifica el nombre del Agente de destino." + availableAgentsHint();
         }
         if (task == null || task.isBlank()) {
-            return "[错误] 请提供任务描述。";
+            return "[Error] Proporciona una descripción de la tarea.";
         }
 
         int depth = DelegationContext.currentDepth();
         if (depth >= MAX_DELEGATION_DEPTH) {
-            return "[错误] 委派层级已达上限（" + MAX_DELEGATION_DEPTH + " 层），请直接处理任务。";
+            return "[Error] Se alcanzó el límite de niveles de delegación (" + MAX_DELEGATION_DEPTH + " niveles), maneja la tarea directamente.";
         }
 
         AgentEntity target = findAgent(agentName);
         if (target == null) {
-            return "[错误] 未找到名为「" + agentName + "」的已启用 Agent。" + availableAgentsHint();
+            return "[Error] No se encontró ningún Agente habilitado llamado «" + agentName + "»." + availableAgentsHint();
         }
 
         // Execute via the shared single-task core (registry, relay, broadcast,
@@ -448,19 +448,19 @@ public class DelegateAgentTool {
         try {
             tasks = objectMapper.readValue(tasksJson, new TypeReference<>() {});
         } catch (Exception e) {
-            return "[错误] 无法解析任务 JSON：" + e.getMessage() + "\n格式: [{\"agentName\":\"X\",\"task\":\"Y\"}]";
+            return "[Error] No se pudo parsear el JSON de la tarea: " + e.getMessage() + "\nFormato: [{\"agentName\":\"X\",\"task\":\"Y\"}]";
         }
 
         if (tasks == null || tasks.isEmpty()) {
-            return "[错误] 任务列表为空。";
+            return "[Error] La lista de tareas está vacía.";
         }
         if (tasks.size() > MAX_PARALLEL_CHILDREN) {
-            return "[错误] 最多支持 " + MAX_PARALLEL_CHILDREN + " 个并行任务，当前 " + tasks.size() + " 个。";
+            return "[Error] Se soportan como máximo " + MAX_PARALLEL_CHILDREN + " tareas paralelas; hay " + tasks.size() + ".";
         }
 
         int depth = DelegationContext.currentDepth();
         if (depth >= MAX_DELEGATION_DEPTH) {
-            return "[错误] 委派层级已达上限（" + MAX_DELEGATION_DEPTH + " 层），请直接处理任务。";
+            return "[Error] Se alcanzó el límite de niveles de delegación (" + MAX_DELEGATION_DEPTH + " niveles), maneja la tarea directamente.";
         }
 
         String parentConversationId = resolveParentConversationId();
@@ -475,7 +475,7 @@ public class DelegateAgentTool {
         // operator paused this conversation's tree (immediate parent or root).
         if ((parentConversationId != null && subagentRegistry.isSpawnPaused(parentConversationId))
                 || (rootConvFinal != null && subagentRegistry.isSpawnPaused(rootConvFinal))) {
-            return "[错误] Spawning paused for this conversation; resume via /api/v1/subagents/spawn-pause";
+            return "[Error] La generación de sub-agentes está pausada para esta conversación; reanuda vía /api/v1/subagents/spawn-pause";
         }
 
         boolean hasRoot = rootConvFinal != null && streamTracker.isRunning(rootConvFinal);
@@ -525,7 +525,7 @@ public class DelegateAgentTool {
         }
 
         if (prepared.isEmpty()) {
-            return "[错误] 所有任务校验失败：\n" + String.join("\n", errors);
+            return "[Error] Toda la validación de tareas falló:\n" + String.join("\n", errors);
         }
 
         log.info("Parallel delegation: {} tasks, parentConv={}", prepared.size(), parentConversationId);
@@ -1225,7 +1225,7 @@ public class DelegateAgentTool {
         }
 
         String toToolResponse(String agentName) {
-            if (!success) return "[错误] Agent「" + agentName + "」执行失败: " + error;
+            if (!success) return "[Error] El Agente «" + agentName + "» falló al ejecutar: " + error;
             String body = "[Agent「" + agentName + "」的回复]\n\n" + (result != null ? result : "");
             if (promptTokens > 0 || completionTokens > 0) {
                 body += "\n\n[usage: tokensIn=" + promptTokens + " tokensOut=" + completionTokens + "]";

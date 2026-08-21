@@ -578,21 +578,21 @@ let streamingRenderMode = false
 // ---------------------------------------------------------------------------
 // Wiki citation pre-processor
 // ---------------------------------------------------------------------------
-// Parses the canonical "来源：" source table appended by the backend's
-// SourceEvidenceLedger.appendWikiSourceTable() to build a citation index →
-// title map, then replaces every [n] marker in the answer body with a
-// clickable <a> and wraps entire source-table rows so the full line is
-// clickable.
+// Parses the canonical source table appended by the backend's
+// SourceEvidenceLedger.appendWikiSourceTable() — header in Spanish ("Fuentes:")
+// or legacy Chinese ("来源：") — to build a citation index → title map, then
+// replaces every [n] marker in the answer body with a clickable <a> and wraps
+// entire source-table rows so the full line is clickable.
 function preprocessWikiCitations(text: string): string {
   let sourceIdx = -1
-  const dblIdx = text.indexOf('\n\n来源：')
+  const dblIdx = Math.max(text.indexOf('\n\nFuentes:'), text.indexOf('\n\n来源：'))
   if (dblIdx >= 0) {
     sourceIdx = dblIdx + 2
   } else {
-    const sngIdx = text.indexOf('\n来源：')
+    const sngIdx = Math.max(text.indexOf('\nFuentes:'), text.indexOf('\n来源：'))
     if (sngIdx >= 0) {
       sourceIdx = sngIdx + 1
-    } else if (text.startsWith('来源：')) {
+    } else if (text.startsWith('来源：') || text.startsWith('Fuentes:')) {
       sourceIdx = 0
     }
   }

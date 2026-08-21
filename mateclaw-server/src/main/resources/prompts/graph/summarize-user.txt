@@ -1,6 +1,6 @@
-用户问题：{question}
+Pregunta del usuario: {question}
 
-工具调用观察记录：
+Registro de observaciones de llamadas a herramientas:
 {observations}
 
-请先识别用户问题中包含的独立子任务，然后为每个子任务分别生成摘要。确保每个子任务的关键结果都被完整保留。
+Identifica primero las subtareas independientes contenidas en la pregunta del usuario y luego genera un resumen para cada una por separado. Asegúrate de que los resultados clave de cada subtarea se conserven por completo.

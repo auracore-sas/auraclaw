@@ -715,7 +715,7 @@ public class StepExecutionNode implements NodeAction {
         boolean ok = childResult != null && childResult.success() && !childResult.isBlank();
         String finalResult = ok
                 ? (childResult.result() != null ? childResult.result() : "")
-                : "[错误] 委派执行失败：" + (delegateError != null ? delegateError
+                : "[Error] Error al ejecutar la delegación: " + (delegateError != null ? delegateError
                     : childResult != null && childResult.error() != null ? childResult.error()
                     : childResult != null && childResult.isBlank() ? "子 Agent 返回内容为空"
                     : "未知错误");

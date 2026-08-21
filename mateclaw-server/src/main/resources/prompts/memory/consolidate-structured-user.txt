@@ -1,6 +1,6 @@
-当前记忆类别：{type}
-今天日期：{today}
-当前条目数：{count}
+Categoría de memoria actual: {type}
+Fecha de hoy: {today}
+Número de entradas actuales: {count}
 
-=== 现有内容 ===
+=== Contenido actual ===
 {content}

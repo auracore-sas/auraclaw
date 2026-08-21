@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import vip.mate.channel.ChannelErrorClassifier;
 import vip.mate.common.result.R;
 import vip.mate.workspace.core.service.ChatUploadLocationResolver;
 import vip.mate.agent.AgentService;
@@ -357,7 +358,7 @@ public class ChatController {
                                 boolean replayWasStopped = streamTracker.isStopRequested(conversationId);
                                 ChatStreamTracker.InterruptType replayInterrupt = streamTracker.getInterruptType(conversationId);
                                 boolean replayIsError = accumulator.getContent() != null
-                                        && accumulator.getContent().startsWith("[错误] ");
+                                        && ChannelErrorClassifier.hasErrorPrefix(accumulator.getContent());
                                 String persistStatus = derivePersistStatus(
                                         accumulator.isAwaitingApproval(), replayIsError,
                                         replayWasStopped, replayInterrupt);
@@ -463,7 +464,7 @@ public class ChatController {
                                                 replayIsFollowup ? "[已中断]" : "[已停止生成]", null, errStatus);
                                     } else {
                                         savedAssistant = conversationService.saveMessage(conversationId, "assistant",
-                                                "[错误] " + (e.getMessage() != null ? e.getMessage() : "replay error"),
+                                                "[Error] " + (e.getMessage() != null ? e.getMessage() : "replay error"),
                                                 null, "failed");
                                     }
 
@@ -674,7 +675,7 @@ public class ChatController {
                             ChatStreamTracker.InterruptType interruptType = streamTracker.getInterruptType(conversationId);
                             boolean isInterruptFollowup = interruptType == ChatStreamTracker.InterruptType.USER_INTERRUPT_WITH_FOLLOWUP;
                             boolean isError = accumulator.getContent() != null
-                                    && accumulator.getContent().startsWith("[错误] ");
+                                    && ChannelErrorClassifier.hasErrorPrefix(accumulator.getContent());
                             String persistStatus = derivePersistStatus(
                                     accumulator.isAwaitingApproval(), isError, wasStopped, interruptType);
                             try {
@@ -924,7 +925,7 @@ public class ChatController {
                                     savedAssistant = conversationService.saveMessage(conversationId, "assistant",
                                             isInterruptFollowup ? "[已中断]" : "[已停止生成]", null, status);
                                 } else {
-                                    savedAssistant = conversationService.saveMessage(conversationId, "assistant", "[错误] " + errorMsg, null, "failed");
+                                    savedAssistant = conversationService.saveMessage(conversationId, "assistant", "[Error] " + errorMsg, null, "failed");
                                 }
 
                                 if (isInterruptFollowup) {
@@ -1488,7 +1489,7 @@ public class ChatController {
                     boolean queuedWasStopped = streamTracker.isStopRequested(conversationId);
                     ChatStreamTracker.InterruptType queuedInterrupt = streamTracker.getInterruptType(conversationId);
                     boolean queuedIsError = accumulator.getContent() != null
-                            && accumulator.getContent().startsWith("[错误] ");
+                            && ChannelErrorClassifier.hasErrorPrefix(accumulator.getContent());
                     String persistStatus = derivePersistStatus(
                             accumulator.isAwaitingApproval(), queuedIsError,
                             queuedWasStopped, queuedInterrupt);
@@ -1565,7 +1566,7 @@ public class ChatController {
                         } else {
                             String errorMsg = e.getMessage() != null ? e.getMessage() : "queued stream error";
                             savedAssistant = conversationService.saveMessage(conversationId, "assistant",
-                                    "[错误] " + errorMsg, null, "failed");
+                                    "[Error] " + errorMsg, null, "failed");
                         }
                         broadcastEvent(conversationId, "error", buildErrorPayload(
                                 conversationId,
@@ -1656,7 +1657,7 @@ public class ChatController {
     }
 
     static String emptyAssistantPlaceholder(String status) {
-        if ("awaiting_approval".equals(status)) return "[等待审批]";
+        if ("awaiting_approval".equals(status)) return "[Pendiente de aprobación]";
         return "[本次没有输出]";
     }
 

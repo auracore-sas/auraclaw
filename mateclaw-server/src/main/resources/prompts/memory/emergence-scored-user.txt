@@ -1,24 +1,24 @@
-## 现有 MEMORY.md 内容
+## Contenido actual de MEMORY.md
 ```
 {memory}
 ```
 
-## 高分召回候选（按评分排序）
+## Candidatos de recuperación de alto puntaje (ordenados por puntuación)
 
-以下文件在对话中被频繁引用，评分基于召回频率、时效性、查询多样性等维度自动计算。
-**优先整合评分高的内容**，它们是用户实际在对话中反复使用的记忆。
+Los siguientes archivos se citaron con frecuencia en las conversaciones; la puntuación se calcula automáticamente según la frecuencia de recuperación, la actualidad, la diversidad de consultas, etc.
+**Prioriza la integración del contenido de alto puntaje** — son memorias que el usuario realmente usa de forma repetida en las conversaciones.
 
 {scored_candidates}
 
-## 最近 {day_range} 天的 daily notes（补充参考）
+## Daily notes de los últimos {day_range} días (referencia complementaria)
 
 {daily_notes}
 
 ---
 
-请分析以上内容，优先将高分召回候选中的稳定信息整合到 MEMORY.md 中。
-低分或未被引用的内容仅作补充参考。
+Analiza el contenido anterior y prioriza la integración en MEMORY.md de la información estable de los candidatos de recuperación de alto puntaje.
+El contenido de bajo puntaje o no citado se usa solo como referencia complementaria.
 
-**重要**：MEMORY.md 中含有 `<!-- user-edited -->` 标记的段落是用户手动编辑过的，不要覆盖或修改这些段落的内容，只在其后追加新信息。
+**Importante**: los párrafos de MEMORY.md que contienen la marca `<!-- user-edited -->` fueron editados manualmente por el usuario; no sobrescribas ni modifiques el contenido de esos párrafos, solo agrega información nueva después de ellos.
 
-严格输出 JSON 格式。
+Genera estrictamente en formato JSON.

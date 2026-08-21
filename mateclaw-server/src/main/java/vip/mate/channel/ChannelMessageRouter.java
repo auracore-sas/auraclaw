@@ -1414,7 +1414,7 @@ public class ChannelMessageRouter {
             // before the LLM sees it, so it costs nothing at the prompt layer.
             try {
                 conversationService.saveMessage(conversationId, "assistant",
-                        "[错误] " + e.getMessage(), null, "error");
+                        "[Error] " + e.getMessage(), null, "error");
             } catch (Exception persistErr) {
                 log.warn("[{}] Failed to persist error placeholder: {}",
                         channelType, persistErr.getMessage());

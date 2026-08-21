@@ -124,7 +124,7 @@ public class SummarizingNode implements NodeAction {
                     ? StructuredTruncator.headSlice(observationText.toString(), 500)
                             + "\n...[摘要生成失败，仅保留原始观察的前部片段；数据不完整，请勿编造、补全或重新编号缺失内容]"
                     : observationText.toString();
-            AssistantMessage fallbackMsg = new AssistantMessage("[工具观察摘要(降级)]\n" + fallback);
+            AssistantMessage fallbackMsg = new AssistantMessage("[Resumen de observaciones de herramientas (degradado)]\n" + fallback);
             return MateClawStateAccessor.output()
                     .summarizedContext(fallback)
                     .shouldSummarize(false)
@@ -172,7 +172,7 @@ public class SummarizingNode implements NodeAction {
         // 将摘要注入 messages，让下一轮 ReasoningNode 能看到之前的工具调用结论
         String summaryContent = summarized != null ? summarized : "";
         AssistantMessage summaryMessage = new AssistantMessage(
-                "[工具观察摘要]\n" + summaryContent);
+                "[Resumen de observaciones de herramientas]\n" + summaryContent);
 
         return MateClawStateAccessor.output()
                 .summarizedContext(summaryContent)

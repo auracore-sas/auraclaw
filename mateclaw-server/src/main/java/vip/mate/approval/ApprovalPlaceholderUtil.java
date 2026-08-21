@@ -25,6 +25,7 @@ public final class ApprovalPlaceholderUtil {
         return content.contains("[⏳ 等待审批]")
                 || content.contains("[APPROVAL_PENDING]")
                 || content.contains("[等待审批]")
+                || content.contains("[Pendiente de aprobación]")
                 || content.contains("请输入 /approve")
                 || content.contains("等待您的批准");
     }
