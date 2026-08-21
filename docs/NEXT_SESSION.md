@@ -1,7 +1,8 @@
 # NEXT_SESSION.md — Resumen de la sesión y pendientes
 
 > Documento de contexto para retomar el trabajo en la siguiente sesión.
-> Fecha de la sesión: 2026-08-21 (P1 completado) · Rama: `main` (base v2.1.0) · Fork: `auracore-sas/auraclaw`
+> Fecha de la sesión: 2026-08-21 · Rama: `main` (base v2.1.0) · Fork: `auracore-sas/auraclaw`
+> **Sesión 2026-08-21 (2ª): completados P1 (docs es), P4/P5 (prompts + marcadores), pruebas de regresión, y corrección del matiz de memoria.**
 
 ---
 
@@ -65,6 +66,41 @@ Notas de la traducción:
 
 ---
 
+## ✅ P4/P5 COMPLETADO — Marcadores de protocolo + Prompts LLM en español (2026-08-21)
+
+**Marcadores de protocolo (P5):** la emisión ahora es en español (`[Error]`, `Fuentes:`, `[Pendiente de aprobación]`, `[Instrucción de tarea]`, `[Resumen de observaciones de herramientas]`) con **parsing bilingüe** (chino legacy + español) en backend y frontend, para no romper BD histórica ni streams en vuelo. Templates de error LLM y `DelegateAgentTool` en español.
+
+**Prompts (P4):** los **60/60 `.txt`** de `prompts/` traducidos al español (o ya neutros en inglés). Contratos preservados: schemas JSON, reglas `[[slug]]`, formato FILE-block, frontmatter YAML, placeholders, marcadores literales (los caracteres chinos restantes son ejemplos de slug o marcadores inyectados por el sistema).
+
+**Commits:** `60ecc2a9` (marcadores + frontend + prompts graph/context/memory) · `10649a45` (prompts wiki/skill/research) · docs de registro en `c6488fbe`.
+
+**✅ Pruebas de regresión realizadas (server dev contra postgres real con DeepSeek):**
+- Chat normal (prompts `graph/`) → respuesta correcta en español
+- Failover multi-proveedor (gpt-4o/ollama → deepseek) + warnings en español
+- Wiki digest (prompts `wiki/`) → 6 páginas generadas, links `[[slug]]` reconciliados, 0 rotos
+- Memoria del agente (prompts `memory/` + herramientas) → lee/escribe correctamente
+- Cron `run now` → Success 200 (marcador `[Instrucción de tarea]` bilingüe)
+- Marcador `[Error]`: cubierto por tests unitarios (`ChannelErrorClassifierTest`); flujo real emite warnings de error en español
+- Tests del área verdes (SourceEvidenceLedger, ChannelErrorClassifier, ErrorClassification, aprobación) — `SourceEvidenceLedgerTest` ajustado al header `Fuentes:`
+
+**Imagen Docker reconstruida** con el código actualizado (el contenedor Docker viejo no tenía los cambios; reconstruir con `docker compose build mateclaw-server` + `up -d`, tarda ~2-3 min con caché del mvn host).
+
+---
+
+## ✅ Matiz de memoria corregido — agente escribía su propio nombre en PROFILE.md (2026-08-21)
+
+**Síntoma:** al pedirle *"recuerda que me llamo Juan…"* el agente escribía `AuraClaw Assistant` (su nombre) en `PROFILE.md` en lugar de los datos del usuario.
+
+**Causa raíz:** la plantilla `PROFILE.md` tenía una sección `## Identidad` con `Nombre/Rol/Estilo` sin aclarar que se refiere al **usuario**; combinada con el `ABOUT_YOU_BLOCK` del system prompt ("eres AuraClaw"), el agente la interpretó como SU identidad. No era bug de los prompts memory (AGENTS.md/prompts estaban bien).
+
+**Corrección:** fusioné la sección en `## Perfil del Usuario` con la nota `> Este archivo describe al USUARIO… No registres aquí la identidad, rol ni estilo del agente.` Aplicada a los **9 seeds** (`es/en/zh` × data/kingbase/mysql) y a la **BD viva** (5 filas via UPDATE).
+
+**Verificado:** ahora el agente registra al usuario vía `remember_structured` (`{"type":"user","key":"identidad_juan","content":"Nombre: Juan. Trabaja en finanzas. Prefiere respuestas concisas"}`).
+
+**Commits:** `1eb098b6` (seeds es + docs) · `e5e1c3fb` (seeds en/zh).
+
+---
+
 ## 📌 Pendiente para la siguiente sesión (priorizado)
 
 ### P2 — Configuración de modelos del usuario (recomendado)
@@ -75,16 +111,10 @@ Notas de la traducción:
 - Ya no hay slugs faltantes en `es/`, pero el fallback sigue siendo útil para robustez futura (nuevos docs en `en/` sin traducción inmediata)
 - Opción: en `MateClawDocService.read()`, si el slug no existe en `es`, leer de `en` (y quizás listar con un marcador de idioma)
 
-### P4/P5 — Prompts internos del LLM y marcadores de protocolo (AVANZADO — ver notas)
-
-**Marcadores de protocolo (P5): COMPLETO.** Emisión en español (`[Error]`, `Fuentes:`, `[Pendiente de aprobación]`, `[Instrucción de tarea]`, `[Resumen de observaciones de herramientas]`) + parsing **bilingüe** (chino legacy + español) en backend y frontend, para no romper BD histórica ni streams. Templates de error LLM y `DelegateAgentTool` en español. Commits: `60ecc2a9` (marcadores + frontend + prompts graph/context/memory), `10649a45` (prompts wiki/skill/research). Tests del área verdes (SourceEvidenceLedger, ChannelErrorClassifier, aprobación).
-
-**Prompts (P4): 60/60 .txt traducidos** al español (o ya neutros en inglés). Contratos preservados: schemas JSON, reglas `[[slug]]`, formato FILE-block, frontmatter YAML, placeholders, marcadores literales (los caracteres chinos restantes son ejemplos de slug o marcadores inyectados por el sistema).
-
-**Pendiente/verificación recomendada:**
-- ⚠️ Cambio de comportamiento del LLM: los prompts traducidos requieren **pruebas de regresión** en una instancia real (chat, wiki digest, memory, research, cron) — el modelo debe seguir produciendo el mismo JSON/estructura con instrucciones en español
-- Verificar que los marcadores `Fuentes:`/`[Error]` se renderizan bien en la UI y que la BD con datos chinos históricos sigue parseando
-- No commitear nada de esto sin re-aplicar la tolerancia bilingüe si se vuelve a tocar (ver CUSTOMIZATIONS.md)
+### Residuales P4/P5 (⚠️ pendiente de verificación fina)
+- **Verificar en la UI** que los marcadores `Fuentes:`/`[Error]`/`[Pendiente de aprobación]` se renderizan bien (el chat real solo se probó por API/SSE; la renderización en el frontend del chat y la vista de historial de la BD con datos chinos no se validó visualmente)
+- **Pruebas de regresión en más áreas** si se quiere completitud: research (`draft`/`compose`), skill (`synthesize`/`reflect`/`routine`), content-studio, webchat — no se ejercitaron (requieren flujos más largos / canales configurados)
+- **Nunca eliminar la variante legacy del parsing** al tocar marcadores de nuevo (ver CUSTOMIZATIONS.md); mantener la tolerancia bilingüe
 
 ### P6 — CI/CD (del plan original)
 - Pipeline GitHub Actions: build + tests + empaquetado desktop (hoy no existe; validar con `mvn compile` JDK 21 y `vue-tsc --noEmit`)
@@ -97,7 +127,7 @@ Notas de la traducción:
 ## ⚠️ Notas técnicas críticas (leer antes de trabajar)
 
 1. **JDK 21 obligatorio** para el server (Lombok no soporta JDK 25): `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`
-2. **`.env` con variables vacías rompe Spring** al correr local (ej. `MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB=`) — filtrarlas o usar `/tmp/launch-mateclaw.sh`
+2. **`.env` con variables vacías rompe Spring** al correr local (ej. `MATECLAW_SKILL_UPLOAD_MAX_ENTRY_SIZE_MB=`) — filtrarlas o usar `/tmp/launch-mateclaw.sh`. **Ojo:** los scripts `/tmp/launch-mateclaw.sh` y `/tmp/launch-ui.sh` se regeneran en cada sesión (viven en `/tmp`, se borran al reiniciar). El lanzamiento del server dev usa: JDK 21, `SPRING_PROFILES_ACTIVE=postgres`, `DB_HOST=127.0.0.1`, `DB_PORT=5435` (el postgres Docker), puerto 18088, y ejecuta el JAR de `mateclaw-server/target/` (reconstruir antes con `mvn install -DskipTests -pl mateclaw-server`).
 3. **Puertos ocupados en la máquina del usuario**: 5432 (PG local 9.6), 5433 (PG 13), 5434 (lucho-db-dev), 5173 (otro proyecto vite) → usar 5435 y 5174
 4. **Módulo plugin-api debe instalarse** antes de correr el server local: `mvn install -DskipTests -pl mateclaw-plugin-api` (y el pom padre: `mvn -N install`)
 5. **Tests UI**: 8 fallos preexistentes del upstream (product-cards/streaming/team-run) — no son regresiones
