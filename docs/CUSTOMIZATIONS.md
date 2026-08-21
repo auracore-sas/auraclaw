@@ -33,6 +33,7 @@ dev      → referencia local de la rama de desarrollo del upstream (no trabajam
 | `mateclaw-desktop/branding.config.json` | Nombre/appId/equipo/copyright → AuraClaw (appId: `com.auracore.auraclaw`) | Tomar nuestra versión |
 | `AGENTS.md` | Contexto para agentes de codificación (nuestro, no existe en upstream) | Sin conflicto (archivo nuevo). Si upstream crea el suyo: conservar NUESTRO |
 | `docs/CUSTOMIZATIONS.md` | Este archivo (nuestro, no existe en upstream) | Sin conflicto (archivo nuevo) |
+| **Documentación en español (COMPLETA)** — `mateclaw-server/src/main/resources/docs/es/*.md` (40 archivos, ~860KB): mismo slug que `en/`, traducción completa de los 34 documentos pendientes + los 6 de la fase inicial. Enlaces `./slug` con anclas solo cuando el header queda en inglés. Términos técnicos sin traducir (ReAct, Tool Guard, workspace, sidecar…); marcadores de protocolo en chino preservados | Traducción neutra (latinoamérica, tú informal) | Archivos nuevos = aditivos, sin conflicto. Si upstream agrega/renombra slugs en `en/`, replicar en `es/`. `MateClawDocService.VALID_LANG` ya incluye `es` (líneas nuestras, re-aplicar si upstream lo toca) |
 | *(futuro)* `mateclaw-ui/...` | Título, i18n `es-ES`, textos visibles | Archivos aditivos (`es-ES.ts`) = sin conflicto; textos en `en-US.ts`/`zh-CN.ts` = re-aplicar |
 
 ### Sustituciones de branding (apply después de cada merge si hace falta)

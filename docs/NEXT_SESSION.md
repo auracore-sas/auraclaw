@@ -1,7 +1,7 @@
 # NEXT_SESSION.md — Resumen de la sesión y pendientes
 
 > Documento de contexto para retomar el trabajo en la siguiente sesión.
-> Fecha de la sesión: 2026-08-20 · Rama: `main` (base v2.1.0) · Fork: `auracore-sas/auraclaw`
+> Fecha de la sesión: 2026-08-21 (P1 completado) · Rama: `main` (base v2.1.0) · Fork: `auracore-sas/auraclaw`
 
 ---
 
@@ -48,21 +48,32 @@
 
 ---
 
-## 📌 Pendiente para la siguiente sesión (priorizado)
+## ✅ P1 COMPLETADO — Documentación en español (2026-08-21)
 
-### P1 — Documentación en español (Fases 2-5, ~34 archivos / ~756KB)
-Traducir `docs/en/*.md` → `docs/es/` (mismo slug, mantener frontmatter, enlaces `./slug`):
-- **Fase 2** (uso diario): chat, agents, memory, wiki
-- **Fase 3** (configuración): models, tools, skills, channels, webchat
-- **Fase 4** (seguridad/operación): security, mcp, console, config, workspaces, triggers, workflow
-- **Fase 5** (avanzado): api, architecture, docker-deploy, desktop, acp, multimodal, model3d, teams, goals, content-studio, wecom-tuning, ambient-ai, backstage, faq, releases, roadmap, contributing, openapi
+**Los 34 archivos pendientes de `docs/en/*.md` → `docs/es/` están traducidos.** Ahora `es/` tiene los mismos 40 slugs que `en/` (~860KB). Commits:
+- `c27aaae9` Fase 2 (chat, agents, memory, wiki)
+- `8fd171ce` Fase 3 (models, tools, skills, channels, webchat)
+- `af0c1e22` Fase 4 (security, mcp, console, config, workspaces, triggers, workflow)
+- `645376e9` / `8831a310` / `bf02c675` Fase 5 (api, architecture, docker-deploy, desktop, acp, multimodal, model3d, teams, goals, content-studio, wecom-tuning, ambient-ai, backstage, faq, releases, roadmap, contributing, openapi)
+
+Notas de la traducción:
+- Convención: español neutro (latinoamérica, tú informal), mismos slugs, `./slug` relativo, frontmatter conservado solo donde existía layout VitePress (index/intro/agents/…) con `title`/`description`/`keywords` traducidos
+- Anclas `#slug`: solo se conservaron las que apuntan a headers que quedaron en inglés (`#llm-wiki`, `#nano-banana`, `#feishu-lark`, `#trust-error-translation`); el resto se quitó (los headers traducidos generan anclas distintas)
+- Términos técnicos sin traducir: ReAct, Plan-and-Execute, Tool Guard, workspace(s), sidecar, streaming, prompts, seeds…
+- Marcadores de protocolo chinos (`[错误]`, `来源：`, `## 自定义`, regex) preservados donde el sistema los parsea
+- `es/doctor.md` (sesión anterior) servía de patrón de estilo
+
+---
+
+## 📌 Pendiente para la siguiente sesión (priorizado)
 
 ### P2 — Configuración de modelos del usuario (recomendado)
 - El chat solo funciona con **DeepSeek** (único proveedor con clave). Modelos Qwen/GPT habilitados sin clave → errores si se seleccionan
 - Opciones: agregar claves (DashScope/OpenAI) en Ajustes → Modelos, o deshabilitar modelos sin clave
 
-### P3 — Fallback docs es→en (opcional)
-- Enlaces a documentos aún no traducidos muestran "Document not found". Opción: fallback en `MateClawDocService.read()` a `en` cuando el slug no exista en `es`
+### P3 — Fallback docs es→en (opcional, AHORA VIABLE)
+- Ya no hay slugs faltantes en `es/`, pero el fallback sigue siendo útil para robustez futura (nuevos docs en `en/` sin traducción inmediata)
+- Opción: en `MateClawDocService.read()`, si el slug no existe en `es`, leer de `en` (y quizás listar con un marcador de idioma)
 
 ### P4 — Prompts internos del LLM en chino (~2,370 líneas)
 - Prompts de agentes/wiki/workflows siguen en chino (funcionan; el modelo responde en español por instrucción). Traducirlos es un cambio coordinado de comportamiento — requiere pruebas
