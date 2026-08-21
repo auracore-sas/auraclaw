@@ -1667,15 +1667,9 @@ _Este archivo evoluciona contigo. Una vez que sepas quién eres, actualízalo._
 ON CONFLICT (id) DO UPDATE SET agent_id=EXCLUDED.agent_id, filename=EXCLUDED.filename, content=EXCLUDED.content, file_size=EXCLUDED.file_size, enabled=EXCLUDED.enabled, sort_order=EXCLUDED.sort_order, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
-VALUES (1000200013, 1000000002, 'PROFILE.md', '## Identidad
+VALUES (1000200013, 1000000002, 'PROFILE.md', '## Perfil del Usuario
+> Este archivo describe al USUARIO (la persona que usa este agente), no al agente. No registres aquí la identidad, rol ni estilo del agente.
 
-- Nombre:
-- Rol:
-- Estilo:
-
-## Perfil del Usuario
-
-- Nombre de usuario:
 - Nombre preferido:
 - Antecedentes:
 - Objetivos comunes:
@@ -1806,15 +1800,9 @@ _Este archivo evoluciona contigo. Una vez que sepas quién eres, actualízalo._
 ON CONFLICT (id) DO UPDATE SET agent_id=EXCLUDED.agent_id, filename=EXCLUDED.filename, content=EXCLUDED.content, file_size=EXCLUDED.file_size, enabled=EXCLUDED.enabled, sort_order=EXCLUDED.sort_order, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
-VALUES (1000200023, 1000000003, 'PROFILE.md', '## Identidad
+VALUES (1000200023, 1000000003, 'PROFILE.md', '## Perfil del Usuario
+> Este archivo describe al USUARIO (la persona que usa este agente), no al agente. No registres aquí la identidad, rol ni estilo del agente.
 
-- Nombre:
-- Rol:
-- Estilo:
-
-## Perfil del Usuario
-
-- Nombre de usuario:
 - Nombre preferido:
 - Estilo de colaboración:
 - Preferencias de salida:

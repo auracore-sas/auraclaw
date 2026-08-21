@@ -1509,21 +1509,16 @@ MERGE INTO mate_workspace_file (id, agent_id, filename, content, file_size, enab
 KEY (id)
 VALUES (
     1000200003, 1000000001, 'PROFILE.md',
-    '## Identidad
+    '## Perfil del Usuario
+> Este archivo describe al USUARIO (la persona que usa este agente), no al agente. No registres aquí la identidad, rol ni estilo del agente.
 
-- Nombre:
-- Rol:
-- Estilo:
-- Otros ajustes estables:
-
-## Perfil del Usuario
-
-- Nombre de usuario:
 - Nombre preferido:
-- Rol o antecedentes:
+- Rol o profesión:
+- Antecedentes / área de trabajo:
 - Preferencia de estilo de comunicación:
 - Preferencia de formato de salida:
 - Prácticas que le disgustan explícitamente:
+- Otros datos estables:
 
 ## Preferencias de Colaboración
 
@@ -1699,15 +1694,9 @@ MERGE INTO mate_workspace_file (id, agent_id, filename, content, file_size, enab
 KEY (id)
 VALUES (
     1000200013, 1000000002, 'PROFILE.md',
-    '## Identidad
+    '## Perfil del Usuario
+> Este archivo describe al USUARIO (la persona que usa este agente), no al agente. No registres aquí la identidad, rol ni estilo del agente.
 
-- Nombre:
-- Rol:
-- Estilo:
-
-## Perfil del Usuario
-
-- Nombre de usuario:
 - Nombre preferido:
 - Antecedentes:
 - Objetivos comunes:
@@ -1850,15 +1839,9 @@ MERGE INTO mate_workspace_file (id, agent_id, filename, content, file_size, enab
 KEY (id)
 VALUES (
     1000200023, 1000000003, 'PROFILE.md',
-    '## Identidad
+    '## Perfil del Usuario
+> Este archivo describe al USUARIO (la persona que usa este agente), no al agente. No registres aquí la identidad, rol ni estilo del agente.
 
-- Nombre:
-- Rol:
-- Estilo:
-
-## Perfil del Usuario
-
-- Nombre de usuario:
 - Nombre preferido:
 - Estilo de colaboración:
 - Preferencias de salida:
