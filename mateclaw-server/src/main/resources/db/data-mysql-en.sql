@@ -1551,16 +1551,9 @@ ON DUPLICATE KEY UPDATE agent_id=VALUES(agent_id), filename=VALUES(filename), co
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (
     1000200003, 1000000001, 'PROFILE.md',
-    '## Identity
+    '## User Profile
+> This file describes the USER (the person using this agent), not the agent. Do not record the agent's identity, role or style here.
 
-- Name:
-- Role:
-- Style:
-- Other stable settings:
-
-## User Profile
-
-- Username:
 - Preferred name:
 - Role or background:
 - Communication style preference:
@@ -1737,15 +1730,9 @@ ON DUPLICATE KEY UPDATE agent_id=VALUES(agent_id), filename=VALUES(filename), co
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (
     1000200013, 1000000002, 'PROFILE.md',
-    '## Identity
+    '## User Profile
+> This file describes the USER (the person using this agent), not the agent. Do not record the agent's identity, role or style here.
 
-- Name:
-- Role:
-- Style:
-
-## User Profile
-
-- Username:
 - Preferred name:
 - Background:
 - Common goals:
@@ -1884,15 +1871,9 @@ ON DUPLICATE KEY UPDATE agent_id=VALUES(agent_id), filename=VALUES(filename), co
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (
     1000200023, 1000000003, 'PROFILE.md',
-    '## Identity
+    '## User Profile
+> This file describes the USER (the person using this agent), not the agent. Do not record the agent's identity, role or style here.
 
-- Name:
-- Role:
-- Style:
-
-## User Profile
-
-- Username:
 - Preferred name:
 - Collaboration style:
 - Output preferences:

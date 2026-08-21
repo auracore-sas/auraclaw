@@ -1548,16 +1548,9 @@ ON DUPLICATE KEY UPDATE agent_id=VALUES(agent_id), filename=VALUES(filename), co
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (
     1000200003, 1000000001, 'PROFILE.md',
-    '## 身份
+    '## 用户资料
+> 本文件描述的是用户（使用该智能体的人），而非智能体本身。请勿在此记录智能体的身份、角色或风格。
 
-- 名字：
-- 定位：
-- 风格：
-- 其他稳定设定：
-
-## 用户资料
-
-- 用户名：
 - 偏好称呼：
 - 角色或背景：
 - 沟通风格偏好：
@@ -1734,15 +1727,9 @@ ON DUPLICATE KEY UPDATE agent_id=VALUES(agent_id), filename=VALUES(filename), co
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (
     1000200013, 1000000002, 'PROFILE.md',
-    '## 身份
+    '## 用户资料
+> 本文件描述的是用户（使用该智能体的人），而非智能体本身。请勿在此记录智能体的身份、角色或风格。
 
-- 名字：
-- 定位：
-- 风格：
-
-## 用户资料
-
-- 用户名：
 - 偏好称呼：
 - 背景：
 - 常见目标：
@@ -1881,15 +1868,9 @@ ON DUPLICATE KEY UPDATE agent_id=VALUES(agent_id), filename=VALUES(filename), co
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
 VALUES (
     1000200023, 1000000003, 'PROFILE.md',
-    '## 身份
+    '## 用户资料
+> 本文件描述的是用户（使用该智能体的人），而非智能体本身。请勿在此记录智能体的身份、角色或风格。
 
-- 名字：
-- 定位：
-- 风格：
-
-## 用户资料
-
-- 用户名：
 - 偏好称呼：
 - 协作方式：
 - 输出偏好：

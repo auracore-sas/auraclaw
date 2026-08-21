@@ -1479,16 +1479,9 @@ _这文件随你进化。了解自己是谁后，就更新它。_', 1024, TRUE, 
 ON CONFLICT (id) DO UPDATE SET agent_id=EXCLUDED.agent_id, filename=EXCLUDED.filename, content=EXCLUDED.content, file_size=EXCLUDED.file_size, enabled=EXCLUDED.enabled, sort_order=EXCLUDED.sort_order, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
-VALUES (1000200003, 1000000001, 'PROFILE.md', '## 身份
+VALUES (1000200003, 1000000001, 'PROFILE.md', '## 用户资料
+> 本文件描述的是用户（使用该智能体的人），而非智能体本身。请勿在此记录智能体的身份、角色或风格。
 
-- 名字：
-- 定位：
-- 风格：
-- 其他稳定设定：
-
-## 用户资料
-
-- 用户名：
 - 偏好称呼：
 - 角色或背景：
 - 沟通风格偏好：
@@ -1649,15 +1642,9 @@ _这文件随你进化。了解自己是谁后，就更新它。_', 1024, TRUE, 
 ON CONFLICT (id) DO UPDATE SET agent_id=EXCLUDED.agent_id, filename=EXCLUDED.filename, content=EXCLUDED.content, file_size=EXCLUDED.file_size, enabled=EXCLUDED.enabled, sort_order=EXCLUDED.sort_order, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
-VALUES (1000200013, 1000000002, 'PROFILE.md', '## 身份
+VALUES (1000200013, 1000000002, 'PROFILE.md', '## 用户资料
+> 本文件描述的是用户（使用该智能体的人），而非智能体本身。请勿在此记录智能体的身份、角色或风格。
 
-- 名字：
-- 定位：
-- 风格：
-
-## 用户资料
-
-- 用户名：
 - 偏好称呼：
 - 背景：
 - 常见目标：
@@ -1780,15 +1767,9 @@ _这文件随你进化。了解自己是谁后，就更新它。_', 1024, TRUE, 
 ON CONFLICT (id) DO UPDATE SET agent_id=EXCLUDED.agent_id, filename=EXCLUDED.filename, content=EXCLUDED.content, file_size=EXCLUDED.file_size, enabled=EXCLUDED.enabled, sort_order=EXCLUDED.sort_order, update_time=EXCLUDED.update_time, deleted=EXCLUDED.deleted;
 
 INSERT INTO mate_workspace_file (id, agent_id, filename, content, file_size, enabled, sort_order, create_time, update_time, deleted)
-VALUES (1000200023, 1000000003, 'PROFILE.md', '## 身份
+VALUES (1000200023, 1000000003, 'PROFILE.md', '## 用户资料
+> 本文件描述的是用户（使用该智能体的人），而非智能体本身。请勿在此记录智能体的身份、角色或风格。
 
-- 名字：
-- 定位：
-- 风格：
-
-## 用户资料
-
-- 用户名：
 - 偏好称呼：
 - 协作方式：
 - 输出偏好：
