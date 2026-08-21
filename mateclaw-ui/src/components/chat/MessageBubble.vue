@@ -688,6 +688,7 @@ const errorDescription = computed(() => {
       .replace(/^LLM 调用失败[:：]\s*/, '')
       .replace(/^认证失败[:：]\s*/, '')
       .replace(/^\[错误]\s*/, '')
+      .replace(/^\[Error]\s*/, '')
   }
   return t(`chat.error.${errorInfo.value.category}.description`)
 })
@@ -789,6 +790,8 @@ const isApprovalPlaceholder = (text: string) => {
   return text.includes('[APPROVAL_PENDING]')
     || text.includes('[⏳ 等待审批]')
     || text.includes('[等待审批]')
+    || text.includes('[Pendiente de aprobación]')
+    || text.includes('[本次没有输出]')
 }
 
 const displayContent = computed(() => {
@@ -797,8 +800,9 @@ const displayContent = computed(() => {
   if (isGenerating.value && !text) return ''
   // 过滤审批占位文本 — 这些消息由审批面板展示，不应作为正文显示
   if (text && isApprovalPlaceholder(text)) return ''
-  // 有错误卡片时隐藏 [错误] 原始文本，避免重复展示
-  if (status.value === 'failed' && errorInfo.value && text.startsWith('[错误]')) return ''
+  // 有错误卡片时隐藏 [错误]/[Error] 原始文本，避免重复展示
+  if (status.value === 'failed' && errorInfo.value
+      && (text.startsWith('[错误]') || text.startsWith('[Error]'))) return ''
   return linkifyGeneratedFileUrls(text, generatedFileNames.value)
 })
 

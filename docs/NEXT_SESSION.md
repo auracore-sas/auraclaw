@@ -3,6 +3,7 @@
 > Documento de contexto para retomar el trabajo en la siguiente sesión.
 > Fecha de la sesión: 2026-08-21 · Rama: `main` (base v2.1.0) · Fork: `auracore-sas/auraclaw`
 > **Sesión 2026-08-21 (2ª): completados P1 (docs es), P4/P5 (prompts + marcadores), pruebas de regresión, y corrección del matiz de memoria.**
+> **Sesión 2026-08-21 (3ª): P2 completado (OmniRoute) + verificación visual P4/P5 con 3 fixes de renderizado bilingüe en frontend.**
 
 ---
 
@@ -99,20 +100,39 @@ Notas de la traducción:
 
 **Commits:** `1eb098b6` (seeds es + docs) · `e5e1c3fb` (seeds en/zh).
 
+## ✅ P2 COMPLETADO — Concentrador de modelos OmniRoute (2026-08-21)
+
+**Configurado por el usuario en la UI (Ajustes → Modelos):** provider `omniroute` (custom, OpenAI-compatible, discovery + connection check habilitados) apuntando a su gateway OmniRoute; modelo `openrouter/stealth/ox-alpha` habilitado como default del agente. El routing/failback por contexto (contexto agotado → siguiente modelo, combos, circuit breakers) lo gestiona **OmniRoute** (gateway self-hosted, un solo endpoint OpenAI-compatible); AuraClaw solo necesita el provider `openai-compatible` — el failover propio de AuraClaw queda como respaldo si el gateway cae.
+
+⚠️ **Nota operativa — `chat_admission_busy` (503):** es un error PROPIO de OmniRoute (backpressure local, antes del routing): desde v3.8.49 su "structure-aware chat admission" limita a **1 petición pesada concurrente** (`OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT=1`); si dos agentes/contextos largos se solapan → 503 con `code=chat_admission_busy`, `Retry-After`, y el cliente (pi, AuraClaw, etc.) reintenta y puede agotar intentos. Regresión conocida 3.8.48→3.8.49 (issue #10183). Soluciones: subir `OMNIROUTE_CHAT_MAX_HEAVY_IN_FLIGHT=2` (reiniciar gateway), bajar a 3.8.48, o esperar la versión con cola acotada (#9176).
+
+## ✅ P4/P5 residuales COMPLETADOS — Verificación visual en UI (2026-08-21)
+
+**Verificación en browser real (Playwright + google-chrome headless, login admin, conversación de prueba `test-error-p45` con datos sintéticos en BD dev):**
+
+| Check | Resultado |
+|---|---|
+| `[Error]` español persistido (status failed) | ✅ Tarjeta de error (".Falló la autenticación del modelo"), sin texto crudo duplicado |
+| `[错误]` legacy persistido (status failed) | ✅ Tarjeta de error, sin texto crudo (comportamiento legacy preservado) |
+| `[Pendiente de aprobación]` (status awaiting_approval) | ✅ Stub oculto, sin texto crudo (la tarjeta de aprobación solo vive en flujos en vivo) |
+| `**Fuentes:**` y `来源：` con citas `[n]` | ✅ Ambos headers renderizan como markdown |
+| `[Instrucción de tarea]` en goal de plan | ✅ Limpio en PlanBoard (muestra solo la instrucción) |
+
+**3 fixes aplicados en frontend (parsing bilingüe, ver CUSTOMIZATIONS.md):**
+- `MessageBubble.vue`: `displayContent` ahora oculta también `[Error]` (solo ocultaba `[错误]` legacy → texto duplicado con tarjeta de error en español); `errorDescription` limpia el prefijo `[Error]`; `isApprovalPlaceholder` incluye `[Pendiente de aprobación]` y el stub legacy `[本次没有输出]`
+- `PlanDetailPanel.vue` + `PlanBoard.vue`: `cleanGoal` ahora limpia `[Instrucción de tarea]` además de `[任务指令]` (espejo del scrubber bilingüe del backend `PlanGenerationNode.displayGoal`)
+
+**Validación:** `vue-tsc --noEmit` OK; tests UI: **306 pass / 8 fail preexistentes** (product-cards/streaming/team-run, sin regresiones). Dato de entorno: la verificación por Orca computer-use no fue posible (falta `gir1.2-atspi-2.0` en el sistema, requiere sudo); se usó Playwright con `google-chrome` como executable.
+
 ---
 
 ## 📌 Pendiente para la siguiente sesión (priorizado)
-
-### P2 — Configuración de modelos del usuario (recomendado)
-- El chat solo funciona con **DeepSeek** (único proveedor con clave). Modelos Qwen/GPT habilitados sin clave → errores si se seleccionan
-- Opciones: agregar claves (DashScope/OpenAI) en Ajustes → Modelos, o deshabilitar modelos sin clave
 
 ### P3 — Fallback docs es→en (opcional, AHORA VIABLE)
 - Ya no hay slugs faltantes en `es/`, pero el fallback sigue siendo útil para robustez futura (nuevos docs en `en/` sin traducción inmediata)
 - Opción: en `MateClawDocService.read()`, si el slug no existe en `es`, leer de `en` (y quizás listar con un marcador de idioma)
 
-### Residuales P4/P5 (⚠️ pendiente de verificación fina)
-- **Verificar en la UI** que los marcadores `Fuentes:`/`[Error]`/`[Pendiente de aprobación]` se renderizan bien (el chat real solo se probó por API/SSE; la renderización en el frontend del chat y la vista de historial de la BD con datos chinos no se validó visualmente)
+### Regresiones residuales P4/P5 (opcional, fuera del bloqueo)
 - **Pruebas de regresión en más áreas** si se quiere completitud: research (`draft`/`compose`), skill (`synthesize`/`reflect`/`routine`), content-studio, webchat — no se ejercitaron (requieren flujos más largos / canales configurados)
 - **Nunca eliminar la variante legacy del parsing** al tocar marcadores de nuevo (ver CUSTOMIZATIONS.md); mantener la tolerancia bilingüe
 

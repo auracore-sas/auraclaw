@@ -144,8 +144,13 @@ function cleanGoal(goal: string): string {
   let s = goal
     .replace(/<\s*memory-context\s*>[\s\S]*?<\s*\/\s*memory-context\s*>/gi, '')
     .replace(/<\/?\s*memory-context\s*>/gi, '')
-  const task = s.lastIndexOf('[任务指令]')
-  if (task >= 0) s = s.slice(task + '[任务指令]'.length)
+  const taskCn = s.lastIndexOf('[任务指令]')
+  const taskEs = s.lastIndexOf('[Instrucción de tarea]')
+  const task = Math.max(taskCn, taskEs)
+  if (task >= 0) {
+    const marker = task === taskEs ? '[Instrucción de tarea]' : '[任务指令]'
+    s = s.slice(task + marker.length)
+  }
   const followup = s.indexOf('[Follow-up guidance]')
   if (followup >= 0) s = s.slice(0, followup)
   s = s.trim()
