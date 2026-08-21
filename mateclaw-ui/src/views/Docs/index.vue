@@ -15,6 +15,7 @@
             @click="selectDoc(doc.slug)"
           >
             {{ doc.title }}
+            <span v-if="doc.fallback" class="docs-nav__badge">EN</span>
           </button>
         </div>
       </nav>
@@ -230,6 +231,18 @@ onMounted(async () => {
   line-height: 1.45;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
+}
+
+.docs-nav__badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--mc-text-secondary);
+  background: var(--mc-bg-hover, rgba(128, 128, 128, 0.15));
+  vertical-align: middle;
 }
 
 .docs-nav__item:hover {

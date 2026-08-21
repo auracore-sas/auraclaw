@@ -1887,6 +1887,8 @@ export interface DocMeta {
   title: string
   /** Group label (e.g. 开始 / 使用 / 扩展), mirroring the docs site sidebar sections. */
   group: string
+  /** true = el slug no existe en el idioma pedido y se sirve la versión en inglés (fallback es→en). */
+  fallback?: boolean
 }
 
 export interface DocContent {

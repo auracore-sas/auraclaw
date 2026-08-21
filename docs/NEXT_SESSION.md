@@ -126,11 +126,19 @@ Notas de la traducción:
 
 ---
 
-## 📌 Pendiente para la siguiente sesión (priorizado)
+## ✅ P3 COMPLETADO — Fallback docs es→en (2026-08-21)
 
-### P3 — Fallback docs es→en (opcional, AHORA VIABLE)
-- Ya no hay slugs faltantes en `es/`, pero el fallback sigue siendo útil para robustez futura (nuevos docs en `en/` sin traducción inmediata)
-- Opción: en `MateClawDocService.read()`, si el slug no existe en `es`, leer de `en` (y quizás listar con un marcador de idioma)
+**Implementado en `MateClawDocService`:**
+- `read(lang, slug)`: si el slug no existe en `es/`, sirve la versión de `en/` (robustez para docs nuevos del upstream sin traducción inmediata)
+- `list(lang)`: para `es`, los slugs que solo existen en `en/` se listan al final (grupo «Más») con `fallback=true`; la UI muestra un badge **EN** junto al título (`DocMeta.fallback` en `api/index.ts` + `docs-nav__badge` en `Docs/index.vue`)
+- Tests: `MateClawDocServiceTest` (6 tests, fixtures en `src/test/resources/docs/{en,es}/zz-*.md`) — verdes
+- Verificado en vivo: `GET /docs?lang=es` → 39 slugs (40 archivos − index), fallback=0; slug inexistente → 404 limpio
+
+**Hallazgo colateral:** `a2a.md` / `deepseek-harness.md` existían como artefactos stale en `target/classes/docs/{en,zh}/` (no están en git ni en `src/` — residuo de un build anterior). El fallback los listó como docs en inglés; un `mvn clean install` los purgó. Los 40 docs reales de `es/` están todos traducidos (P1).
+
+---
+
+## 📌 Pendiente para la siguiente sesión (priorizado)
 
 ### Regresiones residuales P4/P5 (opcional, fuera del bloqueo)
 - **Pruebas de regresión en más áreas** si se quiere completitud: research (`draft`/`compose`), skill (`synthesize`/`reflect`/`routine`), content-studio, webchat — no se ejercitaron (requieren flujos más largos / canales configurados)

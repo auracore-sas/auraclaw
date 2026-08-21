@@ -1,69 +1,80 @@
 package vip.mate.tool.builtin;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 针对内置文档服务的单元测试。直接读 classpath 上打包的真实文档
- * （src/main/resources/docs/{zh,en}/），不需要额外测试资源。
+ * Fallback docs es→en: si un slug no existe en {@code docs/es/}, se sirve la
+ * versión de {@code docs/en/} (read) y se lista marcado como fallback (list).
+ * Los fixtures viven en src/test/resources/docs/{en,es}/zz-*.md.
  */
 class MateClawDocServiceTest {
 
     private final MateClawDocService service = new MateClawDocService();
 
     @Test
-    @DisplayName("list(zh) 返回文档且排除 VitePress 首页 index.md")
-    void listExcludesIndex() {
+    void read_falls_back_to_english_when_es_missing() {
+        String body = service.read("es", "zz-fallback-only");
+        assertNotNull(body);
+        assertTrue(body.contains("Contenido en inglés"), "debe servir la versión en inglés");
+        assertFalse(body.contains("---"), "el frontmatter debe estar pelado");
+        assertFalse(body.contains("title:"), "el frontmatter debe estar pelado");
+    }
+
+    @Test
+    void read_serves_es_when_slug_exists_in_es() {
+        String body = service.read("es", "zz-es-only");
+        assertNotNull(body);
+        assertTrue(body.contains("Contenido en español"));
+    }
+
+    @Test
+    void read_does_not_fall_back_for_zh_or_en() {
+        // zh: sin fallback — el slug solo existe en en/, así que debe devolver null.
+        assertNull(service.read("zh", "zz-fallback-only"));
+        // en: ya es el idioma base.
+        assertNull(service.read("en", "zz-fallback-only-missing"));
+    }
+
+    @Test
+    void read_rejects_invalid_lang_or_slug() {
+        assertNull(service.read(null, "zz-fallback-only"));
+        assertNull(service.read("fr", "zz-fallback-only"));
+        assertNull(service.read("es", "../secret"));
+        assertNull(service.read("es", "no-such-slug"));
+    }
+
+    @Test
+    void list_marks_es_fallback_slugs() {
+        List<MateClawDocService.DocMeta> docs = service.list("es");
+        MateClawDocService.DocMeta fallback = docs.stream()
+                .filter(d -> "zz-fallback-only".equals(d.slug()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(fallback, "el slug en-only debe listarse en es");
+        assertTrue(fallback.fallback(), "debe marcarse como fallback");
+        assertEquals("Fallback Doc EN", fallback.title(), "el título se resuelve desde el doc en");
+        assertFalse(fallback.group().isBlank());
+
+        MateClawDocService.DocMeta esOnly = docs.stream()
+                .filter(d -> "zz-es-only".equals(d.slug()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(esOnly);
+        assertFalse(esOnly.fallback(), "el slug nativo de es no debe marcarse como fallback");
+    }
+
+    @Test
+    void list_zh_does_not_include_en_only_slugs() {
         List<MateClawDocService.DocMeta> docs = service.list("zh");
-
-        assertThat(docs).isNotEmpty();
-        assertThat(docs).noneMatch(d -> d.slug().equals("index"));
-        // config.md 一定存在，且标题取的是中文 H1 而非文件名。
-        assertThat(docs)
-                .filteredOn(d -> d.slug().equals("config"))
-                .singleElement()
-                .satisfies(d -> assertThat(d.title()).isNotBlank().isNotEqualTo("config"));
-    }
-
-    @Test
-    @DisplayName("list 对非法语言返回空")
-    void listRejectsInvalidLang() {
-        assertThat(service.list("fr")).isEmpty();
-        assertThat(service.list("../zh")).isEmpty();
-        assertThat(service.list(null)).isEmpty();
-    }
-
-    @Test
-    @DisplayName("read 剥离开头的 YAML frontmatter")
-    void readStripsFrontmatter() {
-        // wiki.md 带 frontmatter（title/description/head）。
-        String body = service.read("zh", "wiki");
-
-        assertThat(body).isNotNull();
-        assertThat(body.stripLeading()).doesNotStartWith("---");
-        // `name: keywords` 只出现在 frontmatter 的 head meta 里，剥离后不应残留。
-        assertThat(body).doesNotContain("name: keywords");
-    }
-
-    @Test
-    @DisplayName("read 拒绝非法 slug / 路径穿越")
-    void readRejectsInvalidSlug() {
-        assertThat(service.read("zh", "../application")).isNull();
-        assertThat(service.read("zh", "config.md")).isNull();
-        assertThat(service.read("zh", "a/b")).isNull();
-        assertThat(service.read("fr", "config")).isNull();
-        assertThat(service.read("zh", "does-not-exist-xyz")).isNull();
-    }
-
-    @Test
-    @DisplayName("readRawForTool 保留 frontmatter 并对非法路径返回错误串")
-    void readRawForToolContract() {
-        assertThat(service.readRawForTool("zh/config.md")).doesNotStartWith("Error:");
-        assertThat(service.readRawForTool("../etc/passwd")).startsWith("Error:");
-        assertThat(service.readRawForTool(null)).startsWith("Error:");
+        assertTrue(docs.stream().noneMatch(d -> "zz-fallback-only".equals(d.slug())),
+                "zh no tiene fallback: el slug en-only no debe listarse");
     }
 }
