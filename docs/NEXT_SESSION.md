@@ -4,6 +4,7 @@
 > Fecha de la sesión: 2026-08-21 · Rama: `main` (base v2.1.0) · Fork: `auracore-sas/auraclaw`
 > **Sesión 2026-08-21 (2ª): completados P1 (docs es), P4/P5 (prompts + marcadores), pruebas de regresión, y corrección del matiz de memoria.**
 > **Sesión 2026-08-21 (3ª): P2 completado (OmniRoute) + verificación visual P4/P5 con 3 fixes de renderizado bilingüe en frontend.**
+> **Sesión 2026-08-21 (4ª): P7 completado (inmersión en el código) → nuevo `docs/CODE_MAP.md` (7 módulos del núcleo mapeados).**
 
 ---
 
@@ -136,6 +137,29 @@ Notas de la traducción:
 
 **Hallazgo colateral:** `a2a.md` / `deepseek-harness.md` existían como artefactos stale en `target/classes/docs/{en,zh}/` (no están en git ni en `src/` — residuo de un build anterior). El fallback los listó como docs en inglés; un `mvn clean install` los purgó. Los 40 docs reales de `es/` están todos traducidos (P1).
 
+## ✅ P7 COMPLETADO — Inmersión en el código (CODE_MAP) (2026-08-21)
+
+**Nuevo entregable: `docs/CODE_MAP.md`** (raíz `docs/`, en español, ~310 líneas) — mapa guiado de los 7 módulos del núcleo, a nivel operativo (capa que **complementa** `architecture.md`, que es la vista de 30.000 pies). Todo verificado recorriendo el código, no copiado de docs.
+
+**Contenido por módulo:** responsabilidad · árbol de paquetes · flujo de una petición · decisiones clave · tabla «Qué quiero → Dónde voy» · gotchas reales del fork.
+
+| Módulo | Esencia destacable | Vía de personalización |
+|---|---|---|
+| 1 · Runtime de agentes | `AgentGraphBuilder` ensambla el StateGraph (ReAct vs Plan-and-Execute según `agent_type`); nodos/aristas = **superficie caliente** de conflictos | Preferir `@Tool` antes que tocar el grafo |
+| 2 · Memoria + workspace | SPI `MemoryProvider` (ficheros PROFILE.md/MEMORY.md, tipada, facts) + `MemoryLifecycleMediator` (prefetch/sync por turno, non-blocking) | Implementar `MemoryProvider` en `com.auracore.*` |
+| 3 · Tools | `ToolRegistry` descubre beans `@Tool` (auto-disponibles); filtro build-time (disclosure ties + recencia) vs **Tool Guard** call-time | **Un bean `@Tool` = LA vía estándar de extender** |
+| 4 · Wiki | Pipeline de digestión (LLM/skill) → páginas `[[slug]]` + citas → hot cache → snippets; reconciliación de links en background | — |
+| 5 · Canales IM | SPI `ChannelAdapter` (start/stop/onMessage/sendMessage, proactividad, tarjetas) | Implementar adapter = canal nuevo |
+| 6 · Seguridad/aprob/audit | `AuthService` JWT/RBAC (+PAT, SSO); `approval` con marcador bilingüe; `audit` trail | ⚠️ clave JWT por defecto es de DEV (sobrescribir en prod) |
+| 7 · Workflow/trigger/cron/acp/plugin | DSL Pebble (subconjunto validado + ACL), triggers→workflow, **ShedLock** (cron multi-instancia), puente ACP (Claude Code/Codex), plugins (SDK) | `StepAdapter` nuevo = paso nuevo del DSL |
+
+**Hallazgos útiles para el fork:** `SourceEvidenceLedger` (M1) alimenta las citas `Fuentes:` del frontend ·
+`RoleCapabilities` es autoritativa (**no hay copia local** de la tabla de roles) · el código «nueva tool =
+auto-disponible» explica por qué importa la config de disclosure/guard · marcadores bilingües viven en
+`ApprovalPlaceholderUtil` (backend) + `MessageBubble` (frontend).
+
+**Commits:** `docs(codemap): ...` (P7) — ver log de la sesión.
+
 ---
 
 ## 📌 Pendiente para la siguiente sesión (priorizado)
@@ -144,11 +168,13 @@ Notas de la traducción:
 - **Pruebas de regresión en más áreas** si se quiere completitud: research (`draft`/`compose`), skill (`synthesize`/`reflect`/`routine`), content-studio, webchat — no se ejercitaron (requieren flujos más largos / canales configurados)
 - **Nunca eliminar la variante legacy del parsing** al tocar marcadores de nuevo (ver CUSTOMIZATIONS.md); mantener la tolerancia bilingüe
 
-### P6 — CI/CD (del plan original)
+### P6 — CI/CD (del plan original, ÚNICO pendiente de la Fase 1)
 - Pipeline GitHub Actions: build + tests + empaquetado desktop (hoy no existe; validar con `mvn compile` JDK 21 y `vue-tsc --noEmit`)
+- Conversación: se acordó dejarlo **para el final** — priorizar producto/features antes que CI
 
-### P7 — Inmersión en el código (Fase 1 del plan original)
-- Mapeo guiado de los módulos clave (runtime de agentes, tools, wiki, canales, seguridad)
+### Futuro (post-P6)
+- Regresiones residuales P4/P5 (research `draft`/`compose`, skill, content-studio, webchat) — opcionales, fuera del bloqueo
+- Features de producto nuevas sobre la base CODE_MAP (Módulos 1-3) — la inmersión ya deja localizados los puntos de extensión
 
 ---
 
