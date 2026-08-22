@@ -1491,6 +1491,8 @@ public class AgentGraphBuilder {
             return modelConfigService.listModelsByProvider(providerId).stream()
                     .filter(m -> Boolean.TRUE.equals(m.getEnabled()))
                     .filter(m -> m.getModelType() == null || "chat".equals(m.getModelType()))
+                    // V900: never fail over chat onto an internal-job-dedicated model
+                    .filter(m -> modelConfigService.isChatUsable(m))
                     .findFirst()
                     .orElse(null);
         } catch (Exception e) {
@@ -1600,6 +1602,8 @@ public class AgentGraphBuilder {
     private ModelConfigEntity findFirstAvailableChatModel() {
         return modelConfigService.listByType("chat").stream()
                 .filter(m -> Boolean.TRUE.equals(m.getEnabled()))
+                // V900: only chat-usable models qualify as an emergency chat fallback
+                .filter(m -> Boolean.TRUE.equals(m.getChatEligible()))
                 .filter(m -> {
                     try {
                         return modelProviderService.isProviderConfigured(m.getProvider());

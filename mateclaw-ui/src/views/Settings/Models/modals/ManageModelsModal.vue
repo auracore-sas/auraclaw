@@ -126,6 +126,35 @@
                 <button class="card-btn test-btn" type="button" @click="cancelEditWindow">{{ t('common.cancel') }}</button>
                 <div class="model-window-hint">{{ t('settings.model.contextWindow.hint') }}</div>
               </div>
+              <!-- V900: usage scope — badges + inline editor -->
+              <div v-if="editingUsageId !== model.id" class="model-usage">
+                <span class="model-window-label">{{ t('settings.model.usage.label') }}</span>
+                <span v-if="usageScopeList(model).length === 0" class="model-usage-badge model-usage-badge--chat">
+                  {{ t('settings.model.usage.chat') }}
+                </span>
+                <span
+                  v-for="u in usageScopeList(model)"
+                  :key="u"
+                  class="model-usage-badge"
+                  :class="u === 'chat' ? 'model-usage-badge--chat' : 'model-usage-badge--job'"
+                >{{ usageLabel(u) }}</span>
+                <button class="model-window-edit" type="button" @click="startEditUsage(model)">
+                  {{ t('settings.model.usage.edit') }}
+                </button>
+              </div>
+              <div v-else class="model-window-form">
+                <label class="usage-check">
+                  <input type="checkbox" :checked="usageDraft.includes('chat')" @change="toggleUsageDraft('chat')" />
+                  {{ t('settings.model.usage.chat') }}
+                </label>
+                <label class="usage-check">
+                  <input type="checkbox" :checked="usageDraft.includes('wiki')" @change="toggleUsageDraft('wiki')" />
+                  {{ t('settings.model.usage.wiki') }}
+                </label>
+                <button class="card-btn test-btn" type="button" @click="saveUsage(model)">{{ t('common.save') }}</button>
+                <button class="card-btn test-btn" type="button" @click="cancelEditUsage">{{ t('common.cancel') }}</button>
+                <div class="model-window-hint">{{ t('settings.model.usage.hint') }}</div>
+              </div>
               <div v-if="modelTestResults[model.id]" class="model-test-result" :class="modelTestResults[model.id].success ? 'success' : 'error'">
                 <span v-if="modelTestResults[model.id].success">
                   {{ t('settings.model.discovery.modelOk') }} · {{ t('settings.model.discovery.latency', { ms: modelTestResults[model.id].latencyMs }) }}
@@ -232,6 +261,7 @@ const emit = defineEmits<{
   removeModel: [model: ProviderModelInfo]
   addModel: []
   updateContextWindow: [model: ProviderModelInfo, maxInputTokens: number | null]
+  updateUsage: [model: ProviderModelInfo, usageScope: string | null]
 }>()
 
 // Inline context-window editor. One row at a time; the value is a plain
@@ -240,7 +270,10 @@ const editingWindowId = ref<string | null>(null)
 const windowInput = ref<number | null>(null)
 
 watch(() => props.show, open => {
-  if (!open) cancelEditWindow()
+  if (!open) {
+    cancelEditWindow()
+    cancelEditUsage()
+  }
 })
 
 function startEditWindow(model: ProviderModelInfo) {
@@ -286,6 +319,57 @@ function formatWindow(tokens?: number | null) {
     return (Number.isInteger(k) ? k : k.toFixed(1)) + 'K'
   }
   return String(tokens)
+}
+
+// V900: usage scope — one row at a time, checkboxes for known uses.
+// A model with no scopes is legacy chat-usable; "chat" unchecked means the
+// model is dedicated to internal jobs and normal chat will never use it.
+const editingUsageId = ref<string | null>(null)
+const usageDraft = ref<string[]>([])
+
+function parseUsageScope(model: ProviderModelInfo): string[] {
+  if (!model.usageScope) return []
+  try {
+    const parsed = JSON.parse(model.usageScope)
+    return Array.isArray(parsed) ? parsed.filter((x: unknown): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Scopes to render as badges: legacy (null) shows as ["chat"]. */
+function usageScopeList(model: ProviderModelInfo): string[] {
+  const scopes = parseUsageScope(model)
+  return scopes.length === 0 ? ['chat'] : scopes
+}
+
+function usageLabel(u: string): string {
+  if (u === 'chat') return t('settings.model.usage.chat')
+  if (u === 'wiki') return t('settings.model.usage.wiki')
+  return u
+}
+
+function startEditUsage(model: ProviderModelInfo) {
+  editingUsageId.value = model.id
+  usageDraft.value = [...parseUsageScope(model)]
+}
+
+function cancelEditUsage() {
+  editingUsageId.value = null
+  usageDraft.value = []
+}
+
+function toggleUsageDraft(use: string) {
+  const idx = usageDraft.value.indexOf(use)
+  if (idx >= 0) usageDraft.value.splice(idx, 1)
+  else usageDraft.value.push(use)
+}
+
+function saveUsage(model: ProviderModelInfo) {
+  // Empty draft = legacy chat-usable (null scope). Dedicated model = no "chat".
+  const scope = usageDraft.value.length === 0 ? null : JSON.stringify(usageDraft.value)
+  emit('updateUsage', model, scope)
+  cancelEditUsage()
 }
 
 function windowSourceLabel(source?: string) {
@@ -395,6 +479,12 @@ function windowSourceLabel(source?: string) {
 /* Specific enough to beat the shared .form-input width:100% below. */
 .model-window-form .model-window-input { width: 150px; padding: 5px 8px; font-size: 12px; }
 .model-window-hint { flex-basis: 100%; font-size: 11px; color: var(--mc-text-tertiary); line-height: 1.5; }
+/* V900: usage scope badges + editor */
+.model-usage { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--mc-text-secondary); flex-wrap: wrap; }
+.model-usage-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+.model-usage-badge--chat { background: rgba(34, 197, 94, 0.12); color: rgb(21, 128, 61); }
+.model-usage-badge--job { background: rgba(234, 179, 8, 0.12); color: rgb(161, 98, 7); }
+.usage-check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--mc-text-secondary); cursor: pointer; }
 .model-add-box { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--mc-border-light); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .form-label { display: block; font-size: 13px; color: var(--mc-text-secondary); margin-bottom: 6px; }

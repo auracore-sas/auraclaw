@@ -185,6 +185,15 @@ public class ModelConfigController {
                 providerId, request.getModelId(), request.getMaxInputTokens()));
     }
 
+    @Operation(summary = "设置模型用途范围 (V900)")
+    @PutMapping("/{providerId}/models/usage-scope")
+    @RequireGlobalAdmin
+    public R<ProviderInfoDTO> updateModelUsageScope(@PathVariable String providerId,
+                                                    @RequestBody UpdateModelUsageScopeRequest request) {
+        return R.ok(modelProviderService.updateModelUsageScope(
+                providerId, request.getModelId(), request.getUsageScope()));
+    }
+
     @Operation(summary = "获取模型详情")
     @GetMapping("/{id}")
     @RequireGlobalAdmin

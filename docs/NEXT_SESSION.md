@@ -5,6 +5,7 @@
 > **Sesión 2026-08-21 (2ª): completados P1 (docs es), P4/P5 (prompts + marcadores), pruebas de regresión, y corrección del matiz de memoria.**
 > **Sesión 2026-08-21 (3ª): P2 completado (OmniRoute) + verificación visual P4/P5 con 3 fixes de renderizado bilingüe en frontend.**
 > **Sesión 2026-08-21 (4ª): P7 completado (inmersión en el código) → nuevo `docs/CODE_MAP.md` (7 módulos del núcleo mapeados).**
+> **Sesión 2026-08-21 (5ª): feature V900 `usage_scope` (modelos por propósito) — dedicar LLMs a trabajos internos (wiki) excluyéndolos del chat normal.**
 
 ---
 
@@ -159,6 +160,24 @@ auto-disponible» explica por qué importa la config de disclosure/guard · marc
 `ApprovalPlaceholderUtil` (backend) + `MessageBubble` (frontend).
 
 **Commits:** `docs(codemap): ...` (P7) — ver log de la sesión.
+
+## ✅ V900 COMPLETADO — Uso de modelos por propósito (`usage_scope`) (2026-08-21)
+
+**Feature de aislamiento de modelos** (respuesta a: "¿puedo dedicar un LLM caro al wiki sin que el chat lo use, y que sirva para varias funcionalidades?").
+
+**Semántica:** `usage_scope` = JSON array de usos (`["chat"]`, `["wiki"]`, `["chat","wiki"]`…). NULL/vacío → legacy chat-usable. Sin `"chat"` → modelo dedicado a tareas internas: el chat normal **nunca** lo usa, pero el wiki sí (por id). **Un mismo LLM puede tener varios usos** (p. ej. `["chat","wiki"]`); `modelType` sigue siendo la categoría base (chat/embedding), el multi-propósito va por `usage_scope`.
+
+**Implementado (ver CUSTOMIZATIONS.md para el registro completo):**
+- Migración `V900__model_usage_scope.sql` (3 dialectos; **primera V900 nuestra**)
+- `ModelConfigService.isChatUsable()` + filtros en: `listEnabledModels`, `getDefaultModel`, `resolveModel`, `getDefaultModelByProvider`, `getPrimaryChatModelByProvider` (fail-open ante scope inválido)
+- `AgentGraphBuilder`: failover (`pickFallbackModel`, `findFirstAvailableChatModel`) nunca cae en un modelo dedicado
+- DTO `ModelInfoDTO` expone `usageScope` + `chatEligible`; endpoint `PUT /models/{providerId}/models/usage-scope`
+- UI `ManageModelsModal.vue`: badges de uso + editor inline (checkboxes Chat/Wiki) + i18n 3 idiomas
+- Wiki **sin cambios**: usa `getModel(id)` (ignora usage) y su fallback interno sigue aceptando modelos dedicados
+
+**Validación:** compile OK · `vue-tsc --noEmit` OK · **49 tests verdes** (12 nuevos `ModelConfigServiceUsageScopeTest` + 37 existentes del área). ⚠️ `AgentGraphBuilderIdentityBlockTest` falla preexistente (branding: espera "MateClaw", emite "AuraClaw") — no es regresión de esta feature.
+
+**Pendiente de producto (tras esto):** configurar en UI un proveedor dedicado (p. ej. oficial no-enrutable) con el LLM caro `usage=[wiki]` (u otros usos) + modelo de embeddings, y enlazarlo como `wikiDefaultModelId` de las KBs.
 
 ---
 

@@ -78,6 +78,26 @@ public class ModelConfigEntity {
     private String modalities;
 
     /**
+     * Usage scope for this model, JSON array of lowercase use names, e.g.
+     * {@code ["chat"]}, {@code ["wiki"]} or {@code ["chat","wiki"]}.
+     * <p>
+     * {@code null} / blank → legacy behaviour: the model is chat-usable.
+     * When {@code "chat"} is absent from the array the model is dedicated to
+     * internal jobs (wiki digestion, …): it can still be referenced by job id
+     * (e.g. {@code wikiDefaultModelId}) but is never offered as a normal chat
+     * model (agent default / failover / conversation pin).
+     */
+    private String usageScope;
+
+    /**
+     * Transient, API-facing flag computed by {@code ModelConfigService}: {@code true}
+     * when the model may be used for normal chat. Lets the UI badge dedicated models
+     * while still listing them (e.g. the wiki picker). Never persisted.
+     */
+    @TableField(exist = false)
+    private Boolean chatEligible;
+
+    /**
      * Transient, request-scoped flag set by {@link vip.mate.llm.service.ModelConfigService#listByType}
      * when a modality filter is supplied: {@code true} when this row's declared or
      * heuristically-resolved capabilities cover the requested modality. Lets the

@@ -646,6 +646,9 @@ export const modelApi = {
   /** Per-model input context window. Pass null to clear the override. */
   updateModelContextWindow: (providerId: string, modelId: string, maxInputTokens: number | null) =>
     http.put(`/models/${providerId}/models/context-window`, { modelId, maxInputTokens }),
+  /** V900 (Auracore): set (JSON array string) or clear (null) a model's usage scope. */
+  updateModelUsageScope: (providerId: string, modelId: string, usageScope: string | null) =>
+    http.put(`/models/${providerId}/models/usage-scope`, { modelId, usageScope }),
   getActive: () => http.get('/models/active'),
   setActive: (data: { providerId: string; model: string }) =>
     http.put('/models/active', data),

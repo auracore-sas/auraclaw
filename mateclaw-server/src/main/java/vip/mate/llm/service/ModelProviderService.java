@@ -254,6 +254,17 @@ public class ModelProviderService {
     }
 
     /**
+     * V900 (Auracore): set / clear a model's usage scope. Delegates to
+     * {@link ModelConfigService#updateModelUsageScope} and returns the refreshed
+     * provider info so the UI can re-render badges immediately.
+     */
+    public ProviderInfoDTO updateModelUsageScope(String providerId, String modelId, String usageScope) {
+        getProvider(providerId);
+        modelConfigService.updateModelUsageScope(providerId, modelId, usageScope);
+        return toProviderInfo(getProvider(providerId), modelConfigService.listModelsByProvider(providerId));
+    }
+
+    /**
      * Fill the three window fields the model-management UI reads. Uses the
      * probe-free resolution path so listing providers never issues a request.
      */
@@ -497,6 +508,9 @@ public class ModelProviderService {
                 // from id via ModelFamily — no extra wiring needed here.
                 ModelInfoDTO info = new ModelInfoDTO(model.getModelName(), model.getName());
                 applyContextWindow(info, provider, model);
+                // V900: expose usage scope + chat eligibility for the management UI
+                info.setUsageScope(model.getUsageScope());
+                info.setChatEligible(ModelConfigService.isChatUsable(model));
                 if (Boolean.TRUE.equals(model.getBuiltin())) {
                     builtinModels.add(info);
                 } else {

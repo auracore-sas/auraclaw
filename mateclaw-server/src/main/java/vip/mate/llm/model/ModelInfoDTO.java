@@ -62,6 +62,21 @@ public class ModelInfoDTO {
      */
     private String maxInputTokensSource;
 
+    /**
+     * V900 (Auracore): usage scope, JSON array of lowercase use names, e.g.
+     * {@code ["chat"]}, {@code ["wiki"]} or {@code ["chat","wiki"]}. {@code null}
+     * → legacy chat-usable model. Absence of {@code "chat"} marks a model
+     * dedicated to internal jobs (wiki digestion, …) that normal chat must not use.
+     */
+    private String usageScope;
+
+    /**
+     * V900 (Auracore): whether the model is eligible for normal chat (computed
+     * server-side). {@code false} → internal-job-dedicated model; the UI badges
+     * it and chat-facing pickers filter it out.
+     */
+    private Boolean chatEligible;
+
     public ModelInfoDTO(String id, String name) {
         this.id = id;
         this.name = name;

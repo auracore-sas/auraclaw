@@ -1,6 +1,8 @@
 package vip.mate.llm.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -39,6 +41,40 @@ public class ModelConfigService {
     @Autowired
     private ModelProviderService modelProviderService;
 
+    /**
+     * Whether a model may be used for <b>normal chat</b> (agent base model, failover,
+     * conversation pin, chat pickers).
+     * <p>
+     * Gates on two axes:
+     * <ol>
+     *   <li>Base category: only {@code chat} typed models (legacy {@code null} counts as chat).</li>
+     *   <li>Usage scope: {@code null} / blank → legacy chat-usable. Otherwise the JSON array
+     *       must contain {@code "chat"} (e.g. {@code ["chat","wiki"]}). A model scoped to
+     *       internal jobs only (e.g. {@code ["wiki"]}) is never chat-usable.</li>
+     * </ol>
+     * Fail-open: an unparseable scope degrades to chat-usable so a bad value can never
+     * silently disable chat.
+     */
+    public static boolean isChatUsable(ModelConfigEntity m) {
+        if (m == null) {
+            return false;
+        }
+        String type = m.getModelType();
+        if (type != null && !"chat".equalsIgnoreCase(type)) {
+            return false;
+        }
+        String usage = m.getUsageScope();
+        if (StrUtil.isBlank(usage)) {
+            return true;
+        }
+        try {
+            List<String> scopes = JSONUtil.toList(usage, String.class);
+            return scopes.stream().anyMatch(s -> "chat".equalsIgnoreCase(s == null ? "" : s.trim()));
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
     public List<ModelConfigEntity> listModels() {
         return modelConfigMapper.selectList(new LambdaQueryWrapper<ModelConfigEntity>()
                 .orderByDesc(ModelConfigEntity::getIsDefault)
@@ -54,7 +90,11 @@ public class ModelConfigService {
                            .or().eq(ModelConfigEntity::getModelType, "chat"))
                 .orderByAsc(ModelConfigEntity::getProvider)
                 .orderByDesc(ModelConfigEntity::getIsDefault)
-                .orderByAsc(ModelConfigEntity::getName));
+                .orderByAsc(ModelConfigEntity::getName))
+                .stream()
+                // V900: exclude models dedicated to internal jobs (usage_scope without "chat")
+                .filter(ModelConfigService::isChatUsable)
+                .toList();
     }
 
     public List<ModelConfigEntity> listModelsByProvider(String providerId) {
@@ -106,6 +146,11 @@ public class ModelConfigService {
                     .orderByDesc(ModelConfigEntity::getIsDefault)
                     .orderByAsc(ModelConfigEntity::getName));
         }
+        // V900: annotate every row with its chat eligibility so the UI can badge/filter
+        // internal-job-dedicated models while still listing them (e.g. the wiki picker).
+        for (ModelConfigEntity row : rows) {
+            row.setChatEligible(isChatUsable(row));
+        }
         if (modality == null || modality.isBlank()) return rows;
         ModelCapabilityService.Modality required;
         try {
@@ -151,7 +196,8 @@ public class ModelConfigService {
                 .and(w -> w.isNull(ModelConfigEntity::getModelType)
                            .or().eq(ModelConfigEntity::getModelType, "chat"))
                 .last("LIMIT 1"));
-        if (defaultMarked != null && isProviderEnabledAndConfigured(defaultMarked.getProvider())) {
+        if (defaultMarked != null && isChatUsable(defaultMarked)
+                && isProviderEnabledAndConfigured(defaultMarked.getProvider())) {
             return defaultMarked;
         }
 
@@ -164,6 +210,10 @@ public class ModelConfigService {
                 .orderByDesc(ModelConfigEntity::getIsDefault)
                 .orderByAsc(ModelConfigEntity::getName));
         for (ModelConfigEntity candidate : candidates) {
+            // V900: skip models dedicated to internal jobs (usage_scope without "chat")
+            if (!isChatUsable(candidate)) {
+                continue;
+            }
             if (isProviderEnabledAndConfigured(candidate.getProvider())) {
                 return candidate;
             }
@@ -197,10 +247,12 @@ public class ModelConfigService {
     }
 
     public ModelConfigEntity getDefaultModelByProvider(String providerId) {
-        return modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
+        ModelConfigEntity row = modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
                 .eq(ModelConfigEntity::getProvider, providerId)
                 .eq(ModelConfigEntity::getIsDefault, true)
                 .last("LIMIT 1"));
+        // V900: a default flagged on an internal-job-only model is not a chat default.
+        return row != null && isChatUsable(row) ? row : null;
     }
 
     /**
@@ -221,12 +273,14 @@ public class ModelConfigService {
         if (providerId == null || providerId.isBlank()) return null;
         ModelConfigEntity def = getDefaultModelByProvider(providerId);
         if (def != null) return def;
-        return modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
+        ModelConfigEntity earliest = modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
                 .eq(ModelConfigEntity::getProvider, providerId)
                 .eq(ModelConfigEntity::getEnabled, true)
                 .eq(ModelConfigEntity::getModelType, "chat")
                 .orderByAsc(ModelConfigEntity::getId)
                 .last("LIMIT 1"));
+        // V900: fall back only to a chat-usable model, never an internal-job-dedicated one.
+        return earliest != null && isChatUsable(earliest) ? earliest : null;
     }
 
     public ModelConfigEntity createModel(ModelConfigEntity entity) {
@@ -329,6 +383,26 @@ public class ModelConfigService {
         return entity;
     }
 
+    /**
+     * V900 (Auracore): set or clear a model's usage scope. A scope without
+     * {@code "chat"} dedicates the model to internal jobs (wiki digestion, …) —
+     * normal chat (defaults, failover, pins, pickers) will ignore it while
+     * job-specific routing (e.g. {@code wikiDefaultModelId}) can still use it.
+     */
+    public ModelConfigEntity updateModelUsageScope(String providerId, String modelId, String usageScope) {
+        ModelConfigEntity entity = modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
+                .eq(ModelConfigEntity::getProvider, providerId)
+                .eq(ModelConfigEntity::getModelName, modelId)
+                .last("LIMIT 1"));
+        if (entity == null) {
+            throw new MateClawException("err.llm.model_not_found", "模型不存在: " + modelId);
+        }
+        entity.setUsageScope(usageScope);
+        modelConfigMapper.updateById(entity);
+        publishConfigChanged("model-usage-scope-updated");
+        return entity;
+    }
+
     public void removeModelFromProvider(String providerId, String modelId) {
         ModelConfigEntity entity = modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
                 .eq(ModelConfigEntity::getProvider, providerId)
@@ -389,7 +463,8 @@ public class ModelConfigService {
                     .eq(ModelConfigEntity::getModelName, agentModelName)
                     .eq(ModelConfigEntity::getEnabled, true)
                     .last("LIMIT 1"));
-            if (entity != null) {
+            // V900: an internal-job-dedicated model must not resolve as a chat base model.
+            if (entity != null && isChatUsable(entity)) {
                 return entity;
             }
         }

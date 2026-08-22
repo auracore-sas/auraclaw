@@ -84,6 +84,17 @@ export function useProviderDiscovery(deps: ListDeps) {
     await deps.refreshCurrentProvider(deps.currentProvider.value.id)
   }
 
+  /**
+   * V900: set (JSON array string) or clear (null) a model's usage scope.
+   * Clearing restores legacy chat-usable behaviour; a scope without "chat"
+   * makes the model dedicated to internal jobs (normal chat ignores it).
+   */
+  async function updateModelUsageScope(model: ProviderModelInfo, usageScope: string | null) {
+    if (!deps.currentProvider.value) return
+    await modelApi.updateModelUsageScope(deps.currentProvider.value.id, model.id, usageScope)
+    await deps.refreshCurrentProvider(deps.currentProvider.value.id)
+  }
+
   function toggleSelectAll() {
     if (!discoverResult.value) return
     if (allNewSelected.value) {
@@ -183,6 +194,7 @@ export function useProviderDiscovery(deps: ListDeps) {
     addProviderModel,
     removeProviderModel,
     updateModelContextWindow,
+    updateModelUsageScope,
     toggleSelectAll,
     handleDiscoverModels,
     handleApplyModels,

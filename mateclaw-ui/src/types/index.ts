@@ -920,6 +920,14 @@ export interface ProviderModelInfo {
   effectiveMaxInputTokens?: number | null
   /** Where `effectiveMaxInputTokens` comes from. */
   maxInputTokensSource?: 'configured' | 'catalog' | 'default'
+  /**
+   * V900 (Auracore): usage scope, JSON array of lowercase use names, e.g.
+   * `["chat"]`, `["wiki"]` or `["chat","wiki"]`. Absence of "chat" marks a
+   * model dedicated to internal jobs (wiki digestion) that normal chat won't use.
+   */
+  usageScope?: string | null
+  /** V900 (Auracore): whether the model is eligible for normal chat. */
+  chatEligible?: boolean
 }
 
 /**

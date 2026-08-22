@@ -172,6 +172,7 @@
       @remove-model="onRemoveProviderModel"
       @add-model="onAddProviderModel"
       @update-context-window="onUpdateModelContextWindow"
+      @update-usage="onUpdateModelUsageScope"
     />
 
     <!-- RFC-074 PR-2: Add Provider Drawer (catalog of opt-in built-ins). -->
@@ -266,6 +267,7 @@ const {
   addProviderModel,
   removeProviderModel,
   updateModelContextWindow,
+  updateModelUsageScope,
   isProviderActive,
   isActiveModel,
   setActiveModel,
@@ -403,6 +405,15 @@ async function onUpdateModelContextWindow(model: ProviderModelInfo, maxInputToke
     showSavedTip(t('settings.model.contextWindow.updated'))
   } catch (error) {
     mcToast.error(error instanceof Error ? error.message : t('settings.model.contextWindow.updateFailed'))
+  }
+}
+
+async function onUpdateModelUsageScope(model: ProviderModelInfo, usageScope: string | null) {
+  try {
+    await updateModelUsageScope(model, usageScope)
+    showSavedTip(t('settings.model.usage.updated'))
+  } catch (error) {
+    mcToast.error(error instanceof Error ? error.message : t('settings.model.usage.updateFailed'))
   }
 }
 
