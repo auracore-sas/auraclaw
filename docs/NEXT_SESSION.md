@@ -6,6 +6,7 @@
 > **Sesión 2026-08-21 (3ª): P2 completado (OmniRoute) + verificación visual P4/P5 con 3 fixes de renderizado bilingüe en frontend.**
 > **Sesión 2026-08-21 (4ª): P7 completado (inmersión en el código) → nuevo `docs/CODE_MAP.md` (7 módulos del núcleo mapeados).**
 > **Sesión 2026-08-21 (5ª): feature V900 `usage_scope` (modelos por propósito) — dedicar LLMs a trabajos internos (wiki) excluyéndolos del chat normal.**
+> **Sesión 2026-08-21 (6ª): cierre de leaks V900 (pin/default/selector) + despliegue Docker + verificación en vivo + plan de configuración Wiki (`docs/WIKI_MODEL_SETUP.md`).**
 
 ---
 
@@ -181,6 +182,21 @@ auto-disponible» explica por qué importa la config de disclosure/guard · marc
 
 ---
 
+## ✅ Sesión 6ª (2026-08-21) — Cierre de leaks V900 + despliegue + plan Wiki
+
+**Descubierto y corregido:** el modelo dedicado (nemotron `usage=["wiki"]`) seguía disponible en el chat por **3 vías residuales**:
+1. **Selector de chat (UI)**: `ModelSelector` mostraba todos los models del provider (`listProviders()`), sin filtrar `chatEligible` → fix: filtra `chatEligible === false`
+2. **Pin de conversación (backend)**: `ConversationController.setModel` guardaba el pin sin validar y `resolveRuntimeBaseModel`→`findEnabledModel` lo respetaba sin filtrar (el chat EJECUTABA con el modelo dedicado) → fix: rechazo 400 al pinear + `findEnabledModel` filtra `isChatUsable` (pins viejos degradan silenciosamente al default)
+3. **Default**: `setDefaultModel` (ambos overloads) permitía marcar un dedicado como default → fix: rechazo
+
+**Verificado en vivo (stack Docker reconstruido):** pin al nemotron → 400 con mensaje claro · pin a deepseek-v4-flash → 200 · nemotron ya no aparece en el selector de chat (confirmado por el usuario) · pins residuales limpiados en BD (2 conversaciones).
+
+**Validación:** compile OK · 25 tests ModelConfigService verdes · `vue-tsc` limpio · commit `cc0c9e86`.
+
+**Plan de configuración Wiki creado:** `docs/WIKI_MODEL_SETUP.md` — proveedor dedicado recomendado **DashScope** (qwen-max digestión + text-embedding-v3 embeddings, una sola API key, soporte nativo, seeds ya en BD), con pasos exactos (contratar key → marcar `usage=["wiki"]` → embedding default → config KBs → verificación). Alternativas: DeepSeek v4-pro + Ollama local (cero contratos) o premium (overkill).
+
+---
+
 ## 📌 Pendiente para la siguiente sesión (priorizado)
 
 ### Regresiones residuales P4/P5 (opcional, fuera del bloqueo)
@@ -194,6 +210,12 @@ auto-disponible» explica por qué importa la config de disclosure/guard · marc
 ### Futuro (post-P6)
 - Regresiones residuales P4/P5 (research `draft`/`compose`, skill, content-studio, webchat) — opcionales, fuera del bloqueo
 - Features de producto nuevas sobre la base CODE_MAP (Módulos 1-3) — la inmersión ya deja localizados los puntos de extensión
+
+### Wiki (cuando se contrate la API key — ver `docs/WIKI_MODEL_SETUP.md`)
+- Paso 1: API key DashScope → provider configurado
+- Paso 2: marcar qwen-max / qwen-turbo `usage=["wiki"]` (UI Ajustes → Modelos → editar Uso)
+- Pasos 3-4: `POST /models/embedding/default` (text-embedding-v3) + config KBs (wikiDefaultModelId/wikiLightModelId/stepModels/fallbackModelIds)
+- Paso 5: verificación end-to-end (digestión, `Fuentes:` con vectores, aislamiento del chat)
 
 ---
 
