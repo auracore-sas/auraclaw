@@ -198,7 +198,10 @@ const groups = computed<ModelGroup[]>(() => {
 
   for (const provider of props.providers) {
     if (isHidden(provider)) continue
+    // V900: hide models dedicated to internal jobs (e.g. wiki digestion) from
+    // the chat model picker. Legacy rows without the flag stay visible.
     const allModels = [...(provider.models || []), ...(provider.extraModels || [])]
+      .filter(m => m.chatEligible !== false)
     // When showAllStates is on we still want UNCONFIGURED rows to appear even
     // if they have no models — synthesize one placeholder so the header chip +
     // Fix button render. Otherwise (legacy call site) skip empty groups.

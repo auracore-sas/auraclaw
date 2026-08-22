@@ -431,6 +431,10 @@ public class ModelConfigService {
         if (!Boolean.TRUE.equals(entity.getEnabled())) {
             throw new MateClawException("err.llm.only_enabled_default", "只有启用状态的模型才能设为默认");
         }
+        // V900: an internal-job-dedicated model must never become the chat default.
+        if (!isChatUsable(entity)) {
+            throw new MateClawException("err.llm.not_chat_usable", "该模型已限定为内部任务使用，不能设为聊天默认模型");
+        }
         clearDefaultFlag();
         entity.setIsDefault(true);
         modelConfigMapper.updateById(entity);
@@ -445,6 +449,10 @@ public class ModelConfigService {
                 .last("LIMIT 1"));
         if (entity == null) {
             throw new MateClawException("err.llm.model_not_found", "模型不存在: " + providerId + "/" + modelName);
+        }
+        // V900: an internal-job-dedicated model must never become the chat default.
+        if (!isChatUsable(entity)) {
+            throw new MateClawException("err.llm.not_chat_usable", "该模型已限定为内部任务使用，不能设为聊天默认模型");
         }
         if (!Boolean.TRUE.equals(entity.getEnabled())) {
             // Auto-enable when setting as default (e.g. local Ollama models)
@@ -482,11 +490,14 @@ public class ModelConfigService {
         if (!StringUtils.hasText(provider) || !StringUtils.hasText(modelName)) {
             return null;
         }
-        return modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
+        ModelConfigEntity row = modelConfigMapper.selectOne(new LambdaQueryWrapper<ModelConfigEntity>()
                 .eq(ModelConfigEntity::getProvider, provider)
                 .eq(ModelConfigEntity::getModelName, modelName)
                 .eq(ModelConfigEntity::getEnabled, true)
                 .last("LIMIT 1"));
+        // V900: a conversation pin / runtime lookup must never resolve an
+        // internal-job-dedicated model as a chat model.
+        return row != null && isChatUsable(row) ? row : null;
     }
 
     private void validateModel(ModelConfigEntity entity, Long currentId) {

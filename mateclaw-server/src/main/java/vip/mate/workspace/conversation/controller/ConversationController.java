@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vip.mate.common.result.R;
 import vip.mate.channel.web.ChatStreamTracker;
+import vip.mate.llm.service.ModelConfigService;
 import vip.mate.workspace.conversation.ConversationService;
 import vip.mate.workspace.conversation.vo.ConversationVO;
 import vip.mate.workspace.conversation.vo.MessageVO;
@@ -32,6 +33,7 @@ public class ConversationController {
 
     private final ConversationService conversationService;
     private final ChatStreamTracker streamTracker;
+    private final ModelConfigService modelConfigService;
 
     /**
      * 获取当前用户的会话列表
@@ -208,6 +210,12 @@ public class ConversationController {
         String modelName = body.get("modelName");
         if (provider == null || provider.isBlank() || modelName == null || modelName.isBlank()) {
             return R.fail("modelProvider 和 modelName 都必须提供");
+        }
+        // V900: refuse to pin a conversation to a model that is dedicated to
+        // internal jobs (or unknown / disabled) — such a pin would be inert
+        // anyway because the runtime degrades to the agent/global default.
+        if (modelConfigService.findEnabledModel(provider.trim(), modelName.trim()) == null) {
+            return R.fail(400, "该模型不存在、未启用或已限定为内部任务使用（不能用于聊天）");
         }
         conversationService.updateConversationModel(conversationId, provider.trim(), modelName.trim());
         return R.ok();
