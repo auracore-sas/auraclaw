@@ -69,12 +69,6 @@ const router = createRouter({
           meta: { title: 'Wiki', requiredCapability: 'view:wiki' },
         },
         {
-          path: 'enterprise',
-          name: 'Enterprise',
-          component: () => import('@/views/Enterprise/index.vue'),
-          meta: { title: 'Enterprise Scenarios', requiredCapability: 'manage:agents' },
-        },
-        {
           path: 'memory',
           name: 'Memory',
           component: () => import('@/views/Memory/index.vue'),
