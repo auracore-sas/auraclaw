@@ -232,7 +232,16 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 - El agente auto-descubre: `list_datasources` → `list_tables` → `describe_table` → `execute_sql`; usa JOIN correcto, distingue schemas, cita `Fuentes:`
 
 ### Commits de esta sesión
+- `a583b6bd` docs: rebrand MateClaw → AuraClaw across served documentation (en/zh/es) — 86 archivos servidos por `readMateClawDoc`; refs técnicas en minúscula (`MATECLAW_`, `mateclaw-`, paths) preservadas (regla 5)
+- `bd836980` docs: record session 7 — Postgres host desde Docker, pipeline de datos BD, modelo default deepseek-v4-flash
 - `fc4b0600` feat(ui): hide Enterprise demo workbench from nav and routes — módulo `/enterprise` era demo estática sin backend; ocultado del menú (`MainLayout.vue`) y rutas (`router/index.ts`); componentes e i18n quedan en disco sin uso. Registrado en CUSTOMIZATIONS.md
+
+### Limpieza de branding (misma sesión, parte 2)
+- **Memoria de agentes en BD** (10 archivos, agents 1000000001/1000000003): `MateClaw` → `AuraClaw` vía UPDATE + re-save por API (dispara `WorkspaceFileChangedEvent` → invalida caché de instancia del agente). **⚠️ OJO:** los UPDATEs por SQL NO invalidan la caché — hay que re-guardar el archivo por la API (`PUT /agents/{id}/workspace/files/**`) o reiniciar
+- **Memoria personal** (`structured/*`, scope PERSONAL por owner `user:admin`): no es visible por `/files/**` (solo shared); se inyecta por turno sin caché — el UPDATE SQL basta
+- **Docs**: 86 archivos rebrandeado (en/zh/es) + rebuild Docker (los docs viajan en el JAR)
+- **Decisión (regla 5):** se conserva el nombre de la tool `readMateClawDoc` (identificador interno; 0 bindings en BD usan el nombre de función; el alias-index de AgentToolSet mapea bean/class). Si en el futuro se quiere erradicar: renombrar método + ref en `AgentBindingService.java:782` + self-ref de la descripción + rebuild
+- **Re-aplicación tras merge con upstream:** `sed -i 's/MateClaw/AuraClaw/g'` sobre `mateclaw-server/src/main/resources/docs/` y UPDATEs de memoria (patrón ya en CUSTOMIZATIONS.md)
 
 ### Cambios pendientes por commit
 - **Ninguno** (git status limpio). Todo lo de esta sesión es: gitignoreado (`.env`, `docker-compose.override.yml`), DB-side (prompt, modelo, datasource) o de sistema (config Postgres del host)
