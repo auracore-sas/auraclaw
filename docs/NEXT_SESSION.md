@@ -7,6 +7,7 @@
 > **Sesión 2026-08-21 (4ª): P7 completado (inmersión en el código) → nuevo `docs/CODE_MAP.md` (7 módulos del núcleo mapeados).**
 > **Sesión 2026-08-21 (5ª): feature V900 `usage_scope` (modelos por propósito) — dedicar LLMs a trabajos internos (wiki) excluyéndolos del chat normal.**
 > **Sesión 2026-08-21 (6ª): cierre de leaks V900 (pin/default/selector) + despliegue Docker + verificación en vivo + plan de configuración Wiki (`docs/WIKI_MODEL_SETUP.md`).**
+> **Sesión 2026-08-24 (7ª): Postgres del HOST alcanzable desde Docker + pipeline de datos de BD funcionando end-to-end.** Datasource "powerfin_test" (schema auracore), tools `execute_sql`/`query_datasource` siempre visibles (fix disclosure), prompt del Asistente General con guía de datos, modelo default → `deepseek-v4-flash` (gpt-4o vía OmniRoute daba respuestas vacías ~12/hora), módulo Enterprise ocultado del menú. Nada pendiente de commit (todo gitignoreado / DB-side / sistema).
 
 ---
 
@@ -197,7 +198,54 @@ auto-disponible» explica por qué importa la config de disclosure/guard · marc
 
 ---
 
+## ✅ Sesión 7ª (2026-08-24) — Postgres del host desde Docker + pipeline de datos de BD
+
+### Contexto
+El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del host** (9.6, puerto 5432). Bloqueo: Postgres solo escuchaba en `127.0.0.1` (loopback) → inalcanzable desde el contenedor.
+
+### Cambios de infraestructura (host, NO en git — requirieron sudo del usuario)
+- `/etc/postgresql/9.6/main/postgresql.conf`: `listen_addresses = '*'` (antes solo localhost) — ejecutado por el usuario con sudo
+- `/etc/postgresql/9.6/main/pg_hba.conf`: añadida `host all all 172.25.0.0/16 md5` (subnet del bridge Docker) + restart
+- **Detalle clave (trampa)**: desde el HOST, `psql` hacia `172.25.0.1` sale con IP origen `192.168.86.35` (LAN) que NO matchea la regla → verificar desde `127.0.0.1` (host) o desde dentro del contenedor (`172.25.0.3`)
+- IP del host vista desde el contenedor: `172.25.0.1` = gateway de `mateclaw-net`. `host.docker.internal` **NO resuelve** en Linux sin `extra_hosts`
+
+### Cambios de entorno dev (gitignoreados a propósito — NO commitear)
+- `.env`: `MATECLAW_TOOL_SCHEMA_MAX_TOKENS=40000` + `MATECLAW_TOOL_SCHEMA_RATIO=0.30`
+- `docker-compose.override.yml`: passthrough de ambas vars a `mateclaw-server`
+  - Presupuesto de disclosure = `min(ratio × ventana, maxTokens)`. Con gpt-4o (128k) y ratio 0.25 → 32000 < 32583 (schema total) → se degradaban tools. Con ratio 0.30 + tope 40000 → 38400 → **0 degradaciones** (verificado en log)
+  - Si se quiere persistir en el repo: exponer las vars en `docker-compose.yml` (commiteado)
+
+### Cambios DB-side (BD del stack Docker — NO git)
+- **Datasource creado**: "Postgres local (powerfin_test)" — id `2091706457220833281`, dbType postgresql, host `172.25.0.1`, puerto `5432`, db `powerfin_test`, schema `auracore`, user `postgres` / `1234abcd`, test OK
+- **System prompt Asistente General (1000000001)** actualizado (642 chars): guía de datos — `query_datasource` SOLO para descubrir; `execute_sql` para SELECT de datos; no responder con estructura
+- **Modelo default**: `deepseek/deepseek-v4-flash` (row id `1000000282`, `usage_scope=["chat","wiki"]`, chatEligible) — reemplaza a `omniroute/openai/gpt-4o`
+
+### Problemas encontrados y resueltos
+1. **Red Docker→host**: contenedor no ve loopback del host → `listen_addresses='*'` + pg_hba para subnet Docker + usar IP del gateway del bridge
+2. **Progressive disclosure**: `execute_sql`/`query_datasource` degradadas al catálogo "Extension Tools" (75 tools, schema 32583 > presupuesto 12000) → el modelo no veía sus schemas y las usaba mal. Fix: subir presupuesto
+3. **El agente describía tablas en vez de consultar datos**: usaba `query_datasource` con acción inexistente `query` o describía columnas. Fix: guía en el system prompt
+4. **Lentitud (~2 min/consulta)**: gpt-4o vía OmniRoute devolvía respuestas vacías seguido (12 `EMPTY_RESPONSE`/hora, cada retry +30-60s, `failover_count=0`). Fix: default → `deepseek-v4-flash` (ventana 1M, 0 vacíos, pasos LLM 2-6s)
+
+### Verificación final (2026-08-24)
+- Conexión JDBC: `success: true` ✅ · `SELECT COUNT(*) FROM auracore.person` → **23** ✅
+- `account_bank` (1 registro: `27059108040` / `ENT_FIN011` / `AHO`) ✅ · GROUP BY identificación: **22 RUC + 1 cédula** ✅ (verificado independientemente con psql)
+- El agente auto-descubre: `list_datasources` → `list_tables` → `describe_table` → `execute_sql`; usa JOIN correcto, distingue schemas, cita `Fuentes:`
+
+### Commits de esta sesión
+- `fc4b0600` feat(ui): hide Enterprise demo workbench from nav and routes — módulo `/enterprise` era demo estática sin backend; ocultado del menú (`MainLayout.vue`) y rutas (`router/index.ts`); componentes e i18n quedan en disco sin uso. Registrado en CUSTOMIZATIONS.md
+
+### Cambios pendientes por commit
+- **Ninguno** (git status limpio). Todo lo de esta sesión es: gitignoreado (`.env`, `docker-compose.override.yml`), DB-side (prompt, modelo, datasource) o de sistema (config Postgres del host)
+
+---
+
 ## 📌 Pendiente para la siguiente sesión (priorizado)
+
+### De la sesión 7ª (2026-08-24) — datos/Postgres
+- **Persistir ajuste de disclosure en el repo (opcional)**: exponer `MATECLAW_TOOL_SCHEMA_MAX_TOKENS` y `MATECLAW_TOOL_SCHEMA_RATIO` en `docker-compose.yml` (hoy viven solo en `.env`/override gitignoreados; un `docker compose up` limpio los pierde)
+- **Reversión del modelo (si gpt-4o vuelve a ser necesario)**: `PUT /api/v1/models/active` `{"providerId":"omniroute","model":"openai/gpt-4o"}`; devolver deepseek-v4-flash a wiki-only: `PUT /api/v1/models/deepseek/models/usage-scope` `{"modelId":"deepseek-v4-flash","usageScope":"[\"wiki\"]"}`
+- **Verificar wiki** con deepseek-v4-flash como default (quedó scope chat+wiki; la wiki usa `getModel(id)` que ignora scope, debería seguir OK — confirmar en la próxima digestión)
+- **El primer intento del agente usó el NOMBRE del datasource como ID** ("Postgres local (powerfin_test)") y falló, auto-corrigiéndose con `list_datasources`. Si se repite, reforzar el prompt con el ID numérico o validar en el tool un lookup por nombre
 
 ### Regresiones residuales P4/P5 (opcional, fuera del bloqueo)
 - **Pruebas de regresión en más áreas** si se quiere completitud: research (`draft`/`compose`), skill (`synthesize`/`reflect`/`routine`), content-studio, webchat — no se ejercitaron (requieren flujos más largos / canales configurados)
@@ -229,3 +277,6 @@ auto-disponible» explica por qué importa la config de disclosure/guard · marc
 6. **Imagen Docker** se reconstruye con `docker compose up -d --build` (~5-10 min); la UI viaja dentro del JAR
 7. **No recargar seeds en BD existentes** — aplicar UPDATEs puntuales (ver CUSTOMIZATIONS.md)
 8. Trad. de la UI: `es-ES.ts` aditivo; comentarios de código en chino NO se traducen (evita diffs inútiles)
+9. **Postgres del host (9.6, puerto 5432)**: escucha en `*` y acepta el subnet Docker `172.25.0.0/16` (md5). IP del host vista desde el contenedor = `172.25.0.1` (gateway de `mateclaw-net`); `host.docker.internal` NO resuelve en Linux sin `extra_hosts`
+10. **Herramientas de BD**: `query_datasource` = SOLO metadatos (`list_datasources`/`list_tables`/`describe_table`); `execute_sql` = consultas SELECT reales. El agente necesita guía en el prompt para elegir bien; verificar contra `127.0.0.1` desde el host (el origen LAN `192.168.86.x` no matchea la regla pg_hba)
+11. **Credenciales datasource de prueba** (BD local del usuario): `powerfin_test` / `postgres` / `1234abcd`, schema `auracore` — solo dev
