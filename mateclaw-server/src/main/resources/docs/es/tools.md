@@ -99,7 +99,7 @@ A medida que el conteo de herramientas crece, el prompt de sistema se infla con 
 | `SkillManageTool` | Crear / editar / borrar paquetes de skills | ⚠️ |
 | `BrowserUseTool` | Manejar un navegador headless | ⚠️ |
 | `DelegateAgentTool` | Delegar una tarea a otro agente (soporta paralelo) | — |
-| `MateClawDocTool` | Leer documentación integrada del proyecto | — |
+| `AuraClawDocTool` | Leer documentación integrada del proyecto | — |
 | `ImageGenerateTool` | Texto-a-imagen / **imagen-a-imagen (1.3.0+)** | — |
 | `VideoGenerateTool` | Generación de texto-a-video / imagen-a-video | — |
 | `DocxRenderTool` | **1.3.0+** Markdown → .docx (documento Word) | — |
@@ -232,7 +232,7 @@ Seguridad:
 - **Sesiones aisladas** — el agente delegado corre en su propia conversación
 - **Truncamiento de resultados** — los resultados delegados se limitan a 4000 caracteres
 
-### MateClawDocTool
+### AuraClawDocTool
 
 Lee la documentación integrada del proyecto AuraClaw. Deja que un agente responda "cómo funciona X en AuraClaw" consultando documentación real en lugar de adivinar.
 

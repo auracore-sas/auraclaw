@@ -182,7 +182,7 @@ Crea un agente con rol específico → instala habilidades → conecta servidore
 
 | Síntoma | Causa más probable |
 |---------|-------------------|
-| El backend no arranca | El puerto 18088 está ocupado. Revisa `<userData>/logs/mateclaw.log` (macOS: `~/Library/Application Support/MateClaw/logs/mateclaw.log`) |
+| El backend no arranca | El puerto 18088 está ocupado. Revisa `<userData>/logs/mateclaw.log` (macOS: `~/Library/Application Support/AuraClaw/logs/mateclaw.log`) |
 | La llamada al modelo falla | Clave API incorrecta o problema de red. Vuelve a Ajustes |
 | La UI está en blanco | Ctrl+Shift+R para refresco forzado |
 | Ollama dice "does not support tools" | Cambia a un modelo con function calling (qwen3, llama3.1:8b+) |

@@ -16,7 +16,7 @@ El widget es una librería de navegador sin dependencias publicada en formato UM
 ```html
 <script src="https://<tu-despliegue>/mateclaw-webchat.umd.js"></script>
 <script>
-  MateClawWebChat.init({
+  AuraClawWebChat.init({
     apiKey: 'tu-api-key-del-canal',   // de la página de edición del canal
     server: 'https://<tu-despliegue>',
     title: 'Soporte',
@@ -45,7 +45,7 @@ init({ apiKey: 'tu-api-key-del-canal', server: 'https://<tu-despliegue>' })
 | `server` | sí | — | URL del servidor de AuraClaw (sin barra final) |
 | `position` | no | `bottom-right` | Posición de la burbuja: `bottom-right` / `bottom-left` |
 | `primaryColor` | no | `#D97757` | Color primario (cualquier color CSS) |
-| `title` | no | `MateClaw` | Título del panel |
+| `title` | no | `AuraClaw` | Título del panel |
 | `placeholder` | no | `Type a message...` | Placeholder del input |
 
 **Comportamiento**

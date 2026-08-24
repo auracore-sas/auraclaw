@@ -51,7 +51,7 @@ Los metadatos globales de OpenAPI (título, descripción, versión, URL del serv
 ```yaml
 mateclaw:
   openapi:
-    title: ${MATECLAW_OPENAPI_TITLE:MateClaw REST API}
+    title: ${MATECLAW_OPENAPI_TITLE:AuraClaw REST API}
     version: ${MATECLAW_OPENAPI_VERSION:1.0}
     server-url: ${MATECLAW_OPENAPI_SERVER_URL:}   # vacío → derivado del host de la solicitud
     description: ${MATECLAW_OPENAPI_DESCRIPTION:}  # vacío → default integrado

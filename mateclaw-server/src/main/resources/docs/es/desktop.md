@@ -231,9 +231,9 @@ Los assets del frontend pueden **actualizarse en caliente de forma independiente
 
 | SO | Ruta |
 |-----|------|
-| macOS | `~/Library/Application Support/MateClaw/data/` |
-| Windows | `%APPDATA%/MateClaw/data/` |
-| Linux | `~/.config/MateClaw/data/` |
+| macOS | `~/Library/Application Support/AuraClaw/data/` |
+| Windows | `%APPDATA%/AuraClaw/data/` |
+| Linux | `~/.config/AuraClaw/data/` |
 
 Logs, archivos de workspace, scripts de skills, contenido wiki — todo vive junto a la base de datos en el mismo directorio de usuario. Respáldalo antes de cambios mayores.
 
@@ -279,9 +279,9 @@ La app de escritorio lee las variables de entorno igual que el backend independi
 
 1. La app instalada embebe el JRE — no necesitas Java. Build de dev desde fuente: verifica que `java -version` muestre 21+.
 2. Revisa los logs:
-   - macOS: `~/Library/Application Support/MateClaw/logs/`
-   - Windows: `%APPDATA%/MateClaw/logs/`
-   - Linux: `~/.config/MateClaw/logs/`
+   - macOS: `~/Library/Application Support/AuraClaw/logs/`
+   - Windows: `%APPDATA%/AuraClaw/logs/`
+   - Linux: `~/.config/AuraClaw/logs/`
 3. Lanza desde la terminal para ver la salida de consola
 4. Confirma que el puerto del backend no esté bloqueado
 

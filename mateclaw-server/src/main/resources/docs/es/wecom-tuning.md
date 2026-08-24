@@ -52,8 +52,8 @@ La decisión vive en [`ChannelMessageRouter.isSameSender`](https://github.com/an
 **2. Prefijo `[@remitente]` en el contenido persistido + prompt.** Todo mensaje de grupo (`chatId != null`) se envuelve antes de guardar y antes de la llamada al LLM:
 
 ```
-[@XuZhanFu] @MateClawBot Quiero consultar X
-[@xuzf] @MateClawBot Quiero consultar Y
+[@XuZhanFu] @AuraClawBot Quiero consultar X
+[@xuzf] @AuraClawBot Quiero consultar Y
 ```
 
 Así:

@@ -10,9 +10,9 @@ Si prefieres Docker o desarrollo local, eso vive en [Configuración](./config) y
 
 Consigue el instalador más reciente en [GitHub Releases](https://github.com/mateaix/mateclaw/releases).
 
-- **Windows** — `MateClaw-Setup-x.y.z.exe`
-- **macOS** — `MateClaw-x.y.z.dmg`
-- **Linux** — `MateClaw-x.y.z.AppImage`
+- **Windows** — `AuraClaw-Setup-x.y.z.exe`
+- **macOS** — `AuraClaw-x.y.z.dmg`
+- **Linux** — `AuraClaw-x.y.z.AppImage`
 
 Sin instalar Java. Sin instalar Node. Sin Maven. La app de escritorio incluye JRE 21 y el JAR del servidor.
 
@@ -68,7 +68,7 @@ Cada uno de esos temas tiene su propia página en la barra lateral cuando quiera
 El primer arranque debería funcionar. Si no fue así:
 
 - **El instalador no abre** — En Windows, clic derecho → Propiedades → Desbloquear. En macOS, permite la app sin firmar en Ajustes del Sistema → Privacidad y Seguridad.
-- **El backend nunca arranca** — Revisa el archivo de log (macOS: `~/Library/Application Support/MateClaw/logs/mateclaw.log`; Windows: `%APPDATA%\MateClaw\logs\mateclaw.log`). La app de escritorio elige un puerto dinámico: cualquier conflicto de puerto se reporta claramente en el log.
+- **El backend nunca arranca** — Revisa el archivo de log (macOS: `~/Library/Application Support/AuraClaw/logs/mateclaw.log`; Windows: `%APPDATA%\AuraClaw\logs\mateclaw.log`). La app de escritorio elige un puerto dinámico: cualquier conflicto de puerto se reporta claramente en el log.
 - **La llamada al modelo falla** — Clave API incorrecta o la red no alcanza al proveedor. Vuelve a Ajustes, re-verifica la clave o prueba otro proveedor.
 - **La UI está en blanco** — Refresco forzado con Ctrl/Cmd+Shift+R. Electron cachea agresivamente.
 - **Sigue roto** — Abre un issue en [GitHub](https://github.com/mateaix/mateclaw/issues) con el final de `app.log`. Los leemos.

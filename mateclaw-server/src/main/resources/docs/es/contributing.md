@@ -130,7 +130,7 @@ No busques una jerarquía de clases `BaseAgent` — el runtime del agente es un 
 
 - **Un nodo** (razonamiento, acción, observación, generación de plan) — en `vip.mate.agent.graph.node` o `vip.mate.agent.graph.plan.node`
 - **Una arista** o **dispatcher** — en `vip.mate.agent.graph.edge` o `vip.mate.agent.graph.plan.edge`
-- **Una clave de estado** — en `vip.mate.agent.graph.state.MateClawStateKeys`
+- **Una clave de estado** — en `vip.mate.agent.graph.state.AuraClawStateKeys`
 
 El builder que lo cablea es `AgentGraphBuilder`. Los eventos de streaming desde nodos pasan por `GraphEventPublisher` y `NodeStreamingChatHelper`.
 

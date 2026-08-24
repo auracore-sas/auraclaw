@@ -78,7 +78,7 @@ Un JAR. Un proceso. Todo el artilugio.
 mateclaw/
 ├── mateclaw-server/          # Backend Spring Boot (el corazón)
 │   └── src/main/java/vip/mate/
-│       ├── MateClawApplication.java
+│       ├── AuraClawApplication.java
 │       ├── agent/            # Runtime StateGraph, nodos, aristas, estado
 │       ├── planning/         # Persistencia de Plan y SubPlan
 │       ├── workflow/         # Motor de workflow (1.3.0+): compilador DSL, runtime lineal, derrame de payload
@@ -137,15 +137,15 @@ Esto es lo más importante de saber si contribuyes al backend.
 - `agent/graph/node/` — `ReasoningNode`, `ActionNode`, `ObservationNode`, `FinalAnswerNode`, `SummarizingNode`, `LimitExceededNode`, `GoalEvaluationNode`
 - `agent/graph/plan/node/` — `PlanGenerationNode`, `StepExecutionNode`, `PlanSummaryNode`, `DirectAnswerNode`
 - `agent/graph/edge/` + `plan/edge/` — funciones dispatcher que deciden el siguiente nodo según el estado
-- `agent/graph/state/MateClawStateKeys.java` — las claves del objeto de estado compartido
-- `agent/graph/state/MateClawStateAccessor.java` — accessor tipado del mapa de estado (no toques el mapa directamente)
+- `agent/graph/state/AuraClawStateKeys.java` — las claves del objeto de estado compartido
+- `agent/graph/state/AuraClawStateAccessor.java` — accessor tipado del mapa de estado (no toques el mapa directamente)
 - `agent/graph/lifecycle/ReActLifecycleListener.java` — hooks de instrumentación a nivel de nodo
 - `agent/AgentGraphBuilder.java` — el builder que cablea nodos y aristas por config de agente
 - `agent/GraphEventPublisher.java` + `agent/graph/NodeStreamingChatHelper.java` — cómo los eventos de streaming escapan del grafo al stream SSE
 
 ### Cómo extender
 
-**Agregando comportamiento de agente** — crea un nodo nuevo en `agent/graph/node/` o un dispatcher de arista nuevo en `agent/graph/edge/`. Cabléalo en `AgentGraphBuilder`. Lee y escribe estado a través de `MateClawStateAccessor`.
+**Agregando comportamiento de agente** — crea un nodo nuevo en `agent/graph/node/` o un dispatcher de arista nuevo en `agent/graph/edge/`. Cabléalo en `AgentGraphBuilder`. Lee y escribe estado a través de `AuraClawStateAccessor`.
 
 **No** crees una clase `XxxAgent` nueva. Estarías reimplementando lo que el grafo ya hace.
 
@@ -254,7 +254,7 @@ Empaqueta instrucciones + herramientas + scripts opcionales en un `SKILL.md`. S�
 
 ### Nodos y aristas del grafo de agente
 
-Para personalización más profunda, agrega un nodo nuevo en `agent/graph/node/` o un dispatcher nuevo en `agent/graph/edge/`. Cabléalo en `AgentGraphBuilder` detrás de una flag de config. El acceso al estado pasa por `MateClawStateAccessor`.
+Para personalización más profunda, agrega un nodo nuevo en `agent/graph/node/` o un dispatcher nuevo en `agent/graph/edge/`. Cabléalo en `AgentGraphBuilder` detrás de una flag de config. El acceso al estado pasa por `AuraClawStateAccessor`.
 
 ---
 

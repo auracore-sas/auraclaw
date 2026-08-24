@@ -168,7 +168,7 @@ type: acp
 acp:
   endpoint: claude-code
   systemPrefix: |
-    You are working inside the MateClaw repo. Always run `mvn test` before reporting done.
+    You are working inside the AuraClaw repo. Always run `mvn test` before reporting done.
   cwd: /workspaces/mateclaw
 ```
 

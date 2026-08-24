@@ -302,9 +302,9 @@ docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB
 
 Los datos de **escritorio** viven en el directorio por usuario:
 
-- macOS: `~/Library/Application Support/MateClaw/`
-- Windows: `%APPDATA%/MateClaw/`
-- Linux: `~/.local/share/MateClaw/`
+- macOS: `~/Library/Application Support/AuraClaw/`
+- Windows: `%APPDATA%/AuraClaw/`
+- Linux: `~/.local/share/AuraClaw/`
 
 ---
 
@@ -314,9 +314,9 @@ Los datos de **escritorio** viven en el directorio por usuario:
 
 El instalador embebe el JRE 21. Revisa los logs:
 
-- macOS: `~/Library/Logs/MateClaw/`
-- Windows: `%APPDATA%/MateClaw/logs/`
-- Linux: `~/.local/share/MateClaw/logs/`
+- macOS: `~/Library/Logs/AuraClaw/`
+- Windows: `%APPDATA%/AuraClaw/logs/`
+- Linux: `~/.local/share/AuraClaw/logs/`
 
 Intenta lanzar desde una terminal. En Windows, clic derecho → Desbloquear. En macOS, permite la app sin firmar en Ajustes del Sistema → Privacidad.
 
