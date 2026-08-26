@@ -338,3 +338,10 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 - **Fix desplegado**: `CITATION_FORMAT_BLOCK` en `AgentGraphBuilder.buildEnhancedPrompt` (marcadores `[n]` + sección `Fuentes:` + no citar fuentes no leídas) + hints reforzados en `WikiTool` (`CITATION_FORMAT_HINT` + `citationHint` con ejemplo en español).
 - **Verificado en vivo**: gpt-4o vía omniroute → respuesta con `[1]` + `Fuentes:` y SIN aviso `[证据不足]` (conversación `gpt4o-cite-test-2`).
 - Commiteado y pusheado (2 commits: fix max_tokens + citas system prompt). Registrado en `CUSTOMIZATIONS.md`.
+
+### ✅ Continuación 3 (misma sesión 8ª) — safety net de citas COMPLETADO y desplegado
+- **Problema residual**: con el system prompt, gpt-4o lee la página correcta y responde perfecto, pero el formato de cita es inconsistente: `[1]`+tabla, `[[Título]]`, `[Título](slug)` markdown, o título a secas bajo `Fuentes:` → el validador seguía marcando `missing wiki citation [n]` en los formatos no canónicos.
+- **Fix**: `SourceEvidenceLedger.appendWikiSourceTable` completa la tabla canónica `[1] <título>` desde el ledger (páginas REALMENTE leídas en la ronda) cuando la respuesta menciona una página verificada en cualquier formato nativo (wiki-link `[[...]]`, markdown link `[...](...)`, línea cruda bajo `Fuentes:`/`来源：`). Normalización case/accent-insensitive + guiones→espacios (slugs matchean títulos). Índices = los del ledger. El aviso solo queda para menciones NO verificables (alucinación).
+- **Tests**: +5 en `SourceEvidenceLedgerTest` (20 total, 0 fallos) + suite completa del área (56 tests OK).
+- **Verificado en vivo** (gpt-4o vía omniroute, consulta ubicaciones, conv `gpt4o-ubic-test-3`): respuesta completa (direcciones/horarios/contactos reales) + `Fuentes:\n[1] Ubicaciones y horarios` anexada + **sin aviso** `[证据不足]`.
+- Commiteado y pusheado (3 commits: max_tokens, system prompt citas, safety net ledger).

@@ -311,4 +311,73 @@ class SourceEvidenceLedgerTest {
         assertFalse(ledger.hasWikiEvidence());
         assertTrue(ledger.validateAnswer("The release is on track.").valid());
     }
+
+    // ====== RFC-052 follow-up (AuraClaw): native-form wiki citations ======
+    // gpt-4o (and other router-served models) sometimes cites the wiki as
+    // [[Title]] wiki-links or markdown links [Title](slug) instead of the
+    // canonical "[1] Title" markers. The ledger must complete the canonical
+    // source table from the pages it actually recorded, and only drop the
+    // "missing wiki citation" warning when the mention is verifiable.
+
+    private static SourceEvidenceLedger wikiLedger(String title) {
+        String response = """
+                {"title": "%s", "slug": "some-slug", "content": "snippet"}
+                """.formatted(title);
+        return SourceEvidenceLedger.fromToolResponses(List.of(
+                new ToolResponseMessage.ToolResponse("c1", "wiki_read_page", response)));
+    }
+
+    @Test
+    @DisplayName("[[Title]] wiki-link mention completes the canonical source table")
+    void wikiLinkMention_appendsCanonicalTable() {
+        SourceEvidenceLedger ledger = wikiLedger("Ubicaciones y horarios");
+        String answer = "Las sucursales están en Cumbayá y Cuenca.\n\nFuentes:\n[[Ubicaciones y horarios]]";
+        String enriched = ledger.appendWikiSourceTable(answer);
+        assertTrue(enriched.contains("[1] Ubicaciones y horarios"),
+                "canonical line must be appended: " + enriched);
+        assertTrue(ledger.validateAnswer(enriched).valid(),
+                "mention of a recorded page must pass validation");
+    }
+
+    @Test
+    @DisplayName("markdown link [Title](slug) mention completes the canonical source table")
+    void mdLinkMention_appendsCanonicalTable() {
+        SourceEvidenceLedger ledger = wikiLedger("Ubicaciones y horarios");
+        String answer = "Direcciones en Quito y Cuenca.\n\nFuentes:\n[Ubicaciones y horarios](ubicaciones-y-horarios)";
+        String enriched = ledger.appendWikiSourceTable(answer);
+        assertTrue(enriched.contains("[1] Ubicaciones y horarios"),
+                "canonical line must be appended: " + enriched);
+        assertTrue(ledger.validateAnswer(enriched).valid());
+    }
+
+    @Test
+    @DisplayName("bare title under a Fuentes: header completes the canonical source table")
+    void bareTitleUnderHeader_appendsCanonicalTable() {
+        SourceEvidenceLedger ledger = wikiLedger("Ubicaciones y horarios");
+        String answer = "Tres sucursales.\n\nFuentes:\nUbicaciones y horarios";
+        String enriched = ledger.appendWikiSourceTable(answer);
+        assertTrue(enriched.contains("[1] Ubicaciones y horarios"));
+        assertTrue(ledger.validateAnswer(enriched).valid());
+    }
+
+    @Test
+    @DisplayName("answer with no mention of read pages keeps the missing-citation warning")
+    void noMention_keepsWarning() {
+        SourceEvidenceLedger ledger = wikiLedger("Ubicaciones y horarios");
+        String answer = "No encontré la información en la base.";
+        String enriched = ledger.appendWikiSourceTable(answer);
+        SourceEvidenceLedger.Validation validation = ledger.validateAnswer(enriched);
+        assertFalse(validation.valid());
+        assertTrue(validation.unsupportedReferences().contains("missing wiki citation [n]"));
+    }
+
+    @Test
+    @DisplayName("[[Title]] mentioning a page NOT read keeps the warning (no fabrication)")
+    void unreadPageMention_keepsWarning() {
+        SourceEvidenceLedger ledger = wikiLedger("Ubicaciones y horarios");
+        String answer = "Según [[Página inventada]], la fuente es otra.";
+        String enriched = ledger.appendWikiSourceTable(answer);
+        assertFalse(ledger.validateAnswer(enriched).valid(),
+                "a page the ledger never recorded must not satisfy the citation check");
+    }
 }

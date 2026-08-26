@@ -28,6 +28,7 @@ public record SourceEvidenceLedger(
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Pattern JAVA_PATH = Pattern.compile(
+
             "(?:[A-Za-z]:)?[A-Za-z0-9_./\\\\-]+\\.java\\b");
     private static final Pattern JAVA_FILE_REF = Pattern.compile("\\b[A-Za-z][A-Za-z0-9_]*\\.java\\b");
     private static final Pattern JAVA_SYMBOL_REF = Pattern.compile(
@@ -202,7 +203,27 @@ public record SourceEvidenceLedger(
         }
         LinkedHashSet<Integer> used = citationIndexesIn(answer);
         if (used.isEmpty()) {
-            return answer;
+            // RFC-052 follow-up (AuraClaw): models like gpt-4o sometimes cite the
+            // wiki in its native [[Title]] link form (or a bare "Fuentes:\nTitle"
+            // list) instead of the canonical "[1] Title" markers. The ledger
+            // already knows the pages actually read this turn, so complete the
+            // canonical source table from the ledger for the pages the answer
+            // mentions — evidence stays verifiable without depending on the
+            // model's formatting.
+            List<WikiCitation> mentioned = mentionedByWikiLink(answer);
+            if (mentioned.isEmpty()) {
+                return answer;
+            }
+            String canonical = canonicalLines(mentioned);
+            int headerIdx = Math.max(answer.lastIndexOf("Fuentes:"), answer.lastIndexOf("来源："));
+            if (headerIdx >= 0) {
+                // Insert the canonical lines right under the existing header
+                // (the model's own [[Title]] line stays, harmlessly).
+                int insertAt = answer.indexOf('\n', headerIdx);
+                insertAt = insertAt < 0 ? answer.length() : insertAt + 1;
+                return answer.substring(0, insertAt) + canonical + "\n" + answer.substring(insertAt);
+            }
+            return answer + "\n\nFuentes:" + canonical;
         }
 
         String result = answer;
@@ -280,6 +301,86 @@ public record SourceEvidenceLedger(
             }
         }
         return indexes;
+    }
+
+    /** Native wiki-link {@code [[Title]]} or {@code [[slug|Title]]}. */
+    private static final Pattern WIKI_LINK_PATTERN = Pattern.compile("\\[\\[([^\\]|]+)(?:\\|[^\\]]+)?]]");
+
+    /** Markdown link {@code [Text](target)} — gpt-4o has used this form too. */
+    private static final Pattern MD_LINK_PATTERN = Pattern.compile("\\[([^\\]\\n]+)\\]\\([^)\\n]+\\)");
+
+    /**
+     * Normalize a title / link target for case-insensitive, accent-insensitive
+     * comparison (slugs use hyphens and drop accents, titles do not).
+     */
+    private static String normalizeTitle(String s) {
+        if (s == null) {
+            return "";
+        }
+        String normalized = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return normalized.trim().replaceAll("[\\s_-]+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * RFC-052 follow-up: wiki citations of the ledger that the answer actually
+     * mentions in its native form — a {@code [[Title]]} wiki-link, or a bare
+     * title line under a {@code Fuentes:}/{"来源："} header — without canonical
+     * {@code [n]} markers. Returns ledger citations (deduped by title); empty
+     * when the answer cites nothing the ledger can verify.
+     */
+    private List<WikiCitation> mentionedByWikiLink(String answer) {
+        if (answer == null || answer.isBlank() || wikiCitations.isEmpty()) {
+            return List.of();
+        }
+        Set<String> mentioned = new LinkedHashSet<>();
+        Matcher linkMatcher = WIKI_LINK_PATTERN.matcher(answer);
+        while (linkMatcher.find()) {
+            mentioned.add(normalizeTitle(linkMatcher.group(1)));
+        }
+        Matcher mdMatcher = MD_LINK_PATTERN.matcher(answer);
+        while (mdMatcher.find()) {
+            mentioned.add(normalizeTitle(mdMatcher.group(1)));
+        }
+        // Bare title lines under a trailing sources header ("Fuentes:\nTitle"
+        // without [n] markers has been observed from gpt-4o).
+        int headerIdx = Math.max(answer.lastIndexOf("Fuentes:"), answer.lastIndexOf("来源："));
+        if (headerIdx >= 0) {
+            int lineEnd = answer.indexOf('\n', headerIdx);
+            String tail = lineEnd >= 0 ? answer.substring(lineEnd) : "";
+            for (String line : tail.split("\\R")) {
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty() && !trimmed.startsWith("[") && !trimmed.startsWith("[[")) {
+                    mentioned.add(normalizeTitle(trimmed));
+                }
+            }
+        }
+        if (mentioned.isEmpty()) {
+            return List.of();
+        }
+        List<WikiCitation> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (WikiCitation citation : wikiCitations) {
+            String key = normalizeTitle(citation.title());
+            if (key.isBlank() || !mentioned.contains(key) || !seen.add(key)) {
+                continue;
+            }
+            result.add(citation);
+        }
+        return result;
+    }
+
+    /** Build "\n[1] Title\n[2] Title…" lines from citations, using the
+     * ledger's own indices so {@link #wikiCitation(int)} and
+     * {@code matchesSourceLine} agree with the appended table. */
+    private static String canonicalLines(List<WikiCitation> citations) {
+        StringBuilder sb = new StringBuilder();
+        for (WikiCitation citation : citations) {
+            String label = citation.title() != null && !citation.title().isBlank()
+                    ? citation.title() : citation.chunkId();
+            sb.append("\n[").append(citation.index()).append("] ").append(label);
+        }
+        return sb.toString();
     }
 
     private WikiCitation wikiCitation(int index) {
