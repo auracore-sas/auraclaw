@@ -65,7 +65,9 @@
             </div>
           </div>
 
-          <div class="models-section">
+          <!-- V902: la tarjeta de configuración de modelos es sensible (proveedores,
+               keys, estado) — solo visible para administradores. -->
+          <div v-if="isAdminRole" class="models-section">
             <div class="section-head">
               <h2 class="section-title">{{ t('dashboard.models.title') }}</h2>
               <p class="section-subtitle">{{ t('dashboard.models.subtitle') }}</p>
@@ -156,7 +158,8 @@
             </div>
           </div>
 
-          <div class="runs-section">
+          <!-- V902: las ejecuciones de cron son del sistema — solo administradores. -->
+          <div v-if="isAdminRole" class="runs-section">
             <div class="section-head">
               <h2 class="section-title">{{ t('dashboard.recentRuns') }}</h2>
               <p class="section-subtitle">{{ t('dashboard.runsDesc') }}</p>
@@ -213,6 +216,10 @@ echarts.use([LineChart, GridComponent, TooltipComponent, LegendComponent, Canvas
 
 const { t, locale } = useI18n()
 const router = useRouter()
+
+// V902: el Panel de un miembro normal muestra solo su consumo; la tarjeta de
+// modelos y las ejecuciones de cron quedan exclusivas del administrador.
+const isAdminRole = computed(() => (localStorage.getItem('role') || 'user') === 'admin')
 
 // Connected database product name (e.g. "MySQL" / "H2" / "PostgreSQL"), shown as
 // a subtle chip in the page header. Empty string hides it when unavailable.
@@ -272,16 +279,20 @@ function goToModels() {
 
 onMounted(async () => {
   try {
-    const [overviewRes, runsRes, trendRes] = await Promise.all([
-      dashboardApi.overview(),
-      dashboardApi.recentRuns(10),
-      dashboardApi.trend(7),
-    ])
-    overview.value = (overviewRes as any).data || {}
+    // V902: cron-runs es admin-only (403 para miembros) — no incluirlo en el
+    // Promise.all cuando el usuario no es admin, o el fallo tumbaría todo.
+    const basePromises: any[] = [dashboardApi.overview(), dashboardApi.trend(7)]
+    if (isAdminRole.value) {
+      basePromises.push(dashboardApi.recentRuns(10))
+    }
+    const results = await Promise.all(basePromises)
+    overview.value = results[0]?.data || {}
     const today = overview.value.today || {}
     Object.assign(todayStats, today)
-    recentRuns.value = (runsRes as any).data || []
-    trendData.value = (trendRes as any).data || []
+    trendData.value = results[1]?.data || []
+    if (isAdminRole.value) {
+      recentRuns.value = results[2]?.data || []
+    }
     if (trendData.value.length) {
       await nextTick()
       renderChart()
@@ -291,16 +302,19 @@ onMounted(async () => {
   }
 
   // Model configuration card — loaded independently so a failure here never
-  // blanks the analytics above, and vice versa.
-  try {
-    const [provRes, activeRes] = await Promise.all([
-      modelApi.listProviders().catch(() => ({ data: [] })),
-      modelApi.getActive().catch(() => ({ data: null })),
-    ])
-    modelProviders.value = (provRes as any).data || []
-    activeModel.value = (activeRes as any).data?.activeLlm || null
-  } catch {
-    // Non-critical
+  // blanks the analytics above, and vice versa. V902: admin-only (los
+  // proveedores/configuración LLM no deben consultarse para miembros).
+  if (isAdminRole.value) {
+    try {
+      const [provRes, activeRes] = await Promise.all([
+        modelApi.listProviders().catch(() => ({ data: [] })),
+        modelApi.getActive().catch(() => ({ data: null })),
+      ])
+      modelProviders.value = (provRes as any).data || []
+      activeModel.value = (activeRes as any).data?.activeLlm || null
+    } catch {
+      // Non-critical
+    }
   }
 
   // Connected database label — independent and non-critical. Reuses the existing

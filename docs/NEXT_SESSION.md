@@ -14,8 +14,26 @@
 > **Sesión 2026-08-27 (9ª-c): gráficas en Telegram — el agente genera la imagen y el adapter la entrega como foto nativa.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-d): tablas markdown en Telegram — convertidas a bloques monospace alineados.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-e): fix gráfica que no llegaba (bug de orden scrub/unwrap) + tablas anchas → viñetas + prompt anti-loop.** Detalle abajo.
+> **Sesión 2026-08-27 (9ª-f): Panel por usuario (Opción A) + secciones admin-only (modelos LLM, cron) — desplegado y verificado.** Detalle abajo.
 
 ---
+
+## ✅ Sesión 9ª-f (2026-08-27) — Panel (dashboard) por usuario + secciones admin-only
+
+### Problema
+- El Panel (`/dashboard`) era visible para cualquier miembro (`view:dashboard` está en el rol member) pero mostraba el **consolidado de todos los usuarios** (conversaciones, mensajes, tokens, tool calls) — filtraba solo por fecha + workspace.
+- Además mostraba secciones sensibles: configuración de **modelos LLM** (proveedores/estado) y **ejecuciones de cron** (del sistema).
+
+### Implementación (Opción A acordada)
+- **Backend**: `DashboardController.effectiveUsername(auth)` — admin global → null (consolidado); resto → su username. `DashboardService` overloads con `username`: filtro en el conteo de conversaciones Y en la resolución de IDs (mensajes/tokens quedan acotados por las conversaciones del usuario). `cron-runs`/`cron-runs/{id}` → `@RequireGlobalAdmin` (403 a miembros).
+- **Frontend**: `Dashboard.vue` — `isAdminRole` (localStorage role, patrón MainLayout) oculta tarjeta de modelos y tabla de cron; los fetch de esos endpoints son condicionales (evita el 403 tumbando el Promise.all).
+- **Tests**: `DashboardServiceUserScopedTest` (4 casos; patrón initTableInfo del repo). 10/10 del área OK. UI: solo los 4 archivos de fallos preexistentes conocidos.
+
+### Verificación en vivo
+- Usuario temporal `testdashboard` (member, ws 1): overview **0/0/0** (no ve el consolidado: 3 conv/37 msgs/3.2M tokens de admin), cron-runs **403**, trend 200. Admin: consolidado + cron 200. Usuario temporal eliminado (BD limpia).
+
+### Pendiente anotado
+- `Ajustes → Uso de Tokens` (`TokenUsageService.getSummary`) sigue global (sin filtro usuario/workspace) — acotarlo si se quiere (mismo patrón).
 
 ## ✅ Sesión 9ª-e (2026-08-27) — Fix gráficas en Telegram + tablas en celular
 

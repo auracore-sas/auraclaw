@@ -34,16 +34,25 @@ public class DashboardService {
 
     /**
      * 获取概览统计（今日/本周/本月）— 实时查询
+     * <p>
+     * AuraClaw (V902): sobrecarga con {@code username} — cuando no es null,
+     * las métricas se filtran a las conversaciones de ESE usuario (Opción A:
+     * el Panel de un miembro normal muestra solo su consumo). Los admins
+     * globales pasan {@code null} y ven el consolidado del workspace.
      */
     public Map<String, Object> getOverview(Long workspaceId) {
+        return getOverview(workspaceId, null);
+    }
+
+    public Map<String, Object> getOverview(Long workspaceId, String username) {
         LocalDate today = LocalDate.now();
         LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1);
         LocalDate monthStart = today.withDayOfMonth(1);
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("today", queryStats(workspaceId, today, today));
-        result.put("thisWeek", queryStats(workspaceId, weekStart, today));
-        result.put("thisMonth", queryStats(workspaceId, monthStart, today));
+        result.put("today", queryStats(workspaceId, username, today, today));
+        result.put("thisWeek", queryStats(workspaceId, username, weekStart, today));
+        result.put("thisMonth", queryStats(workspaceId, username, monthStart, today));
         return result;
     }
 
@@ -51,38 +60,54 @@ public class DashboardService {
      * 获取日趋势数据（最近 N 天，按天聚合）
      */
     public List<Map<String, Object>> getTrend(Long workspaceId, int days) {
+        return getTrend(workspaceId, null, days);
+    }
+
+    public List<Map<String, Object>> getTrend(Long workspaceId, String username, int days) {
         List<Map<String, Object>> trend = new ArrayList<>();
         LocalDate today = LocalDate.now();
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            Map<String, Object> dayStats = queryStats(workspaceId, date, date);
+            Map<String, Object> dayStats = queryStats(workspaceId, username, date, date);
             dayStats.put("date", date.toString());
             trend.add(dayStats);
         }
         return trend;
     }
 
-    private Map<String, Object> queryStats(Long workspaceId, LocalDate startDate, LocalDate endDate) {
+    private Map<String, Object> queryStats(Long workspaceId, String username, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startTime = startDate.atStartOfDay();
         LocalDateTime endTime = endDate.atTime(LocalTime.MAX);
 
-        // 对话数
+        // 对话数 — V902: cuando username != null, solo las conversaciones de
+        // ese usuario (nada de system / canales compartidos / otros usuarios).
         LambdaQueryWrapper<ConversationEntity> convWrapper = new LambdaQueryWrapper<ConversationEntity>()
                 .ge(ConversationEntity::getCreateTime, startTime)
                 .le(ConversationEntity::getCreateTime, endTime);
         if (workspaceId != null) {
             convWrapper.eq(ConversationEntity::getWorkspaceId, workspaceId);
         }
+        if (username != null && !username.isBlank()) {
+            convWrapper.eq(ConversationEntity::getUsername, username);
+        }
         long conversations = conversationMapper.selectCount(convWrapper);
 
         // Workspace 级消息过滤：通过 conversation 关联 workspace
         // MessageEntity 没有 workspaceId 字段，需通过所属 conversation 间接过滤
+        // V902: el mismo wrapper filtra por username cuando corresponde — así
+        // los mensajes/tokens también quedan acotados a las conversaciones del
+        // usuario (no solo por workspace).
         List<String> wsConversationIds = null;
+        LambdaQueryWrapper<ConversationEntity> convIdWrapper = new LambdaQueryWrapper<ConversationEntity>()
+                .select(ConversationEntity::getConversationId);
         if (workspaceId != null) {
-            List<ConversationEntity> wsConvs = conversationMapper.selectList(
-                    new LambdaQueryWrapper<ConversationEntity>()
-                            .eq(ConversationEntity::getWorkspaceId, workspaceId)
-                            .select(ConversationEntity::getConversationId));
+            convIdWrapper.eq(ConversationEntity::getWorkspaceId, workspaceId);
+        }
+        if (username != null && !username.isBlank()) {
+            convIdWrapper.eq(ConversationEntity::getUsername, username);
+        }
+        if (workspaceId != null || (username != null && !username.isBlank())) {
+            List<ConversationEntity> wsConvs = conversationMapper.selectList(convIdWrapper);
             wsConversationIds = wsConvs.stream()
                     .map(ConversationEntity::getConversationId).toList();
             if (wsConversationIds.isEmpty()) {
