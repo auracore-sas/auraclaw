@@ -34,7 +34,7 @@ class TelegramVoiceTranscriptionTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private TelegramChannelAdapter adapter() {
-        return spy(new TelegramChannelAdapter(channel(), router, objectMapper, sttService));
+        return spy(new TelegramChannelAdapter(channel(), router, objectMapper, sttService, null));
     }
 
     private static ChannelEntity channel() {
@@ -47,7 +47,7 @@ class TelegramVoiceTranscriptionTest {
     @DisplayName("STT service not wired → null transcript, no crash")
     void noSttServiceReturnsNull() {
         TelegramChannelAdapter bare = spy(new TelegramChannelAdapter(
-                channel(), router, objectMapper, null));
+                channel(), router, objectMapper, null, null));
 
         assertThat(bare.transcribeVoiceNote("file-1")).isNull();
     }
@@ -104,5 +104,41 @@ class TelegramVoiceTranscriptionTest {
                 .when(sttService).transcribe(any(), any(), any(), isNull());
 
         assertThat(adapter.transcribeVoiceNote("file-1")).isNull();
+    }
+
+    // ------------------------------------------------------------------
+    // V902: generated-file markdown links (charts) — Telegram delivery
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("markdown link to generated file → unwrapped to label only")
+    void unwrapsMarkdownGeneratedLink() {
+        String content = "Adjunto la gráfica:\n"
+                + "[pie.png](http://127.0.0.1:18080/api/v1/files/generated/41041f9d-abc)\n";
+
+        String out = TelegramChannelAdapter.unwrapGeneratedLinks(content);
+
+        assertThat(out)
+                .contains("Adjunto la gráfica:")
+                .contains("pie.png")
+                .doesNotContain("](")
+                .doesNotContain("api/v1/files/generated");
+    }
+
+    @Test
+    @DisplayName("relative generated URL in markdown link → unwrapped")
+    void unwrapsRelativeGeneratedLink() {
+        String content = "[diagram](/api/v1/files/generated/abc-123)";
+        assertThat(TelegramChannelAdapter.unwrapGeneratedLinks(content))
+                .isEqualTo("diagram");
+    }
+
+    @Test
+    @DisplayName("non-generated links and plain text untouched")
+    void leavesOtherLinksAlone() {
+        String content = "Mira [esto](https://example.com/page) y "
+                + "https://example.com/api/v1/files/generated/x raw";
+        assertThat(TelegramChannelAdapter.unwrapGeneratedLinks(content))
+                .isEqualTo(content);
     }
 }

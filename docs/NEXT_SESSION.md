@@ -11,8 +11,31 @@
 > **Sesión 2026-08-26 (8ª): Wiki con OpenAI end-to-end + fix de bug GPT-5 en chat COMPLETADO y desplegado.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª): canales individuales (V901) — canal de Telegram con owner por usuario, conversaciones ya no visibles a todos.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-b): voz entrante en Telegram (V902) — descarga + transcripción STT desplegado y verificado.** Detalle abajo.
+> **Sesión 2026-08-27 (9ª-c): gráficas en Telegram — el agente genera la imagen y el adapter la entrega como foto nativa.** Detalle abajo.
 
 ---
+
+## ✅ Sesión 9ª-c (2026-08-27) — Gráficas en Telegram COMPLETADO y desplegado
+
+### Problema (doble)
+1. El agente pedido "gráfica" respondía "la gráfica se renderiza automáticamente arriba" **sin generar nada** — el link markdown a `/api/v1/files/generated/{id}` solo lo renderiza la web; Telegram no renderiza nada automático (y la URL `127.0.0.1:18080` es inalcanzable para el usuario).
+2. Aun si generaba la imagen, el adapter de Telegram solo mandaba texto: el link quedaba como texto plano.
+
+### Fix
+- **`AgentGraphBuilder.CHART_DELIVERY_BLOCK`** (system prompt, todos los agentes): si el usuario pide gráfica/visualización → GENERAR imagen (html_image_render: SVG o Chart.js) e incluir la URL; NUNCA afirmar que "se renderiza arriba".
+- **Prompt del Asistente General (BD)**: misma guía en su system_prompt (DB-side).
+- **`TelegramChannelAdapter.renderAndSend` override** (V902): (1) `unwrapGeneratedLinks` desenvuelve `[label](url-generada)` → `label` (el scrubber dejaría un markdown inválido), (2) `GeneratedFileScrubber` (ya usado por WeCom/Feishu/DingTalk, Telegram no lo tenía) reemplaza la URL por 📎 archivo y devuelve bytes, (3) `sendTelegramMediaBytes` sube los bytes como `sendPhoto`/`sendDocument` nativo (multipart). `GeneratedFileScrubber` inyectado desde `ChannelManager`.
+
+### Verificación
+- API stream (conversación chart-test-telegram-2): el agente llamó `render_html_image` y generó `pie_tipo_identificacion.png` (1800×1200) ✅ — con la guía nueva ya no alucina.
+- Upload multipart real al chat de Telegram con los bytes de la PNG: `ok:true, message_id 37` ✅.
+- Tests: `unwrapGeneratedLinks` 3 casos (en TelegramVoiceTranscriptionTest) → 23/23 del área OK.
+- Desplegado: imagen + `up -d` (canal Long-Polling activo).
+
+### Notas / pendientes
+- El renderer web de la UI muestra la imagen por el link markdown; Telegram ahora recibe foto nativa + texto con 📎 archivo.
+- Si se quiere, el mismo patrón de scrub aplica a otros canales IM que no lo tengan (qq/slack/discord/weixin — verificar cada adapter).
+- Conversaciones de prueba en BD: chart-test-telegram-1/2 (borrables).
 
 ## ✅ Sesión 9ª-b (2026-08-27) — Voz en Telegram (V902) COMPLETADO y desplegado
 

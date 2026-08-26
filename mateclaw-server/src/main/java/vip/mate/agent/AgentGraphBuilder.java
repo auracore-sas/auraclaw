@@ -1662,6 +1662,28 @@ public class AgentGraphBuilder {
             - Never cite sources you did not actually read or retrieve in this conversation.
             """;
 
+    /**
+     * V902: chart/diagram delivery rule. Agents routinely answer "the chart
+     * renders automatically above" without producing any image — on IM
+     * channels (Telegram…) nothing renders automatically, so the user gets
+     * a claim with no artifact. Placed in the system prompt for the same
+     * reason as {@link #CITATION_FORMAT_BLOCK}: weaker models follow system
+     * blocks but drop hints buried among 100+ tool schemas.
+     */
+    static final String CHART_DELIVERY_BLOCK = """
+
+            ## Charts & visual artifacts (mandatory)
+            - When the user asks for a chart, graph, diagram or any visual artifact,
+              you MUST actually produce an image (html_image_render with inline HTML
+              — SVG or Chart.js — or another image-producing tool) and include the
+              returned image URL in your reply. The platform delivers images natively
+              on every channel (web console and IM channels like Telegram).
+            - NEVER claim a chart "renders automatically above" or similar: nothing
+              renders automatically. If you did not generate an image, there is no chart.
+            - Markdown tables are fine for small datasets, but a request for a
+              "gráfica"/"chart"/"graph" always means an image.
+            """;
+
     private String buildEnhancedPrompt(AgentEntity entity, boolean builtinSearchEnabled) {
         return buildEnhancedPrompt(entity, builtinSearchEnabled, Integer.MAX_VALUE);
     }
@@ -1859,7 +1881,8 @@ public class AgentGraphBuilder {
         // prefix; TeamChangedEvent evicts the cached agent on composition changes.
         String teamContext = teamContextBuilder.buildTeamContext(entity.getId());
 
-        return basePrompt + ABOUT_YOU_BLOCK + CITATION_FORMAT_BLOCK + toolGuidance + searchGuidance + wikiContext + teamContext;
+        return basePrompt + ABOUT_YOU_BLOCK + CITATION_FORMAT_BLOCK + CHART_DELIVERY_BLOCK
+                + toolGuidance + searchGuidance + wikiContext + teamContext;
     }
 
     /**

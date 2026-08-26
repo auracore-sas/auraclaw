@@ -1206,7 +1206,8 @@ public class ChannelManager {
                     feishuMediaUploader, generatedFileScrubber, feishuStreamingCardManager,
                     feishuCardDispatcher, feishuClientFactory, generatedFileCache, sttService,
                     chatUploadLocationResolver);
-            case "telegram" -> new TelegramChannelAdapter(channel, messageRouter, objectMapper, sttService);
+            case "telegram" -> new TelegramChannelAdapter(channel, messageRouter, objectMapper, sttService,
+                    generatedFileScrubber);
             case "discord" -> new DiscordChannelAdapter(channel, messageRouter, objectMapper);
             case "wecom" -> new WeComChannelAdapter(channel, messageRouter, objectMapper,
                     approvalNotificationService, weComCardDispatcher, weComKeepaliveScheduler,

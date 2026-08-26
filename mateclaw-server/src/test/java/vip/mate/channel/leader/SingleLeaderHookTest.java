@@ -101,7 +101,7 @@ class SingleLeaderHookTest {
     void telegramPollingRequiresLeader() {
         TelegramChannelAdapter adapter = new TelegramChannelAdapter(
                 channel("telegram", "{\"bot_token\":\"x\"}"),
-                router, objectMapper, null);
+                router, objectMapper, null, null);
         assertTrue(adapter.requiresSingleLeader(),
                 "Default Telegram mode is long-polling and must require single leader");
     }
@@ -112,7 +112,7 @@ class SingleLeaderHookTest {
         TelegramChannelAdapter adapter = new TelegramChannelAdapter(
                 channel("telegram",
                         "{\"bot_token\":\"x\",\"connection_mode\":\"polling\"}"),
-                router, objectMapper, null);
+                router, objectMapper, null, null);
         assertTrue(adapter.requiresSingleLeader());
     }
 
@@ -122,7 +122,7 @@ class SingleLeaderHookTest {
         TelegramChannelAdapter adapter = new TelegramChannelAdapter(
                 channel("telegram",
                         "{\"bot_token\":\"x\",\"connection_mode\":\"webhook\",\"webhook_url\":\"https://example.com/hook\"}"),
-                router, objectMapper, null);
+                router, objectMapper, null, null);
         assertFalse(adapter.requiresSingleLeader(),
                 "Webhook callbacks are HTTP-fanned by the LB, so all nodes may subscribe");
     }
@@ -133,7 +133,7 @@ class SingleLeaderHookTest {
         TelegramChannelAdapter adapter = new TelegramChannelAdapter(
                 channel("telegram",
                         "{\"bot_token\":\"x\",\"webhook_url\":\"https://example.com/hook\"}"),
-                router, objectMapper, null);
+                router, objectMapper, null, null);
         assertFalse(adapter.requiresSingleLeader(),
                 "Legacy config without connection_mode but with webhook_url must be inferred as webhook");
     }
@@ -144,7 +144,7 @@ class SingleLeaderHookTest {
         TelegramChannelAdapter adapter = new TelegramChannelAdapter(
                 channel("telegram",
                         "{\"bot_token\":\"x\",\"connection_mode\":\"webhook\"}"),
-                router, objectMapper, null);
+                router, objectMapper, null, null);
         assertTrue(adapter.requiresSingleLeader(),
                 "Webhook mode without a URL falls through to polling and must require single leader");
     }

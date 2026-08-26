@@ -6,6 +6,7 @@ import vip.mate.channel.AbstractChannelAdapter;
 import vip.mate.channel.ChannelMessage;
 import vip.mate.channel.ChannelMessageRouter;
 import vip.mate.channel.ExponentialBackoff;
+import vip.mate.channel.media.GeneratedFileScrubber;
 import vip.mate.channel.model.ChannelEntity;
 import vip.mate.workspace.conversation.model.MessageContentPart;
 
@@ -59,6 +60,13 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     /** STT service for transcribing inbound voice notes (V902). Nullable for legacy callers / tests. */
     private final vip.mate.stt.SttService sttService;
 
+    /**
+     * Scrubs {@code /api/v1/files/generated/{id}} URLs into native Telegram
+     * attachments (V902). Nullable for legacy callers / tests — replies then
+     * go out as plain text with the raw URL.
+     */
+    private final vip.mate.channel.media.GeneratedFileScrubber generatedFileScrubber;
+
     /** Long-Polling 线程 */
     private volatile Thread pollingThread;
     private volatile boolean polling;
@@ -78,9 +86,11 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     public TelegramChannelAdapter(ChannelEntity channelEntity,
                                   ChannelMessageRouter messageRouter,
                                   ObjectMapper objectMapper,
-                                  vip.mate.stt.SttService sttService) {
+                                  vip.mate.stt.SttService sttService,
+                                  vip.mate.channel.media.GeneratedFileScrubber generatedFileScrubber) {
         super(channelEntity, messageRouter, objectMapper);
         this.sttService = sttService;
+        this.generatedFileScrubber = generatedFileScrubber;
         // Telegram: 2s→4s→8s→16s→30s 指数退避，无限重试
         this.backoff = new ExponentialBackoff(2000, 30000, 2.0, -1);
     }
@@ -839,6 +849,104 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     @Override
     public boolean requiresSingleLeader() {
         return !resolveWebhookMode();
+    }
+
+    /**
+     * V902: entregar respuestas del asistente con adjuntos nativos.
+     *
+     * <p>Los agentes referencian archivos generados (gráficas PNG, documentos)
+     * con URLs {@code /api/v1/files/generated/{id}} en el texto markdown. En
+     * la web el renderer las muestra, pero Telegram no: un link a
+     * {@code 127.0.0.1} no es alcanzable y nada se renderiza automático.
+     *
+     * <p>Aquí: (1) se desenvuelven los links markdown hacia URLs generadas
+     * (quedaría {@code [label](📎 file.png)} inválido en Markdown legacy),
+     * (2) se escanean las URLs con {@link GeneratedFileScrubber} — el texto
+     * va con el marcador {@code 📎 archivo} y los bytes se suben como foto
+     * (sendPhoto) o documento (sendDocument) nativo.
+     */
+    @Override
+    public void renderAndSend(String targetId, String content) {
+        if (generatedFileScrubber == null || httpClient == null || botToken == null) {
+            super.renderAndSend(targetId, content);
+            return;
+        }
+        try {
+            GeneratedFileScrubber.ScrubResult scrubbed =
+                    generatedFileScrubber.scrub(unwrapGeneratedLinks(content));
+            String rewritten = scrubbed.rewrittenText();
+            if (rewritten != null && !rewritten.isBlank()) {
+                sendMessage(targetId, rewritten);
+            }
+            for (GeneratedFileScrubber.AttachmentHit hit : scrubbed.attachments()) {
+                boolean image = "image".equals(hit.mediaType());
+                sendTelegramMediaBytes(targetId,
+                        image ? "sendPhoto" : "sendDocument",
+                        image ? "photo" : "document",
+                        hit.fileName(), hit.mimeType(), hit.bytes());
+            }
+        } catch (Exception e) {
+            log.warn("[telegram] renderAndSend with attachments failed, falling back to plain text: {}", e.getMessage());
+            super.renderAndSend(targetId, content);
+        }
+    }
+
+    /**
+     * Desenvuelve links markdown cuyo destino es una URL de archivo generado:
+     * {@code [label](http://host/api/v1/files/generated/{id})} → {@code label}.
+     * Sin esto, el scrubber reescribiría el destino del link con el marcador
+     * {@code 📎 archivo} y el resultado sería un link markdown inválido.
+     */
+    // Package-private para tests.
+    static String unwrapGeneratedLinks(String content) {
+        if (content == null || content.isBlank()) return content;
+        return GENERATED_MD_LINK_PATTERN.matcher(content).replaceAll(m -> m.group(1));
+    }
+
+    /** {@code [label](<scheme>://host/api/v1/files/generated/<id>)} — ver {@link #unwrapGeneratedLinks}. */
+    private static final java.util.regex.Pattern GENERATED_MD_LINK_PATTERN = java.util.regex.Pattern.compile(
+            "\\[([^\\]]*)\\]\\((?:https?://[^)\\s]*?)?/api/v1/files/generated/[^)]*\\)");
+
+    /**
+     * Sube bytes como adjunto nativo (multipart/form-data). Telegram acepta
+     * el archivo directamente en el campo photo/document — no hace falta URL
+     * pública ni file_id previo.
+     */
+    private void sendTelegramMediaBytes(String chatId, String method, String mediaField,
+                                        String fileName, String mimeType, byte[] bytes) {
+        if (bytes == null || bytes.length == 0 || httpClient == null || apiBaseUrl == null) {
+            log.warn("[telegram] {} skipped: no bytes for {}", method, fileName);
+            return;
+        }
+        try {
+            String boundary = "----AuraClaw" + Long.toHexString(System.nanoTime());
+            String crlf = "\r\n";
+            String safeName = (fileName != null && !fileName.isBlank()) ? fileName : "attachment.bin";
+            String contentType = (mimeType != null && !mimeType.isBlank()) ? mimeType : "application/octet-stream";
+            java.io.ByteArrayOutputStream body = new java.io.ByteArrayOutputStream();
+            body.write(("--" + boundary + crlf
+                    + "Content-Disposition: form-data; name=\"chat_id\"" + crlf + crlf
+                    + chatId + crlf).getBytes(StandardCharsets.UTF_8));
+            body.write(("--" + boundary + crlf
+                    + "Content-Disposition: form-data; name=\"" + mediaField + "\"; filename=\"" + safeName + "\"" + crlf
+                    + "Content-Type: " + contentType + crlf + crlf).getBytes(StandardCharsets.UTF_8));
+            body.write(bytes);
+            body.write((crlf + "--" + boundary + "--" + crlf).getBytes(StandardCharsets.UTF_8));
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(apiBaseUrl + "/" + method))
+                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()))
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                log.info("[telegram] {} sent {} ({} bytes)", method, safeName, bytes.length);
+            } else {
+                log.warn("[telegram] {} failed: status={}, body={}", method, response.statusCode(), response.body());
+            }
+        } catch (Exception e) {
+            log.error("[telegram] Failed to {} bytes: {}", method, e.getMessage());
+        }
     }
 
     // ==================== V902: voz entrante (descarga + STT) ====================
