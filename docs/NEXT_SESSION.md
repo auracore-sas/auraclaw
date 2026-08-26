@@ -13,8 +13,29 @@
 > **Sesión 2026-08-27 (9ª-b): voz entrante en Telegram (V902) — descarga + transcripción STT desplegado y verificado.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-c): gráficas en Telegram — el agente genera la imagen y el adapter la entrega como foto nativa.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-d): tablas markdown en Telegram — convertidas a bloques monospace alineados.** Detalle abajo.
+> **Sesión 2026-08-27 (9ª-e): fix gráfica que no llegaba (bug de orden scrub/unwrap) + tablas anchas → viñetas + prompt anti-loop.** Detalle abajo.
 
 ---
+
+## ✅ Sesión 9ª-e (2026-08-27) — Fix gráficas en Telegram + tablas en celular
+
+### Bugs detectados en pruebas reales del usuario
+1. **La gráfica no llegaba**: el mensaje mostraba `!graficaidentificacionbarras.png` (resto de un link de imagen markdown) sin foto. Causa: `renderAndSend` hacía `scrub(unwrapGeneratedLinks(content))` — el unwrap eliminaba la URL generada ANTES de que el scrubber extrajera los bytes → attachments vacíos; y el `!` del link de imagen quedaba pegado al label.
+2. **Tabla ilegible en pantalla pequeña**: bloque monospace de 42+ chars desbordaba el celular.
+3. **Loop del agente al re-pedir la gráfica**: intentaba localizar el archivo en el workspace, matplotlib (no instalado), PIL (no), rutas físicas (bloqueadas), regenerar con Python puro… — creía que la URL no era suficiente.
+
+### Fixes
+- **Orden corregido**: scrub PRIMERO (extrae bytes de las URLs generadas, reemplaza URL → 📎 archivo), luego `cleanScrubbedLinks` (nuevo, reemplaza a `unwrapGeneratedLinks`): `[label](📎 archivo)`/`![label](📎 archivo)` → `label`; `[label](⚠️ aviso)` → aviso legible.
+- **`MarkdownTableFormatter`**: celdas truncadas a 16 chars de ancho visual (code points; emojis/CJK = 2); si la tabla supera 34 chars → viñetas `• etiqueta: valor · valor` (legible en celular).
+- **Anti-loop**: `CHART_DELIVERY_BLOCK` + prompt BD del Asistente General: incluir la URL es suficiente (la plataforma la entrega como imagen nativa); nunca localizar/reenviar/adjuntar/regenerar el archivo.
+
+### Verificación
+- 24/24 tests OK (`cleanScrubbedLinks` 4 casos nuevos; formatter bullets/truncado 2 casos).
+- Desplegado; canal activo. Pendiente: confirmación del usuario con una gráfica nueva desde Telegram.
+
+### Notas
+- La tabla ancha del usuario (columna "Tipo" de 40 chars) ahora colapsa a viñetas; tablas angostas siguen en monospace.
+- Conversaciones de prueba previas (chart-test-*) en BD.
 
 ## ✅ Sesión 9ª-d (2026-08-27) — Tablas markdown en Telegram COMPLETADO y desplegado
 

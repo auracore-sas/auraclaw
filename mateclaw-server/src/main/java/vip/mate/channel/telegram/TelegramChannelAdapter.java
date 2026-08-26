@@ -878,9 +878,12 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
             return;
         }
         try {
-            GeneratedFileScrubber.ScrubResult scrubbed =
-                    generatedFileScrubber.scrub(unwrapGeneratedLinks(content));
-            String rewritten = scrubbed.rewrittenText();
+            // V902-fix: PRIMERO el scrubber extrae los bytes de las URLs
+            // generadas (si se desenvuelven los links antes, la URL desaparece
+            // y no hay adjunto que subir — bug que dejaba solo "!nombre.png").
+            // Después se limpia el markdown resultante del scrub.
+            GeneratedFileScrubber.ScrubResult scrubbed = generatedFileScrubber.scrub(content);
+            String rewritten = cleanScrubbedLinks(scrubbed.rewrittenText());
             if (rewritten != null && !rewritten.isBlank()) {
                 sendMessage(targetId, rewritten);
             }
@@ -898,20 +901,30 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     }
 
     /**
-     * Desenvuelve links markdown cuyo destino es una URL de archivo generado:
-     * {@code [label](http://host/api/v1/files/generated/{id})} → {@code label}.
-     * Sin esto, el scrubber reescribiría el destino del link con el marcador
-     * {@code 📎 archivo} y el resultado sería un link markdown inválido.
+     * Limpia el markdown que deja el scrubber tras reemplazar URLs generadas:
+     * <ul>
+     *   <li>{@code [label](📎 archivo)} / {@code ![label](📎 archivo)} → {@code label}
+     *       (el destino ya no es una URL — un link así rompería el parseo
+     *       Markdown legacy de Telegram; el {@code !} del link de imagen se quita).</li>
+     *   <li>{@code [label](⚠️ …)} / {@code ![label](⚠️ …)} → {@code ⚠️ …}
+     *       (aviso de cache-miss legible sin sintaxis de link).</li>
+     *   <li>El resto queda intacto.</li>
+     * </ul>
      */
     // Package-private para tests.
-    static String unwrapGeneratedLinks(String content) {
+    static String cleanScrubbedLinks(String content) {
         if (content == null || content.isBlank()) return content;
-        return GENERATED_MD_LINK_PATTERN.matcher(content).replaceAll(m -> m.group(1));
+        String t = SCRUBBED_MARKER_LINK.matcher(content).replaceAll(m -> m.group(1).trim());
+        return SCRUBBED_NOTICE_LINK.matcher(t).replaceAll(m -> m.group(2).trim());
     }
 
-    /** {@code [label](<scheme>://host/api/v1/files/generated/<id>)} — ver {@link #unwrapGeneratedLinks}. */
-    private static final java.util.regex.Pattern GENERATED_MD_LINK_PATTERN = java.util.regex.Pattern.compile(
-            "\\[([^\\]]*)\\]\\((?:https?://[^)\\s]*?)?/api/v1/files/generated/[^)]*\\)");
+    /** {@code !?[label](📎 …)} — ver {@link #cleanScrubbedLinks}. */
+    private static final java.util.regex.Pattern SCRUBBED_MARKER_LINK = java.util.regex.Pattern.compile(
+            "!?\\[([^\\]]*)\\]\\((📎[^)]*)\\)");
+
+    /** {@code !?[label](⚠️ …)} — el aviso se conserva visible. */
+    private static final java.util.regex.Pattern SCRUBBED_NOTICE_LINK = java.util.regex.Pattern.compile(
+            "!?\\[([^\\]]*)\\]\\((⚠️[^)]*)\\)");
 
     /**
      * Sube bytes como adjunto nativo (multipart/form-data). Telegram acepta

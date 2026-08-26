@@ -1680,6 +1680,9 @@ public class AgentGraphBuilder {
               on every channel (web console and IM channels like Telegram).
             - NEVER claim a chart "renders automatically above" or similar: nothing
               renders automatically. If you did not generate an image, there is no chart.
+            - NEVER try to locate, re-send, attach or regenerate the generated file:
+              including its URL in the reply is enough — the platform downloads it
+              and delivers it as a native image attachment automatically.
             - Markdown tables are fine for small datasets, but a request for a
               "gráfica"/"chart"/"graph" always means an image.
             """;

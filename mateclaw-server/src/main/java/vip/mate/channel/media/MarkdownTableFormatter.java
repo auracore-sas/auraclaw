@@ -35,6 +35,20 @@ public final class MarkdownTableFormatter {
             "\\*\\*(.+?)\\*\\*|`(.+?)`|\\[([^\\]]+)\\]\\([^)]*\\)|_(.+?)_");
 
     /**
+     * Ancho máximo por celda (chars) — las celdas más largas se truncan con
+     * {@code …}. Evita que una columna gigante desborde la pantalla del
+     * celular en el bloque monospace.
+     */
+    private static final int MAX_CELL_WIDTH = 16;
+
+    /**
+     * Si la tabla renderizada excede este ancho, se colapsa a lista con
+     * viñetas (más legible en pantallas pequeñas que un bloque monospace
+     * que obliga a scroll horizontal).
+     */
+    private static final int MAX_TABLE_WIDTH = 34;
+
+    /**
      * Formatea las tablas markdown de {@code text} como bloques monospace.
      * Devuelve el texto sin cambios cuando no hay tablas detectables.
      */
@@ -111,12 +125,21 @@ public final class MarkdownTableFormatter {
             return raw.toString();
         }
         int cols = rows.stream().mapToInt(List::size).max().orElse(0);
-        // Ancho por columna (máximo de las celdas, incluyendo el header).
+        // Ancho por columna (máximo de las celdas, incluyendo el header),
+        // con tope MAX_CELL_WIDTH para no desbordar pantallas pequeñas.
         int[] widths = new int[cols];
         for (List<String> row : rows) {
             for (int c = 0; c < row.size() && c < cols; c++) {
-                widths[c] = Math.max(widths[c], row.get(c).length());
+                widths[c] = Math.max(widths[c], Math.min(displayWidth(row.get(c)), MAX_CELL_WIDTH));
             }
+        }
+        // Ancho total estimado de la línea renderizada (pipes + separadores).
+        int totalWidth = 4; // "| " inicial + " |" final
+        for (int w : widths) {
+            totalWidth += w + 3; // celda + " | "
+        }
+        if (totalWidth > MAX_TABLE_WIDTH) {
+            return renderBullets(rows);
         }
         StringBuilder sb = new StringBuilder();
         sb.append("```\n");
@@ -136,11 +159,58 @@ public final class MarkdownTableFormatter {
         return sb.toString();
     }
 
+    /**
+     * Tabla demasiado ancha para monospace en celular → lista de viñetas:
+     * {@code • primera-celda: resto · unido}. Header omitido (la primera
+     * celda de cada fila suele ser la etiqueta).
+     */
+    private static String renderBullets(List<List<String>> rows) {
+        StringBuilder sb = new StringBuilder();
+        int dataStart = rows.size() > 1 ? 1 : 0; // saltar header si hay cuerpo
+        for (int r = dataStart; r < rows.size(); r++) {
+            List<String> row = rows.get(r);
+            if (row.isEmpty()) continue;
+            if (sb.length() > 0) sb.append('\n');
+            sb.append("• ").append(truncate(row.get(0)));
+            if (row.size() > 1) {
+                sb.append(": ");
+                for (int c = 1; c < row.size(); c++) {
+                    if (c > 1) sb.append(" · ");
+                    sb.append(truncate(row.get(c)));
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    /** Ancho visual aproximado (emojis/CJK ≈ 2). */
+    private static int displayWidth(String s) {
+        int w = 0;
+        for (int cp : s.codePoints().toArray()) {
+            w += (cp > 0x2FFF) ? 2 : 1; // rango amplio: CJK/emoji cuentan doble
+        }
+        return w;
+    }
+
+    /** Trunca por code points a MAX_CELL_WIDTH con {@code …}. */
+    private static String truncate(String s) {
+        if (displayWidth(s) <= MAX_CELL_WIDTH) return s;
+        StringBuilder sb = new StringBuilder();
+        int w = 0;
+        for (int cp : s.codePoints().toArray()) {
+            int cw = (cp > 0x2FFF) ? 2 : 1;
+            if (w + cw > MAX_CELL_WIDTH - 1) break;
+            sb.appendCodePoint(cp);
+            w += cw;
+        }
+        return sb.append('…').toString();
+    }
+
     /** Una línea de la tabla renderizada con celdas alineadas. */
     private static String rowLine(List<String> row, int[] widths, boolean pad) {
         StringBuilder sb = new StringBuilder("| ");
         for (int c = 0; c < widths.length; c++) {
-            String cell = c < row.size() ? row.get(c) : "";
+            String cell = c < row.size() ? truncate(row.get(c)) : "";
             sb.append(pad ? padRight(cell, widths[c]) : cell);
             if (c < widths.length - 1) {
                 sb.append(" | ");
@@ -158,7 +228,7 @@ public final class MarkdownTableFormatter {
     }
 
     private static String padRight(String s, int width) {
-        int diff = width - s.length();
+        int diff = width - displayWidth(s);
         return diff > 0 ? s + " ".repeat(diff) : s;
     }
 

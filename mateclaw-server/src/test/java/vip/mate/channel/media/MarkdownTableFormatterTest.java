@@ -93,6 +93,31 @@ class MarkdownTableFormatterTest {
     }
 
     @Test
+    @DisplayName("tabla demasiado ancha → lista de viñetas legible en celular")
+    void wideTableCollapsesToBullets() {
+        String in = "| Tipo de identificación | Cantidad | % |\n|---|---|---|\n"
+                + "| 🔶 RUC (Registro Único de Contribuyentes) | 22 | 95.7% |\n"
+                + "| 🔷 Cédula de Identidad | 1 | 4.3% |";
+        String out = MarkdownTableFormatter.format(in);
+
+        // Colapsa a bullets con la etiqueta + resto separado por " · "
+        assertThat(out).startsWith("• 🔶 RUC (Registr…");
+        assertThat(out).contains("• 🔷 Cédula de Id…: 1 · 4.3%");
+        assertThat(out).doesNotContain("```");
+    }
+
+    @Test
+    @DisplayName("celdas muy largas en tabla angosta → truncadas con …")
+    void longCellsTruncated() {
+        String in = "| Nombre |\n|---|\n| Una descripción extremadamente larga aquí |";
+        String out = MarkdownTableFormatter.format(in);
+
+        assertThat(out).startsWith("```");
+        assertThat(out).contains("…");
+        assertThat(out).doesNotContain("extremadamente larga aquí");
+    }
+
+    @Test
     @DisplayName("separador con dos puntos (alineación) → detectado")
     void alignmentSeparatorDetected() {
         String in = "| A | B |\n|:--|--:|\n| 1 | 2 |";

@@ -111,34 +111,34 @@ class TelegramVoiceTranscriptionTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("markdown link to generated file → unwrapped to label only")
-    void unwrapsMarkdownGeneratedLink() {
-        String content = "Adjunto la gráfica:\n"
-                + "[pie.png](http://127.0.0.1:18080/api/v1/files/generated/41041f9d-abc)\n";
-
-        String out = TelegramChannelAdapter.unwrapGeneratedLinks(content);
-
-        assertThat(out)
-                .contains("Adjunto la gráfica:")
-                .contains("pie.png")
-                .doesNotContain("](")
-                .doesNotContain("api/v1/files/generated");
+    @DisplayName("link con marcador 📎 del scrubber → label limpio")
+    void cleansScrubbedMarkerLink() {
+        String in = "Adjunto: [pie.png](📎 pie.png)";
+        assertThat(TelegramChannelAdapter.cleanScrubbedLinks(in))
+                .isEqualTo("Adjunto: pie.png");
     }
 
     @Test
-    @DisplayName("relative generated URL in markdown link → unwrapped")
-    void unwrapsRelativeGeneratedLink() {
-        String content = "[diagram](/api/v1/files/generated/abc-123)";
-        assertThat(TelegramChannelAdapter.unwrapGeneratedLinks(content))
-                .isEqualTo("diagram");
+    @DisplayName("link de IMAGEN con marcador 📎 → label limpio (sin !)")
+    void cleansScrubbedImageLink() {
+        String in = "¡Aquí está! ![graficaidentificacionbarras.png](📎 graficaidentificacionbarras.png)";
+        assertThat(TelegramChannelAdapter.cleanScrubbedLinks(in))
+                .isEqualTo("¡Aquí está! graficaidentificacionbarras.png");
     }
 
     @Test
-    @DisplayName("non-generated links and plain text untouched")
-    void leavesOtherLinksAlone() {
-        String content = "Mira [esto](https://example.com/page) y "
-                + "https://example.com/api/v1/files/generated/x raw";
-        assertThat(TelegramChannelAdapter.unwrapGeneratedLinks(content))
-                .isEqualTo(content);
+    @DisplayName("link con aviso de cache-miss → aviso legible sin sintaxis")
+    void cleansScrubbedNoticeLink() {
+        String in = "![x](⚠️ 文件未真正生成（模型未调用文档生成工具），请重新发送请求)";
+        String out = TelegramChannelAdapter.cleanScrubbedLinks(in);
+        assertThat(out).doesNotContain("][").doesNotContain("](⚠️");
+        assertThat(out).contains("⚠️");
+    }
+
+    @Test
+    @DisplayName("links normales y texto sin URLs generadas → intactos")
+    void leavesNormalLinksAlone() {
+        String in = "Mira [esto](https://example.com/page)";
+        assertThat(TelegramChannelAdapter.cleanScrubbedLinks(in)).isEqualTo(in);
     }
 }
