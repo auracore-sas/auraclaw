@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import vip.mate.workspace.conversation.model.ConversationEntity;
 import vip.mate.workspace.conversation.model.MessageEntity;
+import vip.mate.workspace.conversation.repository.ConversationMapper;
 import vip.mate.workspace.conversation.repository.MessageMapper;
 import vip.mate.workspace.conversation.vo.TokenUsageSummaryVO;
 import vip.mate.workspace.conversation.vo.TokenUsageSummaryVO.DateUsageItem;
@@ -28,12 +30,25 @@ import java.util.stream.Collectors;
 public class TokenUsageService {
 
     private final MessageMapper messageMapper;
+    private final ConversationMapper conversationMapper;
 
     /**
-     * 查询指定时间范围内的 token 使用汇总
+     * 查询指定时间范围内的 token 使用汇总（backward-compat: sin filtro de usuario）
      */
     public TokenUsageSummaryVO getSummary(LocalDate startDate, LocalDate endDate,
                                           String modelName, String providerId) {
+        return getSummary(startDate, endDate, modelName, providerId, null);
+    }
+
+    /**
+     * 查询指定时间范围内的 token 使用汇总
+     *
+     * <p>AuraClaw (V902): cuando {@code username} no es null (miembro normal),
+     * el resumen se acota a las conversaciones de ESE usuario — mismo patrón
+     * que el Panel. Los admins globales pasan {@code null} y ven el global.
+     */
+    public TokenUsageSummaryVO getSummary(LocalDate startDate, LocalDate endDate,
+                                          String modelName, String providerId, String username) {
         // 自动交换
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
             LocalDate tmp = startDate;
@@ -44,6 +59,23 @@ public class TokenUsageService {
         // 默认值
         if (endDate == null) endDate = LocalDate.now();
         if (startDate == null) startDate = endDate.minusDays(30);
+
+        // V902: resolver las conversaciones del usuario para acotar mensajes
+        // (MessageEntity no lleva username). Sin conversaciones → resumen vacío.
+        List<String> userConversationIds = null;
+        if (username != null && !username.isBlank()) {
+            List<ConversationEntity> convs = conversationMapper.selectList(
+                    new LambdaQueryWrapper<ConversationEntity>()
+                            .eq(ConversationEntity::getUsername, username)
+                            .select(ConversationEntity::getConversationId));
+            userConversationIds = convs.stream()
+                    .map(ConversationEntity::getConversationId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            if (userConversationIds.isEmpty()) {
+                return buildSummary(List.of());
+            }
+        }
 
         // 查询 assistant 消息，且有 token 数据
         LocalDateTime startTime = startDate.atStartOfDay();
@@ -60,6 +92,9 @@ public class TokenUsageService {
                         .or()
                         .gt(MessageEntity::getCompletionTokens, 0))
                 .eq(MessageEntity::getDeleted, 0);
+        if (userConversationIds != null) {
+            wrapper.in(MessageEntity::getConversationId, userConversationIds);
+        }
 
         if (modelName != null && !modelName.isBlank()) {
             wrapper.eq(MessageEntity::getRuntimeModel, modelName);

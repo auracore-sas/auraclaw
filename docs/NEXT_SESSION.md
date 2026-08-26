@@ -15,6 +15,7 @@
 > **Sesión 2026-08-27 (9ª-d): tablas markdown en Telegram — convertidas a bloques monospace alineados.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-e): fix gráfica que no llegaba (bug de orden scrub/unwrap) + tablas anchas → viñetas + prompt anti-loop.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-f): Panel por usuario (Opción A) + secciones admin-only (modelos LLM, cron) — desplegado y verificado.** Detalle abajo.
+> **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
 
 ---
 
@@ -407,6 +408,21 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 - Paso 2: marcar qwen-max / qwen-turbo `usage=["wiki"]` (UI Ajustes → Modelos → editar Uso)
 - Pasos 3-4: `POST /models/embedding/default` (text-embedding-v3) + config KBs (wikiDefaultModelId/wikiLightModelId/stepModels/fallbackModelIds)
 - Paso 5: verificación end-to-end (digestión, `Fuentes:` con vectores, aislamiento del chat)
+
+
+## ✅ Sesión 9ª-g (2026-08-27) — Token Usage por usuario (V902)
+
+### Problema
+- `Ajustes → Uso de Tokens` (`/api/v1/token-usage`) mostraba el consumo GLOBAL de todos los usuarios (filtraba solo por fecha/modelo/proveedor — ni siquiera por workspace).
+
+### Implementación
+- `TokenUsageController`: + `Authentication` + `effectiveUsername` (admin global → null; resto → su username) — mismo criterio que el Panel.
+- `TokenUsageService`: + `ConversationMapper` + overload 5-arg con `username` — resuelve las conversaciones del usuario y filtra mensajes por `IN conversationId`; sin conversaciones → resumen vacío. Overload legacy 4-arg intacto (lo usa `OperationalDataExportService`, admin-only).
+- Tests: `TokenUsageServiceUserScopedTest` 3 casos (IN por conversaciones, vacío sin conversaciones, global con null). 17/17 del área OK.
+- ⚠️ Bug de edición cazado en la verificación en vivo: el primer deploy del controller llamaba al overload legacy (return sin username) → el usuario veía el global. Corregido, re-desplegado.
+
+### Verificación en vivo
+- Usuario temporal `testusage` (member): token-usage **0/0/0**; admin: 105 msgs / 10.5M tokens (global intacto). Usuario eliminado.
 
 ---
 
