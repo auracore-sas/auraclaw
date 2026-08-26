@@ -295,6 +295,7 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
                 chatRequest = OpenAiRequestRewriter.sanitizeReasoningEffortForProvider(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.patchReasoningContent(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.stripReasoningEffortIfIncompatible(chatRequest);
+                chatRequest = OpenAiRequestRewriter.translateMaxTokensForGpt5(chatRequest);
                 chatRequest = OpenAiRequestRewriter.stripAutoToolChoice(chatRequest);
                 chatRequest = OpenAiRequestRewriter.patchVideoMediaContent(chatRequest);
                 if (kimiSearchEnabled) {
@@ -317,6 +318,7 @@ public class OpenAiCompatibleChatModelBuilder implements ChatModelBuilder {
                 chatRequest = OpenAiRequestRewriter.sanitizeReasoningEffortForProvider(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.patchReasoningContent(chatRequest, provider);
                 chatRequest = OpenAiRequestRewriter.stripReasoningEffortIfIncompatible(chatRequest);
+                chatRequest = OpenAiRequestRewriter.translateMaxTokensForGpt5(chatRequest);
                 chatRequest = OpenAiRequestRewriter.stripAutoToolChoice(chatRequest);
                 chatRequest = OpenAiRequestRewriter.patchVideoMediaContent(chatRequest);
                 if (kimiSearchEnabled) {

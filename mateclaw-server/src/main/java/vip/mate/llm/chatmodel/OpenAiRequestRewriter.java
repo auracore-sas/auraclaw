@@ -619,6 +619,68 @@ final class OpenAiRequestRewriter {
         );
     }
 
+    /**
+     * GPT-5 compatibility: on the {@code /v1/chat/completions} path, OpenAI rejects
+     * {@code max_tokens} with a 400 ("Unsupported parameter: 'max_tokens' is not
+     * supported with this model. Use 'max_completion_tokens' instead.") — the
+     * gpt-5* reasoning family only accepts {@code max_completion_tokens}.
+     *
+     * <p>Most call paths already honor this via {@code ModelFamily.suppressMaxTokens()}
+     * in the options builder, but per-node option overrides (e.g.
+     * {@code ReasoningNode.buildChatOptions}) can still attach {@code max_tokens}
+     * directly. This rewrite is a safety net that translates the field on the final
+     * outbound request so a gpt-5* model never ships {@code max_tokens}.
+     */
+    static OpenAiApi.ChatCompletionRequest translateMaxTokensForGpt5(
+            OpenAiApi.ChatCompletionRequest request) {
+        if (request == null || request.maxTokens() == null) {
+            return request;
+        }
+        String model = request.model();
+        if (model == null || !model.trim().toLowerCase().startsWith("gpt-5")) {
+            return request;
+        }
+
+        log.warn("[GPT-5 compat] model {} carries max_tokens on chat/completions; "
+                        + "translating to max_completion_tokens to avoid a 400.",
+                model);
+
+        return new OpenAiApi.ChatCompletionRequest(
+                request.messages(),
+                request.model(),
+                request.store(),
+                request.metadata(),
+                request.frequencyPenalty(),
+                request.logitBias(),
+                request.logprobs(),
+                request.topLogprobs(),
+                null,  // maxTokens — forbidden for gpt-5*
+                request.maxCompletionTokens() != null ? request.maxCompletionTokens() : request.maxTokens(),
+                request.n(),
+                request.outputModalities(),
+                request.audioParameters(),
+                request.presencePenalty(),
+                request.responseFormat(),
+                request.seed(),
+                request.serviceTier(),
+                request.stop(),
+                request.stream(),
+                request.streamOptions(),
+                request.temperature(),
+                request.topP(),
+                request.tools(),
+                request.toolChoice(),
+                request.parallelToolCalls(),
+                request.user(),
+                request.reasoningEffort(),
+                request.webSearchOptions(),
+                request.verbosity(),
+                request.promptCacheKey(),
+                request.safetyIdentifier(),
+                request.extraBody()
+        );
+    }
+
     // ==================== tool_choice / media ====================
 
     /**

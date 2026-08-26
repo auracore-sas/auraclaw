@@ -8,6 +8,7 @@
 > **Sesión 2026-08-21 (5ª): feature V900 `usage_scope` (modelos por propósito) — dedicar LLMs a trabajos internos (wiki) excluyéndolos del chat normal.**
 > **Sesión 2026-08-21 (6ª): cierre de leaks V900 (pin/default/selector) + despliegue Docker + verificación en vivo + plan de configuración Wiki (`docs/WIKI_MODEL_SETUP.md`).**
 > **Sesión 2026-08-24 (7ª): Postgres del HOST alcanzable desde Docker + pipeline de datos de BD funcionando end-to-end.** Datasource "powerfin_test" (schema auracore), tools `execute_sql`/`query_datasource` siempre visibles (fix disclosure), prompt del Asistente General con guía de datos, modelo default → `deepseek-v4-flash` (gpt-4o vía OmniRoute daba respuestas vacías ~12/hora), módulo Enterprise ocultado del menú. Nada pendiente de commit (todo gitignoreado / DB-side / sistema).
+> **Sesión 2026-08-26 (8ª): Wiki con OpenAI end-to-end + fix de bug GPT-5 en chat COMPLETADO y desplegado.** Detalle abajo.
 
 ---
 
@@ -289,3 +290,45 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 9. **Postgres del host (9.6, puerto 5432)**: escucha en `*` y acepta el subnet Docker `172.25.0.0/16` (md5). IP del host vista desde el contenedor = `172.25.0.1` (gateway de `mateclaw-net`); `host.docker.internal` NO resuelve en Linux sin `extra_hosts`
 10. **Herramientas de BD**: `query_datasource` = SOLO metadatos (`list_datasources`/`list_tables`/`describe_table`); `execute_sql` = consultas SELECT reales. El agente necesita guía en el prompt para elegir bien; verificar contra `127.0.0.1` desde el host (el origen LAN `192.168.86.x` no matchea la regla pg_hba)
 11. **Credenciales datasource de prueba** (BD local del usuario): `powerfin_test` / `postgres` / `1234abcd`, schema `auracore` — solo dev
+
+---
+
+## ⏸️ Sesión 2026-08-26 (8ª) — trabajo en curso, PARADO a mitad (retomar)
+
+### Contexto de la sesión
+- Usuario configuró **OpenAI** en AuraClaw (proveedor `openai` activo con key) + modelo `text-embedding-3-small` + KB de Wiki **"Wetzel's Pretzels"** (raw `wetzel_knowledge.md`, 30KB).
+- Se diagnosticó que el Wiki procesaba con DeepSeek (default global) dando "Empty response". Fix aplicado **solo en BD** (no código):
+  1. `mate_wiki_knowledge_base.embedding_model_id` = 2092322003645075457 (text-embedding-3-small)
+  2. Frontmatter en `config_content` → `wikiDefaultModelId: 1000000116` (GPT-5 Mini)
+  3. Reprocesado con `reprocess?force=true` → **completed**: 10 páginas, 3 chunks embeddados, 0 links rotos
+- Se cambió el **default global del sistema a GPT-5 Mini** (`POST /api/v1/models/1000000116/default`) → verificado con `GET /api/v1/models/default`. DeepSeek V4 Flash dejó de ser default. Nota: esto también afecta al chat del agente.
+
+### 🐛 BUG DETECTADO (código base upstream v2.1.0, sin commitear todavía)
+**GPT-5.x en el chat del agente da 400 de OpenAI**: `Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.` (245 bytes, confirmado).
+- Causa: `ReasoningNode.buildChatOptions()` (línea ~1487) siempre usa `.maxTokens(...)` ignorando la familia del modelo. El Wiki sí lo respetaba vía `OpenAiCompatibleChatModelBuilder.buildOpenAiOptions` + `ModelFamily.suppressMaxTokens()`, el chat no.
+- Fix aplicado (2 archivos, compila OK — `mvn compile -pl mateclaw-server` BUILD SUCCESS, 2026-08-25T14:46):
+  1. `OpenAiRequestRewriter.java` (+62 líneas): nuevo método `translateMaxTokensForGpt5()` — safety net que convierte `max_tokens` → `max_completion_tokens` para modelos `gpt-5*` (patrón copiado de `stripReasoningEffortIfIncompatible`)
+  2. `OpenAiCompatibleChatModelBuilder.java` (+2 líneas): llamada al rewriter en `chatCompletionEntity` y `chatCompletionStream`
+
+### ⏭️ Pendientes para la próxima sesión (en orden)
+1. **Escribir test unitario** para `translateMaxTokensForGpt5` (casos: gpt-5* con maxTokens → traduce; gpt-4o con maxTokens → no toca; null → no toca). Ya verificado que `OpenAiApi.ChatCompletionRequest` es un Record con builder accesible (javap OK).
+2. **`mvn test -pl mateclaw-server -Dtest=...`** para el test nuevo.
+3. **Desplegar**: reconstruir imagen Docker (`docker compose build mateclaw-server` / rebuild jar → imagen) y reiniciar el contenedor (el server corre en Docker, puerto host 18080).
+4. **Verificación en vivo**: consulta de Wiki con GPT-5 Mini desde la UI → debe responder sin 400 y con citas `[n]` + `Fuentes:`.
+5. **Registrar el fix** en `docs/CUSTOMIZATIONS.md` (toca código base) y commit convencional: `fix(llm): translate max_tokens to max_completion_tokens for gpt-5* chat requests` + push a `origin/main`.
+6. Opcional pendiente de antes: job viejo de DeepSeek (2092322480327725057) quedó `running` en BD tras cancel — artefacto cosmético, marcar `cancelled` si se quiere BD limpia.
+
+### Datos útiles
+- Server: `http://127.0.0.1:18080` (Docker, puerto interno 18088) · login `admin`/`admin123`
+- KB Wetzel's Pretzels id=2092322381346344962 · raw id=2092322480180924417
+- Modelo default global: 1000000116 (GPT-5 Mini, provider openai) · embedding default: 2092322003645075457
+- JWT de admin se guardó en `/tmp/mateclaw_token.txt` (puede caducar)
+
+### ✅ Continuación (misma sesión 8ª) — fix GPT-5 COMPLETADO, desplegado y verificado
+- Test unitario creado: `TranslateMaxTokensForGpt5Test` (6 casos: gpt-5* traduce, gpt-4o/deepseek no toca, null no-op, preferencia max_completion_tokens) — **9/9 tests OK** (incluye fix de test roto preexistente `ConversationControllerBatchDeleteTest` que bloqueaba `mvn test`)
+- **Desplegado**: `docker compose build mateclaw-server` + `up -d` (imagen nueva, volumen /app/data intacto, 3 proveedores OK al arranque)
+- **Verificado en vivo** vía `POST /api/v1/chat/stream` (conversación `gpt5fix-test-1`, agentId 1000000001, modelProvider=openai, modelName=gpt-5-mini):
+  - ✅ Sin 400; logs muestran `[GPT-5 compat] model gpt-5-mini carries max_tokens ... translating to max_completion_tokens`
+  - ✅ Respuesta correcta con **citas**: `...bebidas frías y calientes [1]` + `Fuentes:\n[1] Productos destacados y precios` (el agente usó `wiki_read_page`)
+- Commiteado y pusheado (ver log git). Registrado en `docs/CUSTOMIZATIONS.md` (fila "Fix GPT-5 en chat").
+- **Pendientes menores opcionales**: (1) job viejo de DeepSeek 2092322480327725057 sigue `running` en BD tras cancel (cosmético — marcar `cancelled` si se quiere); (2) la conversación de prueba `gpt5fix-test-1` quedó en BD; (3) migrar el `config_content` de la KB Wetzel's Pretzels de frontmatter YAML a JSON puro si se edita desde la UI (los guards de la UI hacen `JSON.parse` — ver sección anterior).
