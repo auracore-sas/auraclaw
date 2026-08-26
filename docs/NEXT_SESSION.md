@@ -9,6 +9,41 @@
 > **Sesión 2026-08-21 (6ª): cierre de leaks V900 (pin/default/selector) + despliegue Docker + verificación en vivo + plan de configuración Wiki (`docs/WIKI_MODEL_SETUP.md`).**
 > **Sesión 2026-08-24 (7ª): Postgres del HOST alcanzable desde Docker + pipeline de datos de BD funcionando end-to-end.** Datasource "powerfin_test" (schema auracore), tools `execute_sql`/`query_datasource` siempre visibles (fix disclosure), prompt del Asistente General con guía de datos, modelo default → `deepseek-v4-flash` (gpt-4o vía OmniRoute daba respuestas vacías ~12/hora), módulo Enterprise ocultado del menú. Nada pendiente de commit (todo gitignoreado / DB-side / sistema).
 > **Sesión 2026-08-26 (8ª): Wiki con OpenAI end-to-end + fix de bug GPT-5 en chat COMPLETADO y desplegado.** Detalle abajo.
+> **Sesión 2026-08-27 (9ª): canales individuales (V901) — canal de Telegram con owner por usuario, conversaciones ya no visibles a todos.** Detalle abajo.
+
+---
+
+## ✅ Sesión 9ª (2026-08-27) — Canales individuales (V901) COMPLETADO y desplegado
+
+### Problema reportado
+- El chat de pruebas por Telegram (bot @auraclaw_test_bot) aparecía en el sidebar de **todos** los usuarios de AuraClaw.
+
+### Causa raíz (código base upstream)
+- `ConversationService.getOrCreateSharedConversation` crea las conversaciones de canales IM con `username='system'` y **fuerza** `system` en cada mensaje entrante (bloque de corrección de owner).
+- `applyOwnerScope` (lista del sidebar) muestra a cada usuario sus conversaciones + las de `system` → los canales IM son visibles para todo el workspace por diseño upstream.
+- `mate_channel` no tenía columna de dueño (no existe `created_by`).
+
+### Fix (V901, zonas aisladas)
+- **Migración V901** (h2/kingbase/mysql): `mate_channel.owner_username VARCHAR(64) NULL` — NULL = compartido/legacy, valor = canal individual.
+- `ChannelController.create`: captura `Authentication` → owner autoritativo; `update`: preserva el owner existente (nunca sobrescribe).
+- `ConversationService.getOrCreateSharedConversation` 6-arg con `ownerUsername`: insert con owner, y el bloque de corrección respeta el owner **sticky** (no revierte a `system`). NULL/blank → comportamiento upstream intacto.
+- `ChannelMessageRouter`: los 2 call sites de canal (proceso normal + magic command `/model`) pasan `channelEntity.getOwnerUsername()`.
+- Visibilidad resultante: solo el dueño ve sus conversaciones de canal (`applyOwnerScope` ya filtra por username); admins globales siguen viendo todo (`isConversationOwner`); otros miembros del workspace ni las listan.
+
+### Tests
+- Nuevo `ConversationServiceChannelOwnerTest` (6 casos: insert con owner, legacy system, blank=null, corrección system→owner, sticky sin update espurio, reversión a system si el canal deja de tener owner).
+- Mocks de `ChannelMagicCommandTest` + `ChannelMessageRouterInboundDedupTest` actualizados a la firma 6-arg (filtro de invocaciones `length==6`).
+- 46/46 tests del área OK.
+
+### Backfill + verificación en vivo
+- Owner del canal asignado según audit (`CREATE CHANNEL` por admin): `UPDATE mate_channel SET owner_username='admin' WHERE id=2092623667826462721` + conversación `telegram:2092623667826462721:1989192375` → `username='admin'`.
+- Imagen Docker reconstruida + `docker compose up -d` (migración V901 aplicada, 1 migración, server OK).
+- Verificado: admin ve la conversación de Telegram; ebermeo (usuario normal) NO (solo `tasks_*` de cron) — simulación exacta del query de `applyOwnerScope`.
+
+### Pendientes opcionales
+- Canales creados ANTES de V901 quedan sin owner (compartidos): asignar owner por SQL o recrearlos para hacerlos individuales.
+- Si se quiere transferencia de canal: endpoint/UI para cambiar `owner_username` (hoy solo se preserva, no se transfiere).
+- Los `tasks_*` (cron) y `webchat:*` siguen con su visibilidad previa (system / solo admins).
 
 ---
 

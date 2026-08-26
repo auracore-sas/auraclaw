@@ -174,13 +174,13 @@ class ChannelMessageRouterInboundDedupTest {
             // wait it out before asserting the exact count.
             sleep(ChannelMessageRouter.DEBOUNCE_MS * 2);
             verify(conversationService, times(expected)).getOrCreateSharedConversation(
-                    anyString(), eq(100L), anyLong(), isNull(), isNull());
+                    anyString(), eq(100L), anyLong(), isNull(), isNull(), isNull());
         }
 
         private int turnCount() {
             return mockingDetails(conversationService).getInvocations().stream()
                     .filter(i -> "getOrCreateSharedConversation".equals(i.getMethod().getName()))
-                    .filter(i -> i.getArguments().length == 5)
+                    .filter(i -> i.getArguments().length == 6)
                     .toList()
                     .size();
         }

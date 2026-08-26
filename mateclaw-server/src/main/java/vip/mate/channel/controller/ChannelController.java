@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vip.mate.channel.ChannelManager;
 import vip.mate.channel.ChannelSessionStore;
@@ -80,9 +81,17 @@ public class ChannelController {
     @Operation(summary = "创建渠道")
     @PostMapping
     public R<ChannelEntity> create(
+            Authentication auth,
             @RequestHeader(value = "X-Workspace-Id", required = false) Long workspaceId,
             @RequestBody ChannelEntity channel) {
         channel.setWorkspaceId(workspaceId != null ? workspaceId : 1L);
+        // V901 (AuraClaw): individual channels. The authenticated caller is the
+        // authoritative owner — never trust a client-supplied ownerUsername.
+        // NULL owner keeps upstream shared semantics (conversations owned by
+        // 'system', visible to every workspace member).
+        if (auth != null && auth.getName() != null && !auth.getName().isBlank()) {
+            channel.setOwnerUsername(auth.getName());
+        }
         ChannelEntity created = channelService.createChannel(channel);
         // 创建后如果渠道已启用，自动启动（与 toggle 行为对齐）
         if (Boolean.TRUE.equals(created.getEnabled())) {
@@ -101,6 +110,9 @@ public class ChannelController {
         verifyResourceWorkspace(existing.getWorkspaceId(), workspaceId);
         channel.setId(id);
         channel.setWorkspaceId(existing.getWorkspaceId());
+        // V901: ownership is set once at creation and is never overwritten by
+        // a client-supplied value on update (no transfer flow yet).
+        channel.setOwnerUsername(existing.getOwnerUsername());
         ChannelEntity updated = channelService.updateChannel(channel);
         // Restart only when a field the adapter consumes BEFORE the router
         // takes over has changed — channel type, enabled toggle, configJson

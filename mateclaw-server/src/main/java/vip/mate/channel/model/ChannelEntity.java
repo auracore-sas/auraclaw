@@ -44,6 +44,20 @@ public class ChannelEntity {
     @TableField(value = "identity_json", updateStrategy = FieldStrategy.ALWAYS)
     private String identityJson;
 
+    /**
+     * AuraClaw (V901): AuraClaw platform user that owns this channel.
+     *
+     * <p>NULL → shared/legacy channel (upstream behaviour): conversations
+     * are owned by {@code system} and visible to every workspace member.
+     * Non-null → individual channel: conversations are owned by this
+     * username and only visible to that user (global admins still see all).
+     *
+     * <p>Set once at creation from the authenticated caller; never
+     * overwritten by client-supplied values on update.
+     */
+    @TableField("owner_username")
+    private String ownerUsername;
+
     /** 是否启用 */
     private Boolean enabled;
 

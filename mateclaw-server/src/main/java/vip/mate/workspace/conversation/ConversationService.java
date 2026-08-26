@@ -529,6 +529,29 @@ public class ConversationService {
     @Transactional
     public ConversationEntity getOrCreateSharedConversation(String conversationId, Long agentId, Long workspaceId,
                                                             String defaultModelProvider, String defaultModelName) {
+        return getOrCreateSharedConversation(conversationId, agentId, workspaceId,
+                defaultModelProvider, defaultModelName, null);
+    }
+
+    /**
+     * AuraClaw (V901): owner-aware get-or-create for channel conversations.
+     *
+     * <p>When {@code ownerUsername} is non-blank (individual channel), the
+     * conversation is created with that AuraClaw user as owner and the owner
+     * is kept <b>sticky</b> on every subsequent inbound message — so the
+     * conversation only appears in that user's sidebar
+     * ({@link #listConversations}). NULL / blank keeps the upstream shared
+     * behaviour ({@code system}-owned, visible to every workspace member).
+     *
+     * <p>获取或创建渠道会话（V901 owner 感知）。ownerUsername 非空时会话归属该
+     * AuraClaw 用户且保持粘性；为空时维持上游共享行为（system 归属）。
+     */
+    @Transactional
+    public ConversationEntity getOrCreateSharedConversation(String conversationId, Long agentId, Long workspaceId,
+                                                            String defaultModelProvider, String defaultModelName,
+                                                            String ownerUsername) {
+        boolean hasOwner = ownerUsername != null && !ownerUsername.isBlank();
+        String expectedOwner = hasOwner ? ownerUsername : SYSTEM_USER;
         ConversationEntity conv = conversationMapper.selectOne(new LambdaQueryWrapper<ConversationEntity>()
                 .eq(ConversationEntity::getConversationId, conversationId));
         boolean seedModel = defaultModelProvider != null && !defaultModelProvider.isBlank()
@@ -537,7 +560,7 @@ public class ConversationService {
             conv = new ConversationEntity();
             conv.setConversationId(conversationId);
             conv.setAgentId(agentId);
-            conv.setUsername(SYSTEM_USER);
+            conv.setUsername(expectedOwner);
             conv.setWorkspaceId(workspaceId != null ? workspaceId : 1L);
             conv.setTitle("新对话");
             conv.setMessageCount(0);
@@ -564,8 +587,12 @@ public class ConversationService {
         }
 
         boolean changed = false;
-        if (!SYSTEM_USER.equals(conv.getUsername())) {
-            conv.setUsername(SYSTEM_USER);
+        // Owner is sticky (V901): individual channels pin their conversations
+        // to the channel owner on every inbound message; shared/legacy
+        // channels force 'system' as before. Never flip an individually-owned
+        // conversation back to 'system' just because the caller had no owner.
+        if (!expectedOwner.equals(conv.getUsername())) {
+            conv.setUsername(expectedOwner);
             changed = true;
         }
         // Shared conversations (IM channel sessions, cron job-specific rows)

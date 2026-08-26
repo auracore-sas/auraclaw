@@ -802,7 +802,7 @@ public class ChannelMessageRouter {
             }
             conversationService.getOrCreateSharedConversation(
                     conversationId, agentId, channelEntity.getWorkspaceId(),
-                    null, agentDefaultModel);
+                    null, agentDefaultModel, channelEntity.getOwnerUsername());
 
             // 更新渠道会话存储（用于主动推送）
             String replyTarget = resolveReplyTarget(message);
@@ -1249,7 +1249,8 @@ public class ChannelMessageRouter {
             // create the conversation row itself — updateConversationModel
             // silently no-ops on a missing row.
             conversationService.getOrCreateSharedConversation(
-                    conversationId, channelEntity.getAgentId(), channelEntity.getWorkspaceId());
+                    conversationId, channelEntity.getAgentId(), channelEntity.getWorkspaceId(),
+                    null, null, channelEntity.getOwnerUsername());
             conversationService.updateConversationModel(
                     conversationId, target.getProvider(), target.getModelName());
         } catch (Exception e) {

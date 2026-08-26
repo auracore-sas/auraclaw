@@ -229,7 +229,7 @@ class ChannelMagicCommandTest {
         // Magic commands run before processMessage's get-or-create, so the
         // switch must ensure the row exists before pinning — otherwise a
         // /model sent as the very first message is silently lost.
-        verify(f.conversationService).getOrCreateSharedConversation("wecom:alice", 100L, null);
+        verify(f.conversationService).getOrCreateSharedConversation("wecom:alice", 100L, null, null, null, null);
         verify(f.conversationService).updateConversationModel("wecom:alice", "dashscope", "qwen-max");
         verify(f.adapter).renderAndSend(eq("reply-1"), contains("已切换"));
         f.verifyAgentNeverCalled();
