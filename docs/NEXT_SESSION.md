@@ -12,8 +12,23 @@
 > **Sesión 2026-08-27 (9ª): canales individuales (V901) — canal de Telegram con owner por usuario, conversaciones ya no visibles a todos.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-b): voz entrante en Telegram (V902) — descarga + transcripción STT desplegado y verificado.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-c): gráficas en Telegram — el agente genera la imagen y el adapter la entrega como foto nativa.** Detalle abajo.
+> **Sesión 2026-08-27 (9ª-d): tablas markdown en Telegram — convertidas a bloques monospace alineados.** Detalle abajo.
 
 ---
+
+## ✅ Sesión 9ª-d (2026-08-27) — Tablas markdown en Telegram COMPLETADO y desplegado
+
+### Problema
+- Telegram no soporta tablas markdown (ni Markdown legacy ni MarkdownV2): las respuestas con tablas (muy comunes: datos de BD, menús, comparativas) llegaban desalineadas o como texto plano con pipes.
+
+### Fix
+- **`MarkdownTableFormatter`** (nuevo, `channel/media/MarkdownTableFormatter.java` — reutilizable por otros canales IM): detecta runs de tabla markdown de forma conservadora (línea `|` + segunda línea separador `|---|---|` con `-`/`:`); convierte a bloque ```code fence``` monospace con columnas alineadas al ancho máximo, marcado inline de celdas limpiado (`**bold**` → bold, `` `code` `` → code, `[label](url)` → label, `_itálica_` → itálica), pipes escapados `\|` respetados, separador visual header/cuerpo. Prosa con pipes sueltos sin separador: intacta.
+- Conectado en `TelegramChannelAdapter.sendMessage` + `sendThreadedText` (punto único de salida de texto → cubre replies, envíos proactivos y narraciones).
+- Tests: `MarkdownTableFormatterTest` 9 casos (básica, padding multi-columna, inline stripping, pipe escapado, passthrough, multi-tabla, null/vacío, separador con alineación) — 21/21 del área OK.
+- Desplegado + verificado: salida real con la tabla de la conversación (ej. distribución RUC/Cédula) → bloque alineado. Canal Long-Polling activo.
+
+### Nota
+- Otros canales IM sin soporte de tablas (qq/slack/discord/weixin) pueden reutilizar `MarkdownTableFormatter` — pendiente opcional.
 
 ## ✅ Sesión 9ª-c (2026-08-27) — Gráficas en Telegram COMPLETADO y desplegado
 

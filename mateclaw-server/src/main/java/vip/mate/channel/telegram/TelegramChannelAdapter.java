@@ -7,6 +7,7 @@ import vip.mate.channel.ChannelMessage;
 import vip.mate.channel.ChannelMessageRouter;
 import vip.mate.channel.ExponentialBackoff;
 import vip.mate.channel.media.GeneratedFileScrubber;
+import vip.mate.channel.media.MarkdownTableFormatter;
 import vip.mate.channel.model.ChannelEntity;
 import vip.mate.workspace.conversation.model.MessageContentPart;
 
@@ -531,6 +532,9 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
             log.warn("[telegram] Channel not started, cannot send message");
             return;
         }
+        // V902: Telegram no soporta tablas markdown — convertirlas a bloques
+        // monospace alineados antes de enviar (no-op si no hay tablas).
+        String formatted = MarkdownTableFormatter.format(content);
 
         // 启动持续 Typing 指示
         if (getConfigBoolean("show_typing", true)) {
@@ -539,11 +543,11 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
 
         try {
             // 先尝试 Markdown 格式发送
-            boolean sent = trySendText(targetId, content, "Markdown");
+            boolean sent = trySendText(targetId, formatted, "Markdown");
             if (!sent) {
                 // Markdown 解析失败，降级为纯文本
                 log.debug("[telegram] Markdown failed, retrying as plain text");
-                trySendText(targetId, content, null);
+                trySendText(targetId, formatted, null);
             }
         } finally {
             stopTyping(targetId);
@@ -797,6 +801,8 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     @SuppressWarnings("unchecked")
     private boolean sendThreadedText(String targetId, Integer threadId, String content, String parseMode) {
         try {
+            // V902: mismo tratamiento de tablas que sendMessage.
+            content = MarkdownTableFormatter.format(content);
             Map<String, Object> body = new java.util.LinkedHashMap<>();
             body.put("chat_id", targetId);
             body.put("message_thread_id", threadId);
