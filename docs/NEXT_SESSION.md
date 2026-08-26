@@ -332,3 +332,9 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
   - ✅ Respuesta correcta con **citas**: `...bebidas frías y calientes [1]` + `Fuentes:\n[1] Productos destacados y precios` (el agente usó `wiki_read_page`)
 - Commiteado y pusheado (ver log git). Registrado en `docs/CUSTOMIZATIONS.md` (fila "Fix GPT-5 en chat").
 - **Pendientes menores opcionales**: (1) job viejo de DeepSeek 2092322480327725057 sigue `running` en BD tras cancel (cosmético — marcar `cancelled` si se quiere); (2) la conversación de prueba `gpt5fix-test-1` quedó en BD; (3) migrar el `config_content` de la KB Wetzel's Pretzels de frontmatter YAML a JSON puro si se edita desde la UI (los guards de la UI hacen `JSON.parse` — ver sección anterior).
+
+### ✅ Continuación 2 (misma sesión 8ª) — citas de Wiki en system prompt COMPLETADO y desplegado
+- **Diagnóstico A/B** (clave): GPT-4o directo (api.openai.com) y GPT-4o vía OmniRoute (omniroute.apx5.com) citan PERFECTAMENTE con instrucción en el system prompt — el router es transparente (mismo modelo `gpt-4o-2024-08-06`) y el modelo obedece. El problema era que la instrucción de citas solo vivía en las descripciones de tools del Wiki (enterrada entre 115 schemas) → GPT-4o la ignoraba; GPT-5.x la sigue igual.
+- **Fix desplegado**: `CITATION_FORMAT_BLOCK` en `AgentGraphBuilder.buildEnhancedPrompt` (marcadores `[n]` + sección `Fuentes:` + no citar fuentes no leídas) + hints reforzados en `WikiTool` (`CITATION_FORMAT_HINT` + `citationHint` con ejemplo en español).
+- **Verificado en vivo**: gpt-4o vía omniroute → respuesta con `[1]` + `Fuentes:` y SIN aviso `[证据不足]` (conversación `gpt4o-cite-test-2`).
+- Commiteado y pusheado (2 commits: fix max_tokens + citas system prompt). Registrado en `CUSTOMIZATIONS.md`.

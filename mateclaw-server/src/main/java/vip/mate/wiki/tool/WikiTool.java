@@ -71,6 +71,24 @@ public class WikiTool {
     @Autowired(required = false)
     private WikiCompileService compileService;
 
+    /**
+     * Canonical wiki citation format expected by the RFC-052 source ledger
+     * validator ({@code SourceEvidenceLedger.validateWikiCitations}): numbered
+     * inline markers {@code [1]} plus a trailing "Fuentes:" source table
+     * (the legacy Chinese "来源：" header is also parsed, but emission is Spanish).
+     * <p>
+     * The hints in the tool descriptions are deliberately concrete: weaker
+     * models (e.g. gpt-4o via router providers) otherwise answer correctly but
+     * omit the markers, which trips the "missing wiki citation [n]" warning.
+     */
+    private static final String CITATION_FORMAT_HINT = """
+            When using wiki information in your final answer, cite it with numbered markers and a source table:
+            - Put a marker right after each claim taken from the wiki, e.g. \"The Original Pretzel costs $2.99 [1]\".
+            - End the answer with a \"Fuentes:\" section listing every cited source as a line starting with the marker:
+              Fuentes:
+              [1] <Page title>
+            """;
+
     /** Optional transformation engine. Tools degrade with a clear error when missing. */
     @Autowired(required = false)
     private WikiTransformationService transformationService;
@@ -189,7 +207,7 @@ public class WikiTool {
             Read a wiki page. Use maxChars to limit size (recommended: 3000-6000 for most tasks).
             Use sectionHeading to read only one section by its heading text.
             The result includes a "sourceFiles" field listing the source documents this page was derived from.
-            When using content from this page in your answer, cite the page title and source files.
+            """ + CITATION_FORMAT_HINT + """
 
             Convention: a user message containing `[[<slug>]]` (e.g. `参考知识库页面 [[auth-design]]: ...`)
             is a wiki-page reference inserted by the chat picker. Treat each `[[slug]]` as a request to
@@ -305,7 +323,7 @@ public class WikiTool {
             Search wiki pages. Returns snippet so you can judge relevance without reading the full page.
             Default topK=5 is sufficient for most queries.
             Each result includes "slug" and "title" — use wiki_read_page to get full content.
-            When using wiki information in your answer, always cite the source page title.
+            """ + CITATION_FORMAT_HINT + """
             """)
     public String wiki_search_pages(
             @ToolParam(description = "Agent ID. Must be passed as a string to preserve large integer precision") String agentId,
@@ -372,7 +390,7 @@ public class WikiTool {
             Chunk-level semantic search in the wiki knowledge base.
             Returns raw text fragments closest to the query with similarity scores and source page title.
             Use when wiki_search_pages results are not specific enough.
-            When using retrieved content in your answer, cite the source page title shown in each result.
+            """ + CITATION_FORMAT_HINT + """
             """)
     public String wiki_semantic_search(
             @ToolParam(description = "Agent ID. Must be passed as a string to preserve large integer precision") String agentId,
@@ -433,7 +451,7 @@ public class WikiTool {
                 .set("query", query)
                 .set("matchCount", hits.size())
                 .set("chunks", arr)
-                .set("citationHint", "引用格式示例：[1] 表示第一条结果，[2] 表示第二条结果。在回答末尾列出所有引用来源。")
+                .set("citationHint", "Cite every wiki source in your final answer with numbered markers and a trailing \"Fuentes:\" table, e.g.: \"The Original Pretzel costs $2.99 [1]\" then at the end \"Fuentes:\\n[1] Productos destacados y precios\".")
                 .toString();
     }
 

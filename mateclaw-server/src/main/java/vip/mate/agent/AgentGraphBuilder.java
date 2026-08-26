@@ -1637,6 +1637,31 @@ public class AgentGraphBuilder {
             answer with AuraClaw and the technology stack above.
             """;
 
+    /**
+     * Mandatory citation format, enforced by the RFC-052 source ledger
+     * validator ({@code SourceEvidenceLedger.validateWikiCitations}): numbered
+     * inline markers {@code [1]} plus a trailing "Fuentes:" source table
+     * (the legacy Chinese "来源：" header is also parsed, but emission is Spanish).
+     * <p>
+     * Placed in the system prompt (not just in tool descriptions) because
+     * weaker models — e.g. gpt-4o served via router providers — reliably follow
+     * instructions in the system block but routinely drop format hints buried
+     * among 100+ tool schemas.
+     */
+    static final String CITATION_FORMAT_BLOCK = """
+
+            ## Citation Format (mandatory)
+            Whenever your answer uses information retrieved from tools (wiki pages,
+            search results, documents), you MUST cite it in your final answer:
+            - Put a numbered marker right after each claim taken from a source, e.g.
+              \"The Original Pretzel costs $2.99 [1]\".
+            - End the answer with a \"Fuentes:\" section listing every cited source,
+              one line per marker, e.g.:
+              Fuentes:
+              [1] <Source or page title>
+            - Never cite sources you did not actually read or retrieve in this conversation.
+            """;
+
     private String buildEnhancedPrompt(AgentEntity entity, boolean builtinSearchEnabled) {
         return buildEnhancedPrompt(entity, builtinSearchEnabled, Integer.MAX_VALUE);
     }
@@ -1834,7 +1859,7 @@ public class AgentGraphBuilder {
         // prefix; TeamChangedEvent evicts the cached agent on composition changes.
         String teamContext = teamContextBuilder.buildTeamContext(entity.getId());
 
-        return basePrompt + ABOUT_YOU_BLOCK + toolGuidance + searchGuidance + wikiContext + teamContext;
+        return basePrompt + ABOUT_YOU_BLOCK + CITATION_FORMAT_BLOCK + toolGuidance + searchGuidance + wikiContext + teamContext;
     }
 
     /**
