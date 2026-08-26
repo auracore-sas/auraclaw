@@ -10,8 +10,29 @@
 > **Sesión 2026-08-24 (7ª): Postgres del HOST alcanzable desde Docker + pipeline de datos de BD funcionando end-to-end.** Datasource "powerfin_test" (schema auracore), tools `execute_sql`/`query_datasource` siempre visibles (fix disclosure), prompt del Asistente General con guía de datos, modelo default → `deepseek-v4-flash` (gpt-4o vía OmniRoute daba respuestas vacías ~12/hora), módulo Enterprise ocultado del menú. Nada pendiente de commit (todo gitignoreado / DB-side / sistema).
 > **Sesión 2026-08-26 (8ª): Wiki con OpenAI end-to-end + fix de bug GPT-5 en chat COMPLETADO y desplegado.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª): canales individuales (V901) — canal de Telegram con owner por usuario, conversaciones ya no visibles a todos.** Detalle abajo.
+> **Sesión 2026-08-27 (9ª-b): voz entrante en Telegram (V902) — descarga + transcripción STT desplegado y verificado.** Detalle abajo.
 
 ---
+
+## ✅ Sesión 9ª-b (2026-08-27) — Voz en Telegram (V902) COMPLETADO y desplegado
+
+### Problema
+- El adapter de Telegram recibía las notas de voz pero nunca las descargaba ni transcribía: el LLM solo veía `[语音]` y respondía "no hay transcripción disponible" (inventado por el modelo, no error del sistema).
+
+### Solución
+- **`TelegramChannelAdapter`**: constructor + `SttService` (inyectado desde `ChannelManager`, que ya lo tenía para Feishu); bloque de voz ahora descarga (`getFile` → `file_path` → bytes vía `fileBaseUrl`) y transcribe (`transcribeVoiceNote`, espejo de Feishu, best-effort); el texto se inyecta como parte de texto + `textContent`. Fallo de STT → placeholder legacy `[语音]`, el mensaje nunca se bloquea.
+- `ChannelManager`: 1 línea para pasar `sttService`.
+- Tests: `TelegramVoiceTranscriptionTest` (6 casos: sin STT, descarga null/vacía, éxito, fallo proveedor, texto vacío) + `SingleLeaderHookTest` actualizado (5 call sites con null). 43/43 OK.
+
+### Verificación (sin esperar al usuario)
+- STT ya estaba habilitado en BD (sttEnabled=true, provider openai, whisper-1).
+- Con el voice note viejo (file_id de la BD): descarga real por la API de Telegram (95 KB Ogg/Opus) + transcripción whisper-1 → **"Revisa por favor si este audio lo puedes analizar."** (el audio que el usuario mandó el 26/8).
+- Desplegado: imagen Docker + `up -d`. Nota: el contenedor nuevo tardó ~30s en adquirir el lease de líder ShedLock del canal (follower → retry 30s → leader OK, Long-Polling activo).
+
+### Pendientes
+- **Probar con una nota de voz NUEVA desde Telegram** (el flujo automático completo).
+- STT local gratis (whisper.cpp en Docker) cuando se quiera dejar de usar whisper-1 de pago: el transporte ya es OpenAI-compatible (solo crear provider row con baseUrl local + require_api_key=false + apuntar sttOpenAiCompatProviderId).
+- Nota: la conversación de prueba tiene 2 mensajes de error del LLM sobre la voz (históricos, se quedan).
 
 ## ✅ Sesión 9ª (2026-08-27) — Canales individuales (V901) COMPLETADO y desplegado
 

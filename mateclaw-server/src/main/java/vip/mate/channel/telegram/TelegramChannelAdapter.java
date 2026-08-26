@@ -12,9 +12,11 @@ import vip.mate.workspace.conversation.model.MessageContentPart;
 import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -51,6 +53,11 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     private HttpClient httpClient;
     private String botToken;
     private String apiBaseUrl;
+    /** Base URL for file downloads (voice notes, documents…). */
+    private String fileBaseUrl;
+
+    /** STT service for transcribing inbound voice notes (V902). Nullable for legacy callers / tests. */
+    private final vip.mate.stt.SttService sttService;
 
     /** Long-Polling 线程 */
     private volatile Thread pollingThread;
@@ -70,8 +77,10 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
 
     public TelegramChannelAdapter(ChannelEntity channelEntity,
                                   ChannelMessageRouter messageRouter,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  vip.mate.stt.SttService sttService) {
         super(channelEntity, messageRouter, objectMapper);
+        this.sttService = sttService;
         // Telegram: 2s→4s→8s→16s→30s 指数退避，无限重试
         this.backoff = new ExponentialBackoff(2000, 30000, 2.0, -1);
     }
@@ -84,6 +93,7 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
         }
 
         this.apiBaseUrl = "https://api.telegram.org/bot" + botToken;
+        this.fileBaseUrl = "https://api.telegram.org/file/bot" + botToken;
 
         HttpClient.Builder clientBuilder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10));
@@ -431,14 +441,25 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
             if (textContent == null) textContent = caption != null ? caption : "[文件: " + (fileName != null ? fileName : "") + "]";
         }
 
-        // 语音
+        // 语音 (V902): descargar el voice note y transcribirlo vía SttService
+        // (best-effort, mismo patrón que Feishu). Si la transcripción tiene
+        // éxito, el texto se inyecta como parte de texto adicional y como
+        // textContent; si falla, queda el placeholder legacy.
         Map<String, Object> voice = (Map<String, Object>) message.get("voice");
         if (voice != null) {
             String fileId = (String) voice.get("file_id");
             if (fileId != null) {
                 contentParts.add(MessageContentPart.audio(fileId, "voice.ogg"));
+                String transcript = transcribeVoiceNote(fileId);
+                if (transcript != null && !transcript.isBlank()) {
+                    contentParts.add(MessageContentPart.text(transcript));
+                    textContent = transcript;
+                } else if (textContent == null) {
+                    textContent = "[语音]";
+                }
+            } else if (textContent == null) {
+                textContent = "[语音]";
             }
-            if (textContent == null) textContent = "[语音]";
         }
 
         // 视频
@@ -812,6 +833,102 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
     @Override
     public boolean requiresSingleLeader() {
         return !resolveWebhookMode();
+    }
+
+    // ==================== V902: voz entrante (descarga + STT) ====================
+
+    /**
+     * Descarga los bytes de un archivo de Telegram por {@code file_id}
+     * (dos llamadas: {@code getFile} → {@code file_path} → descarga).
+     * Devuelve {@code null} si algo falla — best-effort, nunca lanza.
+     * Package-private para tests.
+     */
+    byte[] downloadTelegramFile(String fileId) {
+        if (httpClient == null || apiBaseUrl == null || fileBaseUrl == null) {
+            log.warn("[telegram] Channel not started, cannot download file {}", fileId);
+            return null;
+        }
+        try {
+            String getFileUrl = apiBaseUrl + "/getFile?file_id="
+                    + URLEncoder.encode(fileId, StandardCharsets.UTF_8);
+            HttpRequest getFileReq = HttpRequest.newBuilder()
+                    .uri(URI.create(getFileUrl))
+                    .GET()
+                    .build();
+            HttpResponse<String> getFileResp = httpClient.send(getFileReq, HttpResponse.BodyHandlers.ofString());
+            if (getFileResp.statusCode() != 200) {
+                log.warn("[telegram] getFile failed: status={}, body={}",
+                        getFileResp.statusCode(), getFileResp.body());
+                return null;
+            }
+            Map<String, Object> result = objectMapper.readValue(getFileResp.body(), Map.class);
+            Map<String, Object> fileInfo = (Map<String, Object>) result.get("result");
+            if (fileInfo == null) {
+                log.warn("[telegram] getFile returned no result for file_id={}", fileId);
+                return null;
+            }
+            String filePath = (String) fileInfo.get("file_path");
+            if (filePath == null || filePath.isBlank()) {
+                log.warn("[telegram] getFile returned no file_path for file_id={}", fileId);
+                return null;
+            }
+            HttpRequest downloadReq = HttpRequest.newBuilder()
+                    .uri(URI.create(fileBaseUrl + "/" + filePath))
+                    .GET()
+                    .build();
+            HttpResponse<byte[]> downloadResp = httpClient.send(downloadReq, HttpResponse.BodyHandlers.ofByteArray());
+            if (downloadResp.statusCode() != 200) {
+                log.warn("[telegram] file download failed: status={} for {}",
+                        downloadResp.statusCode(), filePath);
+                return null;
+            }
+            byte[] bytes = downloadResp.body();
+            log.info("[telegram] downloaded file_id={} ({} bytes, path={})", fileId, bytes.length, filePath);
+            return bytes;
+        } catch (Exception e) {
+            log.warn("[telegram] download of file_id={} threw: {}", fileId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Transcribe un voice note de Telegram vía {@link vip.mate.stt.SttService}.
+     * Devuelve el texto, o {@code null} cuando STT no está cableado/deshabilitado,
+     * la descarga falló o todos los proveedores fallaron.
+     *
+     * <p>Best-effort por diseño: un fallo de STT nunca debe bloquear al agente
+     * (queda el placeholder {@code [语音]}).
+     */
+    // Package-private para tests.
+    String transcribeVoiceNote(String fileId) {
+        if (sttService == null) {
+            log.debug("[telegram-stt] STT service not wired, skipping transcription of {}", fileId);
+            return null;
+        }
+        try {
+            byte[] audioBytes = downloadTelegramFile(fileId);
+            if (audioBytes == null || audioBytes.length == 0) {
+                log.warn("[telegram-stt] empty/missing audio for file_id={}, skipping STT", fileId);
+                return null;
+            }
+            Map<String, Object> result = sttService.transcribe(
+                    audioBytes, "voice.ogg", "audio/ogg", null);
+            if (!Boolean.TRUE.equals(result.get("success"))) {
+                log.warn("[telegram-stt] transcription failed: {}", result.get("error"));
+                return null;
+            }
+            String text = (String) result.get("text");
+            if (text == null || text.isBlank()) {
+                log.debug("[telegram-stt] transcription returned empty text");
+                return null;
+            }
+            log.info("[telegram-stt] transcribed file_id={} ({} bytes) → {} chars",
+                    fileId, audioBytes.length, text.length());
+            return text;
+        } catch (Exception e) {
+            log.warn("[telegram-stt] transcription threw: {}", e.getMessage());
+            return null;
+        }
     }
 
     /** RFC-025 Change 4 入站文本净化上限（防止 caption 含超长二进制撑爆 prompt）。 */
