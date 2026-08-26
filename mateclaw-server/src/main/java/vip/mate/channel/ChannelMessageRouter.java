@@ -1821,7 +1821,8 @@ public class ChannelMessageRouter {
      * 文本直接拼接；媒体类型生成描述性占位符，让 Agent 知道用户发送了什么。
      * 语音输入时注入场景提示词，引导 Agent 用简短口语化方式回复。
      */
-    private String buildPromptFromParts(String fallbackContent, List<MessageContentPart> parts, String inputMode) {
+    // Package-private para tests (V902).
+    String buildPromptFromParts(String fallbackContent, List<MessageContentPart> parts, String inputMode) {
         if (parts == null || parts.isEmpty()) {
             return fallbackContent != null ? fallbackContent : "";
         }
@@ -1832,7 +1833,19 @@ public class ChannelMessageRouter {
                 case "text" -> appendLine(sb, part.getText());
                 case "image" -> appendLine(sb, "[用户发送了图片" + descMedia(part) + "]");
                 case "file" -> appendLine(sb, "[用户发送了文件: " + safe(part.getFileName()) + "]");
-                case "audio" -> appendLine(sb, "[用户发送了音频" + descMedia(part) + "]");
+                case "audio" -> {
+                    // V902: audio con caption = ya transcrito (Telegram voice
+                    // notes). No presentarlo como archivo sin procesar — el
+                    // modelo lo interpretaría como "analiza el .ogg" y alucinaría
+                    // que no puede acceder al archivo. La transcripción llega
+                    // como parte de texto justo después.
+                    String caption = part.getCaption();
+                    if (caption != null && !caption.isBlank()) {
+                        appendLine(sb, "[用户发送了音频，已自动转录（文本如下）]");
+                    } else {
+                        appendLine(sb, "[用户发送了音频" + descMedia(part) + "]");
+                    }
+                }
                 case "video" -> appendLine(sb, "[用户发送了视频" + descMedia(part) + "]");
                 default -> appendLine(sb, part.getText());
             }

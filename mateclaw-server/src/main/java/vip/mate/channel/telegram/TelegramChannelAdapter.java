@@ -449,13 +449,19 @@ public class TelegramChannelAdapter extends AbstractChannelAdapter {
         if (voice != null) {
             String fileId = (String) voice.get("file_id");
             if (fileId != null) {
-                contentParts.add(MessageContentPart.audio(fileId, "voice.ogg"));
+                MessageContentPart audioPart = MessageContentPart.audio(fileId, "voice.ogg");
                 String transcript = transcribeVoiceNote(fileId);
                 if (transcript != null && !transcript.isBlank()) {
+                    // Marca la parte de audio como transcrita (caption) para que
+                    // el prompt builder NO lo presente como archivo sin procesar,
+                    // y deja la transcripción como parte de texto (UI + content).
+                    audioPart.setCaption(transcript);
+                    contentParts.add(audioPart);
                     contentParts.add(MessageContentPart.text(transcript));
                     textContent = transcript;
-                } else if (textContent == null) {
-                    textContent = "[语音]";
+                } else {
+                    contentParts.add(audioPart);
+                    if (textContent == null) textContent = "[语音]";
                 }
             } else if (textContent == null) {
                 textContent = "[语音]";

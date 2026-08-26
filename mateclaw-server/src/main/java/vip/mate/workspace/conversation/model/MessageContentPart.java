@@ -55,6 +55,10 @@ public class MessageContentPart {
      * description survives into later turns: history replay sends user messages
      * as text, and without a stored caption the image content would be lost on
      * every follow-up question. Null for non-media parts or when no captioning ran.
+     *
+     * <p>V902: audio parts also carry a caption when the inbound voice note was
+     * transcribed (e.g. Telegram) — the prompt builder uses it to present the
+     * audio as already-transcribed instead of an unprocessed file.
      */
     private String caption;
 
