@@ -15,9 +15,38 @@
 > **Sesión 2026-08-27 (9ª-d): tablas markdown en Telegram — convertidas a bloques monospace alineados.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-e): fix gráfica que no llegaba (bug de orden scrub/unwrap) + tablas anchas → viñetas + prompt anti-loop.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-f): Panel por usuario (Opción A) + secciones admin-only (modelos LLM, cron) — desplegado y verificado.** Detalle abajo.
+> **Sesión 2026-09-01 (10ª): limpieza de pendientes — job DeepSeek cancelado, conversaciones de prueba borradas, config_content de KB migrado a JSON puro. BD limpia y documentación cerrada.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
 
 ---
+
+## ✅ Sesión 10ª (2026-09-01) — Cierre de los 3 pendientes opcionales (BD limpia)
+
+### 1. Job viejo de DeepSeek marcado como `cancelled`
+- `mate_wiki_processing_job` id `2092322480327725057` (heavy_ingest de la KB Wetzel's Pretzels) tenía `stage='cancelled'` pero `status='running'` (inconsistente tras el cancel en la sesión 8ª).
+- Fix: `UPDATE ... SET status='cancelled', finished_at=COALESCE(finished_at, update_time)` → ahora `stage=cancelled, status=cancelled, finished_at=2026-08-26 02:51:03` (consistente con los otros jobs completed/partial).
+
+### 2. Conversaciones de prueba borradas
+- 10 conversaciones de prueba con sus datos dependientes:
+  - `gpt5fix-test-1` (verificación fix GPT-5)
+  - `gpt4o-cite-test-1/2`, `gpt4o-ubic-test-1/2/3` (verificaciones de citas/ubicaciones)
+  - `chart-test-telegram-1/2` (pruebas de gráficas en Telegram)
+  - `test-error-p45` (verificación P4/P5 de marcadores), `test-alertas-1`
+- Borrados en cascada: `mate_tool_guard_audit_log` (8 filas, ALLOW de wiki_read_page/render_html_image) → `mate_message` (24) → `mate_conversation` (10).
+- Extra: 6 mensajes huérfanos con `conversation_id='default'` (pruebas de la sesión 7ª del pipeline de datos BD, sin conversación) también eliminados → **0 mensajes huérfanos** en toda la BD.
+- Backup completo de todo lo borrado en `/tmp/auraclaw-cleanup/` (CSVs: conversaciones, mensajes, guard_audit, job, kb).
+
+### 3. `config_content` de la KB Wetzel's Pretzels migrado a JSON puro
+- **Problema**: el config era frontmatter YAML (`---\nwikiDefaultModelId: ...\nwikiLightModelId: ...\n---\n# Wiki Processing Rules...`). Los guards de la UI (`WikiConfig.vue` — `loadStepModels`, `saveIngestMode`, `saveEntityExtraction`, `saveStepModelsAndClose`) hacen `JSON.parse(configContent)`; al fallar quedaban `existingConfig = {}` y la siguiente edición (modelos, ingest mode, entidades) **pisaba todo el config** perdiendo modelos + reglas.
+- **Fix (solo BD, vía API `PUT /wiki/knowledge-bases/{id}/config`)**: config ahora es JSON puro `{"wikiDefaultModelId": "1000000116", "wikiLightModelId": "1000000116", "processingRules": "# Wiki Processing Rules..."}` — IDs como **strings** (patrón de la UI, ver comentario en `saveStepModelsAndClose`: *"Backend parses configContent leniently — string-typed IDs are fine"*); Jackson los convierte a Long en `WikiKbConfig`. El campo `processingRules` (no estándar, ignorado por `WikiKbConfigParser`) preserva las reglas de calidad/formato que el backend inyecta vía `{config}` en los prompts de digestión (route-user/digest-user).
+- **Verificado**: `JSON.parse` del contenido OK; `getConfig` vía API devuelve el JSON; los 4 guards de la UI ya no fallan al editar.
+- **Nota de convención**: para configs de KB, el formato canónico es JSON puro (no frontmatter YAML) — la UI solo entiende JSON.
+
+### Estado final
+- BD limpia: 0 conversaciones de prueba, 0 mensajes huérfanos, job cancelado consistente, config KB en JSON parseable.
+- Sin cambios de código (solo BD + docs) → no requiere rebuild de imagen Docker.
+- Commit: `chore(db): close V9xx leftovers — cancel stale job, purge test conversations, KB config to JSON` (ver log git).
+
 
 ## ✅ Sesión 9ª-f (2026-08-27) — Panel (dashboard) por usuario + secciones admin-only
 
@@ -465,7 +494,7 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 3. **Desplegar**: reconstruir imagen Docker (`docker compose build mateclaw-server` / rebuild jar → imagen) y reiniciar el contenedor (el server corre en Docker, puerto host 18080).
 4. **Verificación en vivo**: consulta de Wiki con GPT-5 Mini desde la UI → debe responder sin 400 y con citas `[n]` + `Fuentes:`.
 5. **Registrar el fix** en `docs/CUSTOMIZATIONS.md` (toca código base) y commit convencional: `fix(llm): translate max_tokens to max_completion_tokens for gpt-5* chat requests` + push a `origin/main`.
-6. Opcional pendiente de antes: job viejo de DeepSeek (2092322480327725057) quedó `running` en BD tras cancel — artefacto cosmético, marcar `cancelled` si se quiere BD limpia.
+6. Opcional pendiente de antes: job viejo de DeepSeek (2092322480327725057) quedó `running` en BD tras cancel — ~~cosmético, marcar `cancelled` si se quiere BD limpia~~ **✅ RESUELTO en sesión 10ª (status=cancelled)**
 
 ### Datos útiles
 - Server: `http://127.0.0.1:18080` (Docker, puerto interno 18088) · login `admin`/`admin123`
@@ -480,7 +509,7 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
   - ✅ Sin 400; logs muestran `[GPT-5 compat] model gpt-5-mini carries max_tokens ... translating to max_completion_tokens`
   - ✅ Respuesta correcta con **citas**: `...bebidas frías y calientes [1]` + `Fuentes:\n[1] Productos destacados y precios` (el agente usó `wiki_read_page`)
 - Commiteado y pusheado (ver log git). Registrado en `docs/CUSTOMIZATIONS.md` (fila "Fix GPT-5 en chat").
-- **Pendientes menores opcionales**: (1) job viejo de DeepSeek 2092322480327725057 sigue `running` en BD tras cancel (cosmético — marcar `cancelled` si se quiere); (2) la conversación de prueba `gpt5fix-test-1` quedó en BD; (3) migrar el `config_content` de la KB Wetzel's Pretzels de frontmatter YAML a JSON puro si se edita desde la UI (los guards de la UI hacen `JSON.parse` — ver sección anterior).
+- **Pendientes menores opcionales**: (1) job viejo de DeepSeek 2092322480327725057 sigue `running` en BD tras cancel (cosmético — marcar `cancelled` si se quiere); (2) la conversación de prueba `gpt5fix-test-1` quedó en BD; (3) migrar el `config_content` de la KB Wetzel's Pretzels de frontmatter YAML a JSON puro si se edita desde la UI (los guards de la UI hacen `JSON.parse` — ver sección anterior). ~~→ **RESUELTOS en la sesión 10ª (2026-09-01): job → cancelled; conversaciones de prueba + mensajes huérfanos borrados; config_content → JSON puro. Ver sección de la sesión 10ª.**~~
 
 ### ✅ Continuación 2 (misma sesión 8ª) — citas de Wiki en system prompt COMPLETADO y desplegado
 - **Diagnóstico A/B** (clave): GPT-4o directo (api.openai.com) y GPT-4o vía OmniRoute (omniroute.apx5.com) citan PERFECTAMENTE con instrucción en el system prompt — el router es transparente (mismo modelo `gpt-4o-2024-08-06`) y el modelo obedece. El problema era que la instrucción de citas solo vivía en las descripciones de tools del Wiki (enterrada entre 115 schemas) → GPT-4o la ignoraba; GPT-5.x la sigue igual.
