@@ -42,12 +42,12 @@
 ### Verificación en vivo
 - MCP: `connected`, 5 tools con **schemas completos** en `tools_cache_json` (antes `{}`).
 - Chat real (conv `mcp-fix-test-2`): "facturas activas con detalle" → respuesta en **31s** con las 6 facturas detalladas (código, persona, fechas, montos) vs 181s/loop antes. Sin `Max iterations`.
+- **Confirmado por el usuario desde la interfaz (2026-09-01)**: "Sí, funciona muy muy bien".
 - Deploy: rebuild imagen Docker + retag a `mateclaw-mateclaw-server` + recreate (`docker compose -p mateclaw up -d --force-recreate mateclaw-server`).
 - Nota: el server se reconecta al MCP automáticamente al arrancar (initEnabledServers) — el proxy debe estar corriendo antes.
 
-### Pendiente anotado
-- El loop de la conversación vieja `mcp-fix-test-1` quedó en BD (artefacto de la prueba pre-fix) — cosmético, se puede purgar.
-- Opción futura: forzar SDK MCP 0.18.3 en el pom (spring-ai-alibaba pinza 0.14.0) — podría eliminar la necesidad del proxy, requiere rebuild.
+### Purga posterior
+- Conversaciones de prueba `mcp-fix-test-1` y `mcp-fix-test-2` (más sus mensajes y audit logs de tool guard) borradas — 0 conversaciones de prueba, 0 mensajes huérfanos. Backup en `/tmp/auraclaw-cleanup/backup_mcpfix_*`.
 
 
 ---
