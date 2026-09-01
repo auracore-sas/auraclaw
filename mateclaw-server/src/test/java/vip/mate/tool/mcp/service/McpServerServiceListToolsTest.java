@@ -1,10 +1,10 @@
 package vip.mate.tool.mcp.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vip.mate.exception.MateClawException;
@@ -51,8 +51,21 @@ class McpServerServiceListToolsTest {
     @Mock
     private McpClientManager mcpClientManager;
 
-    @InjectMocks
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    /**
+     * Real ObjectMapper injected manually (constructor). Mockito's spy wraps
+     * the mapper in a ByteBuddy proxy that breaks Jackson's record
+     * introspection, so build the service by hand instead of {@code @InjectMocks}.
+     */
     private McpServerService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void buildService() {
+        service = new McpServerService(mcpServerMapper, mcpClientManager,
+                eventPublisher, new ObjectMapper());
+    }
 
     private static McpServerEntity server(Long id) {
         McpServerEntity e = new McpServerEntity();
@@ -134,5 +147,27 @@ class McpServerServiceListToolsTest {
         // null description survives; DTO @JsonInclude(NON_NULL) drops it from
         // the wire payload but the Java value is preserved through the mapping.
         assertTrue(result.get(0).description() == null);
+    }
+
+    @Test
+    @DisplayName("serializeToolsCache keeps full JSON schemas (Jackson, not hutool)")
+    void serializeToolsCacheKeepsJsonSchemas() throws Exception {
+        // Regression: hutool JSONUtil cannot introspect Java records and
+        // serialized McpSchema.JsonSchema as "{}", emptying the picker schema
+        // even though PowerFin-style servers expose full parameter schemas.
+        McpSchema.JsonSchema schema = objectSchema(Map.of(
+                "account_id", Map.of("type", "string", "description", "Identificador de la cuenta"),
+                "branch_id", Map.of("type", "integer")));
+
+        String json = service.serializeToolsCache(List.of(
+                tool("balance_query", "Consulta el saldo contable", schema)));
+
+        assertTrue(json.contains("balance_query"), "tool name must be present: " + json);
+        assertTrue(json.contains("\"type\":\"object\"") || json.contains("\"type\" : \"object\""),
+                "schema type must be serialized: " + json);
+        assertTrue(json.contains("account_id"), "property key must be serialized: " + json);
+        assertTrue(json.contains("Identificador de la cuenta"),
+                "property description must be serialized: " + json);
+        assertTrue(json.contains("branch_id"), "second property must be serialized: " + json);
     }
 }

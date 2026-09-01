@@ -3,6 +3,7 @@ package vip.mate.tool.mcp.service;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class McpServerService {
     private final McpServerMapper mcpServerMapper;
     private final McpClientManager mcpClientManager;
     private final ApplicationEventPublisher eventPublisher;
+    private final ObjectMapper objectMapper;
 
     private static final Pattern NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_\\-. ]{1,128}$");
 
@@ -506,7 +508,7 @@ public class McpServerService {
      * surfaces (already a JSON-Schema object) so the picker can show it
      * verbatim without re-stringifying.
      */
-    private String serializeToolsCache(List<McpSchema.Tool> tools) {
+    String serializeToolsCache(List<McpSchema.Tool> tools) {
         if (tools == null || tools.isEmpty()) {
             return "[]";
         }
@@ -516,18 +518,29 @@ public class McpServerService {
             Map<String, Object> row = new java.util.LinkedHashMap<>();
             row.put("name", t.name());
             row.put("description", t.description() != null ? t.description() : "");
-            // inputSchema in the MCP record is a JsonSchema record; let the
-            // JSON utility serialize it, falling back to "{}" if it can't.
+            // inputSchema in the MCP record is a JsonSchema record; serialize
+            // with Jackson — hutool's JSONUtil cannot introspect Java records
+            // and silently produces "{}", which empties the picker schema.
             try {
                 row.put("inputSchema", t.inputSchema() != null
-                        ? JSONUtil.parse(JSONUtil.toJsonStr(t.inputSchema()))
+                        ? objectMapper.readTree(objectMapper.writeValueAsString(t.inputSchema()))
                         : "{}");
             } catch (Exception e) {
+                log.warn("Failed to serialize inputSchema for MCP tool '{}': {}",
+                        t.name(), e.getMessage());
                 row.put("inputSchema", "{}");
             }
             rows.add(row);
         }
-        return JSONUtil.toJsonStr(rows);
+        // Serialize the whole array with Jackson too — the rows now carry
+        // Jackson JsonNode values for inputSchema, which hutool's JSONUtil
+        // cannot represent (it mangles them into nested arrays).
+        try {
+            return objectMapper.writeValueAsString(rows);
+        } catch (Exception e) {
+            log.warn("Failed to serialize tools cache for MCP server: {}", e.getMessage());
+            return "[]";
+        }
     }
 
     private void validateServer(McpServerEntity entity) {

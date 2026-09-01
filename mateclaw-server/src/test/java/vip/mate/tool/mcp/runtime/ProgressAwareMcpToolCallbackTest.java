@@ -168,4 +168,81 @@ class ProgressAwareMcpToolCallbackTest {
                 new McpSchema.CallToolResult(List.of(new McpSchema.TextContent("ok")), false));
         assertEquals("ok", wrapper.call("   ", ctx));
     }
+
+    // ── structuredContent (PowerFin-style servers: summary in content, payload in data) ──
+
+    private String callWithStructuredContent(McpSchema.CallToolResult result) {
+        ToolContext ctx = new ToolContext(Map.of(
+                ProgressAwareMcpToolCallback.MCP_PROGRESS_TOKEN_KEY, "tok"));
+        when(mcpClient.callTool(any())).thenReturn(result);
+        return wrapper.call("{}", ctx);
+    }
+
+    @Test
+    @DisplayName("structuredContent is appended when content carries only a summary")
+    void structuredContentAppended() {
+        McpSchema.CallToolResult result = new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent("6 factura(s) encontrada(s) con estado(s): 002, 005")),
+                false,
+                Map.of("count", 6, "invoices", List.of(
+                        Map.of("code", "001-021-000009335", "balance", "2616.25"),
+                        Map.of("code", "001-021-000009340", "balance", "101.50"))),
+                Map.of());
+
+        String out = callWithStructuredContent(result);
+
+        assertTrue(out.contains("6 factura(s) encontrada(s) con estado(s): 002, 005"),
+                "summary text must be preserved: " + out);
+        assertTrue(out.contains("[Detalle estructurado]"), "structured payload must be appended: " + out);
+        assertTrue(out.contains("001-021-000009335"), "invoice details must be visible to the LLM: " + out);
+        assertTrue(out.contains("001-021-000009340"));
+    }
+
+    @Test
+    @DisplayName("structuredContent without text content still produces JSON output")
+    void structuredContentWithoutTextContent() {
+        McpSchema.CallToolResult result = new McpSchema.CallToolResult(
+                List.of(), false,
+                Map.of("count", 1, "invoices", List.of(Map.of("code", "X"))),
+                Map.of());
+
+        String out = callWithStructuredContent(result);
+
+        assertTrue(out.contains("[Detalle estructurado]"), "must emit structured payload even with empty content: " + out);
+        assertTrue(out.contains("\"code\":\"X\"") || out.contains("\"code\" : \"X\"")
+                || out.contains("\"code\" :\"X\"") || out.contains("X"), "detail must be present: " + out);
+    }
+
+    @Test
+    @DisplayName("no structuredContent → output unchanged (backward compatible)")
+    void noStructuredContentUnchanged() {
+        McpSchema.CallToolResult result = new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent("plain result")), false, null, Map.of());
+
+        assertEquals("plain result", callWithStructuredContent(result));
+    }
+
+    @Test
+    @DisplayName("structuredContent already embedded in text is not duplicated")
+    void structuredContentAlreadyInTextNotDuplicated() {
+        String summary = "{\"count\":1,\"invoices\":[{\"code\":\"ABC\"}]}";
+        McpSchema.CallToolResult result = new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent(summary)),
+                false,
+                Map.of("count", 1, "invoices", List.of(Map.of("code", "ABC"))),
+                Map.of());
+
+        String out = callWithStructuredContent(result);
+
+        assertEquals(summary, out, "payload already in the text must not be appended again");
+    }
+
+    @Test
+    @DisplayName("structuredContent null → falls back to delegate path semantics (empty content)")
+    void nullResultReturnsEmpty() {
+        ToolContext ctx = new ToolContext(Map.of(
+                ProgressAwareMcpToolCallback.MCP_PROGRESS_TOKEN_KEY, "tok"));
+        when(mcpClient.callTool(any())).thenReturn(null);
+        assertEquals("", wrapper.call("{}", ctx));
+    }
 }

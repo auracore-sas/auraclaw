@@ -16,7 +16,39 @@
 > **Sesión 2026-08-27 (9ª-e): fix gráfica que no llegaba (bug de orden scrub/unwrap) + tablas anchas → viñetas + prompt anti-loop.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-f): Panel por usuario (Opción A) + secciones admin-only (modelos LLM, cron) — desplegado y verificado.** Detalle abajo.
 > **Sesión 2026-09-01 (10ª): limpieza de pendientes — job DeepSeek cancelado, conversaciones de prueba borradas, config_content de KB migrado a JSON puro. BD limpia y documentación cerrada.** Detalle abajo.
+> **Sesión 2026-09-01 (10ª-b): conexión MCP PowerFin operativa — proxy bridge por GET 405 + negociación de versión; fix de loop del agente (structuredContent descartado) y schemas en el caché. Desplegado y verificado en vivo.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
+
+---
+
+## ✅ Sesión 10ª-b (2026-09-01) — MCP PowerFin conectado + fix del loop del agente
+
+### Contexto
+- El usuario tiene un servidor MCP local PowerFin (`http://localhost:8080/powerfin/ws/mcp`, `X-API-Key`, JSON-RPC 2.0 streamable HTTP, 5 tools: balance_query, customer_statement, overdue_portfolio, inventory_balance, find_invoices_by_status).
+- La conexión en AuraClaw daba `Client failed to initialize by explicit API call` y el chat se demoraba muchísimo.
+
+### Causas raíz (3 bugs encadenados) y fixes
+1. **Config MCP incorrecta en BD** (`mate_mcp_server` id 2094882114698027010): transport `sse` → debía ser `streamable_http`; url `http://localhost:8080` no alcanzable desde el contenedor Docker → IP del gateway (`172.25.0.1`). Headers `X-API-Key` ya estaban bien.
+2. **Servidor MCP stateless incompatible con el SDK** (mcp-core 0.14.0 pinzado por spring-ai-alibaba-graph-core):
+   - El SDK hace un GET inicial al endpoint (stream SSE notificaciones) → PowerFin responde 405 + HTML → `SseLineSubscriber` lanza `Invalid SSE response` fatal.
+   - Negociación: el SDK pide protocolVersion 2025-06-18 y PowerFin responde 2025-11-25 (más nueva) → rechazada.
+   - **Fix sin tocar el proyecto**: proxy Python local (`/home/pvalarezo/auracore-apps/scripts/powerfin_mcp_proxy.py`, systemd user service `powerfin-mcp-proxy.service`, puerto 8090) que (a) responde el GET con 200 text/event-stream vacío, (b) reescribe protocolVersion del initialize a la pedida, (c) reenvía POSTs con X-API-Key.
+3. **Loop del agente (lentitud) — bug de código AuraClaw**:
+   - `ProgressAwareMcpToolCallback.serializeResult` solo concatenaba `result.content()` (resumen) y descartaba `structuredContent` (donde PowerFin pone los detalles en su campo no estándar `data`). El LLM veía solo "6 factura(s)..." y reintentaba la misma tool hasta 100 iteraciones (~20s/vuelta, `Max iterations reached`).
+   - **Fix 1 (código)**: `serializeResult` ahora añade `[Detalle estructurado] <JSON>` con `structuredContent` cuando existe (dedupe semántico si el texto ya lo contiene). Tests: +5 en `ProgressAwareMcpToolCallbackTest` (17 total).
+   - **Fix 2 (proxy)**: reescribe el campo no estándar `data` → `structuredContent` en respuestas de `tools/call` (el SDK Jackson solo puebla `structuredContent`).
+   - **Fix 3 (código)**: `McpServerService.serializeToolsCache` usaba hutool `JSONUtil.toJsonStr` (no soporta records de Java → `inputSchema` quedaba `{}` en el caché y en la UI). Ahora usa Jackson (`ObjectMapper` inyectado) para el record y para la lista final. Tests: +1 en `McpServerServiceListToolsTest` (5 total).
+
+### Verificación en vivo
+- MCP: `connected`, 5 tools con **schemas completos** en `tools_cache_json` (antes `{}`).
+- Chat real (conv `mcp-fix-test-2`): "facturas activas con detalle" → respuesta en **31s** con las 6 facturas detalladas (código, persona, fechas, montos) vs 181s/loop antes. Sin `Max iterations`.
+- Deploy: rebuild imagen Docker + retag a `mateclaw-mateclaw-server` + recreate (`docker compose -p mateclaw up -d --force-recreate mateclaw-server`).
+- Nota: el server se reconecta al MCP automáticamente al arrancar (initEnabledServers) — el proxy debe estar corriendo antes.
+
+### Pendiente anotado
+- El loop de la conversación vieja `mcp-fix-test-1` quedó en BD (artefacto de la prueba pre-fix) — cosmético, se puede purgar.
+- Opción futura: forzar SDK MCP 0.18.3 en el pom (spring-ai-alibaba pinza 0.14.0) — podría eliminar la necesidad del proxy, requiere rebuild.
+
 
 ---
 

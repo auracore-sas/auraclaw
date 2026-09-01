@@ -103,16 +103,96 @@ public final class ProgressAwareMcpToolCallback implements ToolCallback {
 
     private String serializeResult(McpSchema.CallToolResult result) {
         if (result == null) return "";
-        if (result.content() == null || result.content().isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
-        for (var content : result.content()) {
-            if (content instanceof McpSchema.TextContent tc) {
-                sb.append(tc.text());
-            } else {
-                sb.append(content.toString());
+        if (result.content() != null) {
+            for (var content : result.content()) {
+                if (content instanceof McpSchema.TextContent tc) {
+                    sb.append(tc.text());
+                } else {
+                    sb.append(content.toString());
+                }
+            }
+        }
+        // PowerFin-style MCP servers put the machine-readable payload in
+        // structuredContent (`data` in the wire response) while `content`
+        // carries only a summary. The LLM cannot see the summary alone — it
+        // re-calls the tool hoping for detail, looping until max iterations.
+        // Append the structured payload (as JSON) so the model gets the full
+        // result on the first call. Only appended when there is something to
+        // add and it is not already reflected in the text (dedupe by toString).
+        if (result.structuredContent() != null) {
+            try {
+                String json = objectMapper.writeValueAsString(result.structuredContent());
+                if (!json.isBlank() && !json.equals("null")) {
+                    String text = sb.toString();
+                    // Avoid duplicating the payload when the summary already
+                    // embeds the full JSON (some servers echo it in content).
+                    // Compare semantically: the echoed JSON may differ in key
+                    // order / whitespace from our serialization.
+                    if (!textContainsEquivalentJson(text, json)) {
+                        if (!text.isEmpty()) sb.append("\n");
+                        sb.append("[Detalle estructurado] ").append(json);
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Failed to serialize structuredContent for MCP tool '{}': {}",
+                        rawToolName, e.getMessage());
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * True when {@code text} already contains a JSON document equivalent to
+     * {@code json} (same parsed tree), tolerating key order / whitespace
+     * differences. Falls back to a substring check when either side is not
+     * valid JSON.
+     */
+    private boolean textContainsEquivalentJson(String text, String json) {
+        if (text == null || text.isBlank()) return false;
+        try {
+            var tree = objectMapper.readTree(json);
+            // Scan the text for an embedded JSON document and compare trees.
+            int from = 0;
+            while (from < text.length()) {
+                int start = text.indexOf('{', from);
+                if (start < 0) break;
+                int end = findMatchingBrace(text, start);
+                if (end > start) {
+                    try {
+                        var embedded = objectMapper.readTree(text.substring(start, end + 1));
+                        if (tree.equals(embedded)) return true;
+                    } catch (Exception ignored) {
+                        // not valid JSON at this brace — keep scanning
+                    }
+                }
+                from = start + 1;
+            }
+            return false;
+        } catch (Exception e) {
+            return text.contains(json);
+        }
+    }
+
+    /** Index of the matching '}' for the '{' at {@code open}, or -1. */
+    private static int findMatchingBrace(String s, int open) {
+        int depth = 0;
+        boolean inString = false;
+        for (int i = open; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inString) {
+                if (c == '\\') { i++; }
+                else if (c == '"') { inString = false; }
+            } else if (c == '"') {
+                inString = true;
+            } else if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
     }
 
     /** Return the underlying delegate (for ReturnDirect / IdentityForward detection). */
