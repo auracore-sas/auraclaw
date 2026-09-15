@@ -278,15 +278,28 @@ public record SourceEvidenceLedger(
 
         for (Integer index : indexes) {
             WikiCitation citation = wikiCitation(index);
-            if (citation == null) {
-                unsupported.add("wiki citation [" + index + "]");
-                continue;
-            }
             String sourceLine = sourceLineFor(answer, index);
             if (sourceLine == null) {
                 unsupported.add("wiki source table [" + index + "]");
-            } else if (!citation.matchesSourceLine(sourceLine)) {
-                unsupported.add("wiki source title for [" + index + "]");
+                continue;
+            }
+            if (citation != null && citation.matchesSourceLine(sourceLine)) {
+                continue;
+            }
+            // AuraClaw: the index is only a label the model chose. Page-level
+            // sources (wiki_read_page) cannot tell the model which number to use,
+            // and models legitimately renumber by relevance rather than by read
+            // order, so an index mismatch is not by itself a fabricated source.
+            // What must hold is that the page the answer points at was actually
+            // read this round — checking the label against every known citation
+            // keeps that guarantee while dropping the false "evidence
+            // insufficient" warning on multi-page answers.
+            boolean reallyRead = wikiCitations.stream()
+                    .anyMatch(known -> known.matchesSourceLine(sourceLine));
+            if (!reallyRead) {
+                unsupported.add(citation == null
+                        ? "wiki citation [" + index + "]"
+                        : "wiki source title for [" + index + "]");
             }
         }
     }
@@ -462,13 +475,21 @@ public record SourceEvidenceLedger(
             recordWikiArray(root.path("pages"), builder);
             String title = root.path("title").asText("");
             String rawTitle = root.path("rawTitle").asText("");
+            // AuraClaw fix (upstream #334): wiki_read_page returns the page under a
+            // top-level "title" and carries no index, so upstream registered EVERY
+            // page with a hardcoded index=1. Builder.wikiCitation evicts any
+            // citation that shares an index, so reading two pages in one round
+            // silently dropped the first one and any answer citing [2] was then
+            // flagged as unverifiable ("evidence insufficient") even though both
+            // pages had really been read. Give each read page the next free index.
+            int index = builder.nextFreeWikiIndex();
             if (!title.isBlank()) {
                 builder.wikiPageTitle(title);
-                builder.wikiCitation(new WikiCitation(1, "", title, "", null));
+                builder.wikiCitation(new WikiCitation(index, "", title, "", null));
             }
             if (!rawTitle.isBlank()) {
                 builder.wikiPageTitle(rawTitle);
-                builder.wikiCitation(new WikiCitation(1, "", rawTitle, "", null));
+                builder.wikiCitation(new WikiCitation(index, "", rawTitle, "", null));
             }
         } catch (Exception ignored) {
         }
@@ -572,6 +593,19 @@ public record SourceEvidenceLedger(
             }
             wikiCitations.removeIf(existing -> existing.index() == citation.index());
             wikiCitations.add(citation.normalized());
+        }
+
+        /**
+         * Next unused citation index. Callers that hold a page without an index
+         * of its own (wiki_read_page) must use this instead of a constant, or
+         * {@link #wikiCitation} evicts the previously registered page.
+         */
+        int nextFreeWikiIndex() {
+            int max = 0;
+            for (WikiCitation citation : wikiCitations) {
+                max = Math.max(max, citation.index());
+            }
+            return max + 1;
         }
 
         SourceEvidenceLedger build() {
