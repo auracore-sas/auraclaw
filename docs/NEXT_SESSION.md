@@ -19,6 +19,36 @@
 > **Sesión 2026-09-01 (10ª-b): conexión MCP PowerFin operativa — proxy bridge por GET 405 + negociación de versión; fix de loop del agente (structuredContent descartado) y schemas en el caché. Desplegado y verificado en vivo.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
 > **Sesión 2026-09-15 (11ª): release `v2.1.0-mc.2` (38 commits sin tag) + presupuesto de disclosure persistido en `docker-compose.yml` + CI/CD (P6) creado — que a su vez destapó y corrigió 12 fallos de test nuestros.** Detalle abajo.
+> **Sesión 2026-09-16 (12ª-b): fix del falso "evidencia insuficiente" del Wiki (bug del upstream #334, presente también aquí) — portado a `main` desde la rama de v2.2.0 y verificado en vivo.** Detalle abajo.
+
+---
+
+## ✅ Sesión 12ª-b (2026-09-16) — Fix del falso aviso de evidencia insuficiente del Wiki (bug del upstream)
+
+> Portado a `main` con `cherry-pick` desde `feature/upstream-v2.2.0` (commits `ed00c36f` y `f534099b`).
+> **No es una regresión de v2.2.0: el bug existe también en v2.1.0.**
+
+### Síntoma reportado por el usuario
+Una respuesta que citaba **dos páginas del Wiki** mostraba:
+`[证据不足] … wiki citation [2] …` — pese a que **ambas páginas se habían leído**.
+
+### Causa raíz (upstream, `jack`, 2026-06-16, commit `88be1f74` / #334)
+`wiki_read_page` devuelve la página en un `title` de nivel superior y **sin índice**, pero `SourceEvidenceLedger.recordWikiEvidence` la registraba con un **índice 1 hardcodeado**. Como `Builder.wikiCitation` evicta por índice (`removeIf(existing.index() == citation.index())`), **la segunda página borraba la primera**. Con una sola fuente en el ledger, cualquier cita `[2]` era inverificable.
+
+Mismo bug en el `merge()` que ejecuta `ActionNode` por ronda: una página leída sola en su ronda siempre recibe el primer índice, así que la ronda 2 **reemplazaba** la página de la ronda 1 (observado en vivo: la respuesta citaba `[1]` y `[2]` la **misma** página).
+
+### Arreglo
+1. `Builder.nextFreeWikiIndex()` en vez de la constante 1 → ninguna página se pierde; la tabla canónica del safety net ya no repite `[1]`.
+2. `validateWikiCitations` deja de tratar el índice como identidad: si no resuelve, comprueba que la página apuntada esté entre las **realmente leídas**. **Citar una página nunca leída sigue rechazándose.**
+3. `merge()` porta las citas nuevas con índices frescos y dedupe por **título/chunkId** (no por índice).
+
+### Verificación
+- Tests del área: **20 → 25**, todos verdes. Se actualizó `rejectsWikiAnswerWithoutRealCitations`, que **asertaba el comportamiento con bug** (exigía que citar una página real con otro número fuera error).
+- **En vivo** (imagen reconstruida y desplegada): la misma pregunta que rompía → `finishReason=normal`, **0 avisos**, y tabla correcta `[1] Menú completo` / `[2] Productos destacados y precios`. Verificados los dos caminos (dos `wiki_read_page` en la misma ronda y en rondas separadas).
+- Conversaciones de prueba purgadas.
+
+### Lección
+Este bug lo encontró el usuario en minutos de uso real; **ninguno de los ~5.000 tests lo detectaba**. Refuerza que el CI verde no sustituye la verificación funcional antes de declarar algo "listo para producción".
 
 ---
 
