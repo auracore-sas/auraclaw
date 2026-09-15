@@ -93,8 +93,28 @@ public record SourceEvidenceLedger(
         other.failedPaths.forEach(builder::failedPath);
         other.wikiPageTitles.forEach(builder::wikiPageTitle);
         other.wikiChunkIds.forEach(builder::wikiChunkId);
-        other.wikiCitations.forEach(builder::wikiCitation);
+        // AuraClaw (upstream #334): Builder.wikiCitation evicts any citation that
+        // shares an index, and a page read on a round of its own always comes back
+        // with the first free index. ActionNode merges the accumulated ledger with
+        // each round's fresh one, so merging used to REPLACE the earlier page
+        // instead of accumulating it. Carry the new pages over under fresh
+        // indices, skipping the ones already known, so every page read during the
+        // conversation stays citable.
+        for (WikiCitation citation : other.wikiCitations) {
+            if (wikiCitations.stream().anyMatch(known -> sameSource(known, citation))) {
+                continue;
+            }
+            builder.wikiCitation(new WikiCitation(builder.nextFreeWikiIndex(),
+                    citation.chunkId(), citation.title(), citation.section(), citation.pageNumber()));
+        }
         return builder.build();
+    }
+
+    /** Same page/raw material, independently of the index it was registered under. */
+    private static boolean sameSource(WikiCitation a, WikiCitation b) {
+        String aKey = a.chunkId() == null || a.chunkId().isBlank() ? a.title() : a.chunkId();
+        String bKey = b.chunkId() == null || b.chunkId().isBlank() ? b.title() : b.chunkId();
+        return aKey != null && !aKey.isBlank() && aKey.equalsIgnoreCase(bKey == null ? "" : bKey);
     }
 
     public SourceEvidenceLedger withSourcePath(String path) {

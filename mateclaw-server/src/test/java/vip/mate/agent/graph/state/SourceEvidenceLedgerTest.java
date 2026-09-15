@@ -232,6 +232,46 @@ class SourceEvidenceLedgerTest {
     }
 
     @Test
+    @DisplayName("merging rounds keeps pages read in earlier rounds citable")
+    void mergeKeepsEarlierRoundPages() {
+        // ActionNode merges the accumulated ledger with each round's fresh one. A
+        // page read alone on its round always gets the first free index, so the
+        // merge used to evict the page read in the previous round.
+        SourceEvidenceLedger round1 = SourceEvidenceLedger.fromToolResponses(List.of(
+                new ToolResponseMessage.ToolResponse("c1", "wiki_read_page",
+                        "{\"title\":\"Menú completo\",\"content\":\"Pretzel $2.99\"}")));
+        SourceEvidenceLedger round2 = SourceEvidenceLedger.fromToolResponses(List.of(
+                new ToolResponseMessage.ToolResponse("c2", "wiki_read_page",
+                        "{\"title\":\"Productos destacados y precios\",\"content\":\"Agua $1.49\"}")));
+
+        SourceEvidenceLedger merged = round1.merge(round2);
+
+        SourceEvidenceLedger.Validation validation = merged.validateAnswer("""
+                El Original Pretzel cuesta $2.99 [1]. El agua aromática cuesta $1.49 [2].
+
+                Fuentes:
+                [1] Menú completo
+                [2] Productos destacados y precios
+                """);
+        assertTrue(validation.valid(),
+                "a page read in an earlier round must stay citable: "
+                        + validation.unsupportedReferences());
+    }
+
+    @Test
+    @DisplayName("merging the same round twice does not duplicate pages")
+    void mergeIsIdempotent() {
+        SourceEvidenceLedger round = SourceEvidenceLedger.fromToolResponses(List.of(
+                new ToolResponseMessage.ToolResponse("c1", "wiki_read_page",
+                        "{\"title\":\"Menú completo\",\"content\":\"Pretzel $2.99\"}")));
+
+        String enriched = round.merge(round).appendWikiSourceTable(
+                "Precio de referencia.\n\nFuentes:\n[[Menú completo]]");
+        assertEquals(1, enriched.split(java.util.regex.Pattern.quote("[1] "), -1).length - 1,
+                "the same page must not be listed twice: " + enriched);
+    }
+
+    @Test
     @DisplayName("still rejects a citation whose source was never read")
     void stillRejectsCitationForUnreadPage() {
         SourceEvidenceLedger ledger = SourceEvidenceLedger.fromToolResponses(List.of(
