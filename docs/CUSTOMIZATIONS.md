@@ -54,6 +54,10 @@ dev      → referencia local de la rama de desarrollo del upstream (no trabajam
 | **Tests alineados con branding/marcadores en español (2026-09-15)** — la suite completa del server (`4794` tests) tenía **12 fallos** en 5 clases, todos causados por nuestras personalizaciones (branding `AuraClaw` + marcadores/prompts en español), no por upstream: `AgentGraphBuilderIdentityBlockTest` (aseraba `MateClaw`), `ChatControllerPersistStatusTest` (`[等待审批]` → `[Pendiente de aprobación]`), `FeishuProcessStreamTest` (`startsWith("[错误]")`), `DelegateAgentToolDenyListTest` + `DelegateAgentToolTest` (8 asserts con `[错误]`/`上限`/`校验失败`/`最多`). Fix: las aserciones de **prefijo de error** ahora usan `ChannelErrorClassifier.hasErrorPrefix()` (contrato real, bilingüe, insensible al idioma) en vez de literales; las de contenido pasaron a los textos españoles emitidos. Además se cerró un gap de traducción en `DelegateAgentTool` (el mensaje de spawn-paused estaba en inglés en 2 de 3 sitios) → los tres ahora en español | **Superficie media**: 5 archivos de test del upstream + 3 líneas de `DelegateAgentTool`. En un merge con upstream, si upstream toca esos tests, conservar nuestras aserciones por `ChannelErrorClassifier` (los literales chinos/ingleses son exactamente lo que rompe). Re-aplicar tras cambiar cualquier marcador |
 | **`.github/workflows/ci.yml` (2026-09-15)** — pipeline propio: el upstream NO trae workflows, aunque su `Dockerfile` asume uno (comentario: *"type errors are caught in CI, not in the image"*). Jobs: `server` (JDK 21 + `mvn -N install` + `plugin-api` + compile + suite completa, sube surefire-reports si falla), `ui` (pnpm 10 frozen + `vue-tsc --noEmit` + vitest + `vite build`) y `desktop` (solo `workflow_dispatch` con input `package_desktop`, macOS sin firma, **aún no validado**). Dispara en push/PR a `main`, nightly y manual. Coste medido: suite completa ≈ 15 min en 8 cores | Archivo nuevo nuestro (`.github/workflows/` no existe en upstream) = sin conflicto. Si upstream añade workflows propios, conservar el nuestro y revisar colisiones de nombre |
 | **`mateclaw-ui/vitest.config.ci.ts` (2026-09-15)** — config de vitest aditiva para CI que excluye 4 archivos de test que **ya fallan en upstream limpio `v2.1.0`** (verificado con `git worktree add … v2.1.0`: los mismos 8 asserts fallan allí). Sin la exclusión el CI nacería rojo y taparía fallos reales. Entradas a borrar cuando upstream los arregle: `product-cards`, `streaming-render`, `teamRunComponents`, `teamRunProjectionPrimitives` | Archivo nuevo (aditivo) = sin conflicto. **No** se tocó `vitest.config.ts` (del upstream) ni el script `test` de `package.json` |
+| **Adopción de v2.2.0 (2026-09-15)** — primera integración de una versión estable desde el fork. Se mergeó el commit **`release: v2.2.0` de `upstream/dev`** (`08a5bf69`), no el tag: `upstream/main` está aplanado (squash) y su ancestro con nosotros es `v1.1.0` → `git merge v2.2.0` daba **313 conflictos**; el commit de `dev` da **4**. Además el tag de `main` es curado y omite archivos que `dev` sí tiene (los habría borrado). Contenido: runtime mainline (contrato de runtime de empleados + provider registry), DeepSeek Harness, Goals durables (cola/supervisor/leases/attempts), A2A bidireccional, OfficeCLI, ACP prompt timeout. Resultado: 288 archivos, +14103/-670, **0 archivos borrados**. Conflictos resueltos (4): `ConversationController` (unión import+campo), `ConversationControllerBatchDeleteTest` (unión), `McpServerServiceListToolsTest` (conservar ambos tests), `mateclaw-ui/src/types/index.ts` (estructura del upstream + campo `stream_progress` traducido). **El procedimiento está documentado en `AGENTS.md` §5 y §3 de este archivo** | **Superficie media**; `rerere` memorizó las 4 resoluciones. ⚠️ `main` del upstream NO se mergea nunca: usar siempre el commit de release de `dev` |
+| **`fallbackLocale: 'en-US'` (2026-09-15)** — `mateclaw-ui/src/i18n/index.ts` tenía `fallbackLocale: DEFAULT_LOCALE` (= `es-ES`), así que ante una clave que `es-ES.ts` aún no traduce vue-i18n no tenía a dónde caer y renderizaba la **ruta cruda de la clave**. Con v2.2.0 son 37 claves nuevas. Ahora el fallback es `en-US` (el diccionario que el upstream mantiene completo) y `applyLocale` carga ese diccionario cuando el idioma activo no es inglés (los diccionarios son lazy: declarar el fallback no basta) | **Superficie baja**: `i18n/index.ts` (+constante exportada `FALLBACK_LOCALE`, +1 carga condicional). Si upstream toca ese archivo, conservar el fallback a `en-US` y la carga del diccionario de respaldo |
+| **`spring.flyway.out-of-order: true` en `application-postgres.yml` (2026-09-15)** — nuestras migraciones son V900+ (regla 7) para no colisionar por nombre, pero eso deja la versión máxima aplicada en **901**, por encima de cualquier migración que el upstream añada después (v2.2.0 trae V186–V189). Con el default `out-of-order=false` Flyway se niega a aplicar esas pendientes de versión menor → el esquema nuevo nunca llega y el código actualizado falla en runtime. Nuestras V900/V901 son aditivas e independientes, así que aplicarlas tarde es seguro. *(Nota: la BD tenía V186 aplicado dos veces y las columnas `mate_agent.runtime_type/runtime_config` ya existían — quedó parcialmente pre-migrada de un deploy anterior; `validate-on-migrate: false` ya estaba puesto.)* | **Superficie baja**: 1 línea + comentario en un archivo del upstream. Re-aplicar si upstream toca el bloque `spring.flyway` de `application-postgres.yml`. Aplicar el mismo criterio en `application-kingbase.yml` si algún día se despliega sobre KingbaseES |
+| **Test del upstream adaptado a nuestra firma (2026-09-15)** — v2.2.0 añade `ConversationControllerTeamWorkerTranscriptTest`, que construye el controlador con **3** argumentos; nuestra resolución del conflicto conservó ambos campos (`modelConfigService` nuestro + `teamWorkerGovernanceService` del upstream) → el constructor Lombok tiene **4** y el test no compilaba. Se le añadió el mock de `ModelConfigService` | **Superficie baja**: 1 archivo de test NUEVO del upstream. **Lección**: el merge no marca los archivos nuevos que asumen firmas viejas → correr siempre `mvn test-compile` antes de la suite (por eso está en el procedimiento, `AGENTS.md` §5.1 paso 5) |
 | *(futuro)* `mateclaw-ui/...` | Título, i18n `es-ES`, textos visibles | Archivos aditivos (`es-ES.ts`) = sin conflicto; textos en `en-US.ts`/`zh-CN.ts` = re-aplicar |
 
 ### Sustituciones de branding (apply después de cada merge si hace falta)
@@ -71,27 +75,41 @@ sed -i 's/MateClaw/AuraClaw/g' README.md
 
 ## 3. Procedimiento de actualización (cuando upstream publique una versión estable)
 
+> ⚠️ **El tag NO se mergea.** `upstream/main` es una línea aplanada (squash) cuyo
+> ancestro común con nosotros es `v1.1.0`: `git merge v2.2.0` da **313 conflictos**.
+> Se mergea el commit `release: vX.Y.Z` de `upstream/dev`, que **sí desciende de
+> nuestra base** → **4 conflictos** (medido 2026-09-15). Detalle completo en `AGENTS.md` §5.
+
 ```bash
 # 1. Traer lo nuevo del oficial (tags + ramas)
 git fetch upstream --tags
 
-# 2. Ver qué versión estable nueva existe
-git tag | sort -V | tail -5          # ej: v2.2.0
+# 2. Localizar el commit de release en DEV (no el tag)
+UP=$(git log --format='%H' upstream/dev --grep='^release: v2.2.0$' -1)
+git log -1 --format='%ci %s' "$UP"      # verificar antes de mergear
 
-# 3. Integrar en nuestra línea comercial (MERGE, nunca rebase)
-git checkout main
-git merge v2.2.0
+# 3. Integrar en una rama (merge, nunca rebase)
+git checkout -b feature/upstream-v2.2.0 main
+git merge "$UP"
 
-# 4. Resolver conflictos (rerere re-aplica los de branding automáticamente;
-#    para README.md: conservar nuestra versión y re-aplicar la sustitución)
-sed -i 's/MateClaw/AuraClaw/g' README.md
+# 4. Resolver conflictos (rerere re-aplica los ya vistos)
+#    - unión de imports/campos; conservar nuestros tests Y añadir los suyos
+#    - re-aplicar español en los archivos de UI que upstream toque
 
-# 5. Verificar build y tests
-mvn -q compile -DskipTests -pl mateclaw-server -am
-mvn test -pl mateclaw-server -Dtest='...'   # suite completa en CI
+# 5. Re-aplicar branding en los archivos NUEVOS del upstream
+grep -rl "MateClaw" --include='*.md' mateclaw-server/src/main/resources/docs \
+  | xargs sed -i 's/MateClaw/AuraClaw/g'
+#    (NO tocar identificadores java, ni el aviso de fork del README)
 
-# 6. Publicar
-git add -A && git commit -m "merge: integrate upstream v2.2.0"
+# 6. Verificar ANTES de mergear a main
+mvn -q test-compile -pl mateclaw-server     # los tests nuevos pueden asumir firmas viejas
+mvn test -pl mateclaw-server                # suite completa (~4800 tests, ~15 min)
+cd mateclaw-ui && npx vue-tsc --noEmit && npx vitest run --config vitest.config.ci.ts
+
+# 7. Verificar en vivo (rebuild Docker + Flyway aplicando las migraciones nuevas)
+
+# 8. Publicar
+git checkout main && git merge feature/upstream-v2.2.0
 git tag v2.2.0-mc.1                        # tag propio por versión integrada
 git push origin main --tags
 ```
