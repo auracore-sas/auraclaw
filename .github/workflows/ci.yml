@@ -1,0 +1,166 @@
+name: CI
+
+# AuraClaw — pipeline propio. El upstream (MateClaw) no publica ningún workflow,
+# aunque su Dockerfile asume que existe uno:
+#   "Skipping vue-tsc here is intentional — type errors are caught in CI, not in
+#    the image."  (mateclaw-server/Dockerfile)
+#
+# Coste medido (dev, 8 cores, 2026-09-15): suite completa del server
+# 4794 tests ≈ 15 min. En los runners de GitHub (4 vCPU) se espera bastante
+# más; el job `server` es el que consume la mayor parte de los minutos.
+#
+# ¿Por qué el suite completo también en push a main? Porque el flujo de trabajo
+# del repo es commit directo a main (AGENTS.md §4): dejarlo solo en PR dejaría
+# la mayoría de los cambios sin cobertura.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly (UTC): detecta deuda/flakiness introducida por merges del upstream.
+    - cron: '0 8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      package_desktop:
+        description: 'Empaquetar el desktop (macOS, sin firma) — no validado aún'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '21'   # obligatorio: Lombok no soporta JDK 25 (AGENTS.md §7)
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10'   # misma major que pinea mateclaw-server/Dockerfile
+
+jobs:
+  server:
+    name: Server (JDK 21)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      # El módulo plugin-api es dependencia del reactor: sin instalarlo, el
+      # server no compila (AGENTS.md §7).
+      - name: Install parent POM + plugin-api
+        run: |
+          mvn -N install -B -q
+          mvn install -B -q -DskipTests -pl mateclaw-plugin-api
+
+      - name: Compile server
+        run: mvn -B -q compile -DskipTests -pl mateclaw-server -am
+
+      - name: Test server (suite completa)
+        run: mvn -B test -pl mateclaw-server
+
+      - name: Upload surefire reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: mateclaw-server/target/surefire-reports/
+          retention-days: 7
+
+  ui:
+    name: UI (Vue 3 / TS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mateclaw-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: mateclaw-ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # No se usa `pnpm run build`: ese script llama a
+      # ../scripts/check-snowflake-precision.sh, que NO existe (ni en upstream
+      # v2.1.0). El invariante de ids Snowflake de 64 bits sí está cubierto por
+      # los tests de vitest (messageMetadata / useTeamRunHistory / agentPickerLogic).
+      - name: Type check (vue-tsc)
+        run: pnpm exec vue-tsc --noEmit
+
+      - name: Unit tests (vitest)
+        run: pnpm exec vitest run --config vitest.config.ci.ts
+
+      - name: Build UI bundle
+        run: pnpm exec vite build
+
+  desktop:
+    name: Desktop packaging (manual, macOS, sin firma)
+    # Solo manual: empaqueta el JAR del server + JRE embebido + electron-builder.
+    # No se ejecuta por defecto porque descarga un JRE (~50 MB) y produce
+    # artefactos sin firmar. Aún NO validado end-to-end: el primer run manual
+    # es el que lo valida (ver docs/NEXT_SESSION.md).
+    if: github.event_name == 'workflow_dispatch' && inputs.package_desktop
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: mateclaw-desktop/pnpm-lock.yaml
+
+      - name: Install desktop dependencies
+        working-directory: mateclaw-desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: Build server JAR + download embedded JRE
+        working-directory: mateclaw-desktop
+        run: |
+          mvn -f ../pom.xml -N install -B -q
+          mvn -f ../pom.xml install -B -q -DskipTests -pl mateclaw-plugin-api
+          pnpm run setup
+
+      - name: Package (unsigned)
+        working-directory: mateclaw-desktop
+        run: pnpm run package:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-unsigned
+          path: mateclaw-desktop/release/
+          retention-days: 7
+          if-no-files-found: warn
