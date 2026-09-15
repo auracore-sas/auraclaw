@@ -42,15 +42,8 @@ spring:
       - CREATE SCHEMA IF NOT EXISTS mateclaw
     # Skip checksum validation so an in-place migration edit doesn't block startup.
     validate-on-migrate: false
-    # AuraClaw: our own migrations are numbered V900+ so they can never collide
-    # by name with upstream's sequence (AGENTS.md rule 7). The side effect is
-    # that the highest applied version becomes 901, which is *above* every
-    # migration the upstream adds later (v2.2.0 ships V186-V189). With the
-    # default out-of-order=false Flyway refuses to apply those pending
-    # lower-versioned migrations, so the new upstream schema would never land
-    # and the upgraded code would fail at runtime. Our V900+ migrations are
-    # additive and independent from upstream's, so applying them late is safe.
-    out-of-order: true
+    # NOTE: out-of-order=true lives in application.yml (base) so it covers every
+    # profile; see the comment there for why our V900+ scheme requires it.
 
   h2:
     console:

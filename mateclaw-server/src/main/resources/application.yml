@@ -53,6 +53,17 @@ spring:
       - classpath:db/migration/h2
     validate-on-migrate: true
     clean-disabled: true
+    # AuraClaw: our own migrations are numbered V900+ so they can never collide by
+    # name with upstream's sequence (AGENTS.md rule 7). The side effect is that the
+    # highest applied version becomes 901, which is *above* every migration the
+    # upstream adds later (v2.2.0 ships V186-V189). With the default
+    # out-of-order=false Flyway refuses to apply those pending lower-versioned
+    # migrations ("Detected resolved migration not applied to database: 186"), the
+    # Spring context fails to start and every @SpringBootTest/E2E test errors out.
+    # Our V900+ migrations are additive and independent from upstream's, so
+    # applying them late is safe. Set here (base config) so it covers every
+    # profile: dev/H2, postgres, kingbase and mysql.
+    out-of-order: true
     # Disable Flyway's built-in ${...} placeholder substitution. Some migrations
     # (e.g. V85 ckjia MCP seed) intentionally store ${ENV_VAR} literals so that
     # mateclaw's runtime header parser (McpClientManager.parseHeaders) can
