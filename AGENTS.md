@@ -166,6 +166,7 @@ mateclaw-desktop/       Electron (JRE 21 embebido, modos local/remoto)
 mateclaw-webchat/       Widget chat embebible (UMD/ES)
 mateclaw-plugin-api/    SDK Java para plugins de terceros
 docs/CUSTOMIZATIONS.md  ⚠️ REGISTRO de personalizaciones — actualizar en cada cambio de marca
+docs/TELEGRAM_PER_MEMBER.md  Runbook: canal de Telegram propio por miembro (opción A: UI + UPDATE)
 ```
 
 ## 7. Notas de entorno
