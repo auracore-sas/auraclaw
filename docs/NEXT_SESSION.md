@@ -18,6 +18,7 @@
 > **Sesión 2026-09-01 (10ª): limpieza de pendientes — job DeepSeek cancelado, conversaciones de prueba borradas, config_content de KB migrado a JSON puro. BD limpia y documentación cerrada.** Detalle abajo.
 > **Sesión 2026-09-01 (10ª-b): conexión MCP PowerFin operativa — proxy bridge por GET 405 + negociación de versión; fix de loop del agente (structuredContent descartado) y schemas en el caché. Desplegado y verificado en vivo.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
+> **Sesión 2026-09-15 (11ª): release `v2.1.0-mc.2` (38 commits sin tag) + presupuesto de disclosure persistido en `docker-compose.yml` + CI/CD (P6) creado — que a su vez destapó y corrigió 12 fallos de test nuestros.** Detalle abajo.
 
 ---
 
@@ -42,6 +43,31 @@ El tag se corta sobre `main` (`9b2ee31e`) siguiendo la regla 5bis del `AGENTS.md
 - Todo el código de este release ya estaba desplegado en Docker y verificado en vivo en las sesiones 6ª–10ª-b
 
 **Pendiente del release**: ninguno funcional. Lo no incluido queda en la lista priorizada de abajo (P6 CI/CD, persistir vars de disclosure, Wiki/DashScope).
+
+---
+
+## ✅ Sesión 11ª (2026-09-15) — release v2.1.0-mc.2 + config de disclosure + CI/CD (P6)
+
+### 1. Release `v2.1.0-mc.2` (deuda de versionado)
+- Había **38 commits sin tag** desde `v2.1.0-mc.1` (2026-08-20). Verificación previa: `mvn compile` JDK 21 + 87 tests de las áreas del release verdes.
+- Commit `d04c4210` (`docs: record release v2.1.0-mc.2`) → tag anotado `v2.1.0-mc.2` → `git push origin main --tags`.
+- Verificado: el tag apunta a `HEAD == origin/main`; sin tags colaterales creados (los del upstream ya existían en `origin`).
+
+### 2. Presupuesto de esquemas de tools persistido en el repo
+- **Problema**: `MATECLAW_TOOL_SCHEMA_MAX_TOKENS` y el ratio vivían solo en `.env` + `docker-compose.override.yml` (ambos gitignoreados) → un `docker compose up` limpio partía de los defaults de Spring (12000 / 0.25) y volvía a degradar `execute_sql` / `query_datasource` al catálogo de extensión.
+- **Fix**: ambas vars declaradas en `docker-compose.yml` (commiteado) con los valores de producción (40000 / 0.30). El ratio usa el **nombre canónico** de Spring (`mateclaw.context.prefix-budget.tool-schema-ratio` → `MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO`); el alias viejo `MATECLAW_TOOL_SCHEMA_RATIO` se retiró de `.env`. El override conserva solo los puertos de dev.
+- **Verificación**: `docker compose config` → 40000 / 0.30 (también con `--env-file` casi vacío = caso clon limpio); `docker exec … printenv` confirma las vars dentro del contenedor; chat real → log `[ReasoningNode] Prefix accounting: window=272000, toolSchemas=32774` y **0 mensajes `[ToolDisclosure]`** (sin degradaciones). Con las 5 tools de PowerFin conectadas el estimado sube ~1.7k tokens (cache 6599 chars) → ~34.5k < 40000, margen suficiente.
+
+### 3. P6 — CI/CD creado (y 12 fallos de test nuestros descubiertos)
+- **`.github/workflows/ci.yml`** (el upstream no trae ningún workflow, aunque su Dockerfile asume uno): jobs `server` (JDK 21 + `mvn -N install` + `plugin-api` + compile + suite completa + artefacto de surefire-reports si falla), `ui` (pnpm 10 `--frozen-lockfile` + `vue-tsc --noEmit` + vitest + `vite build`) y `desktop` (solo manual vía input, macOS sin firma, **no validado todavía**). Dispara en push/PR a `main`, nightly (L-V) y manual.
+- **`mateclaw-ui/vitest.config.ci.ts`** (aditivo): excluye 4 archivos de test que ya fallan en upstream limpio — verificado con `git worktree add … v2.1.0` + symlink de `node_modules`: **los mismos 8 asserts fallan allí**. Sin la exclusión el CI nacería rojo.
+- **12 fallos reales del server, todos NUESTROS** (la suite completa los destapó — justifica el CI): `AgentGraphBuilderIdentityBlockTest` (aseraba `MateClaw`), `ChatControllerPersistStatusTest` (`[等待审批]`), `FeishuProcessStreamTest` (`startsWith("[错误]")`), `DelegateAgentToolDenyListTest` + `DelegateAgentToolTest` (8 asserts con literales chinos). Las aserciones de prefijo de error ahora usan `ChannelErrorClassifier.hasErrorPrefix()` (contrato real y bilingüe) y las de contenido el texto español emitido. Además se cerró un **gap de traducción** en `DelegateAgentTool`: el mensaje de spawn-paused estaba en inglés en 2 de 3 sitios.
+- **Validación local del CI**: YAML válido (3 jobs) · 285 tests UI verdes con el config de CI (42 archivos) · `vue-tsc --noEmit` exit 0 · `vite build` OK (58s) · 36/36 tests de las clases corregidas · suite completa del server re-ejecutada para confirmar 0 fallos.
+
+### Estado del entorno al cerrar
+- Stack Docker `mateclaw` **levantado** (server `UP`, 3 proveedores OK) y `powerfin-mcp-proxy` activo en 8090.
+- **PowerFin (localhost:8080) estaba caído** → el MCP queda en `error` al arrancar. No es regresión: el proxy responde 502 correctamente y la config en BD apunta al bridge (`http://172.25.0.1:8090/powerfin/ws/mcp`, transport `streamable_http`).
+- Conversación de prueba del presupuesto (`disclosure-budget-test`) purgada vía API: 0 conversaciones, 0 mensajes.
 
 ---
 
@@ -471,18 +497,24 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 ## 📌 Pendiente para la siguiente sesión (priorizado)
 
 ### De la sesión 7ª (2026-08-24) — datos/Postgres
-- **Persistir ajuste de disclosure en el repo (opcional)**: exponer `MATECLAW_TOOL_SCHEMA_MAX_TOKENS` y `MATECLAW_TOOL_SCHEMA_RATIO` en `docker-compose.yml` (hoy viven solo en `.env`/override gitignoreados; un `docker compose up` limpio los pierde)
+- ~~**Persistir ajuste de disclosure en el repo**~~ → **✅ RESUELTO en la sesión 11ª (2026-09-15)**: las dos vars viven ahora en `docker-compose.yml` (commiteado) con defaults 40000 / 0.30, verificado con `docker compose config` y en vivo (`toolSchemas=32774` < 40000, **0 degradaciones**). El ratio pasó al nombre canónico `MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO` (el alias `MATECLAW_TOOL_SCHEMA_RATIO` se retiró de `.env`)
 - **Reversión del modelo (si gpt-4o vuelve a ser necesario)**: `PUT /api/v1/models/active` `{"providerId":"omniroute","model":"openai/gpt-4o"}`; devolver deepseek-v4-flash a wiki-only: `PUT /api/v1/models/deepseek/models/usage-scope` `{"modelId":"deepseek-v4-flash","usageScope":"[\"wiki\"]"}`
 - **Verificar wiki** con deepseek-v4-flash como default (quedó scope chat+wiki; la wiki usa `getModel(id)` que ignora scope, debería seguir OK — confirmar en la próxima digestión)
 - **El primer intento del agente usó el NOMBRE del datasource como ID** ("Postgres local (powerfin_test)") y falló, auto-corrigiéndose con `list_datasources`. Si se repite, reforzar el prompt con el ID numérico o validar en el tool un lookup por nombre
+- **PowerFin estaba caído** (2026-09-15): el MCP queda `error` al arrancar (`Connection refused` a `localhost:8080`) — **no es regresión**, el proxy (8090) responde 502 correctamente. Para probar MCP hay que levantar primero PowerFin y luego reiniciar el server (o esperar al reconnect)
+
+### Nuevos pendientes detectados en la sesión 11ª (2026-09-15)
+- **El job `desktop` del CI no está validado end-to-end** — `pnpm run package:mac` + JRE embebido solo se ha escrito, nunca ejecutado en un runner. Además `mateclaw-desktop/scripts/download-jre.sh` es **solo macOS** (URL de Adoptium con `/mac` hardcodeado) → empaquetar para Windows/Linux necesitaría extender ese script
+- **`scripts/check-snowflake-precision.sh` NO existe** (ni en upstream v2.1.0), pero `mateclaw-ui/package.json` lo invoca en `build` y `lint` → `pnpm run build` y `pnpm run lint` están rotos de fábrica. El invariante de Snowflake 64-bit sí está cubierto por vitest (`messageMetadata`, `useTeamRunHistory`, `agentPickerLogic`). Opciones: (a) recrear el script (grep de patrones de truncado) y hacer que `build`/`lint` funcionen, o (b) quitar la referencia muerta del `package.json` (customización del upstream, registrar). **Decidir con el usuario**
+- **8 fallos de test de UI son deuda del upstream** (4 archivos excluidos en `vitest.config.ci.ts`): `product-cards`, `streaming-render`, `teamRunComponents`, `teamRunProjectionPrimitives`. Verificado que fallan igual en `v2.1.0` limpio. Revisar si upstream los arregla en la próxima versión estable y quitar las exclusiones
+- **La suite del server son 4794 tests / ~15 min** en 8 cores → en runners de GitHub será bastante más. Si el consumo de minutos se vuelve un problema: sharding por paquetes o mover el suite completo a nightly dejando un subconjunto rápido en push
 
 ### Regresiones residuales P4/P5 (opcional, fuera del bloqueo)
 - **Pruebas de regresión en más áreas** si se quiere completitud: research (`draft`/`compose`), skill (`synthesize`/`reflect`/`routine`), content-studio, webchat — no se ejercitaron (requieren flujos más largos / canales configurados)
 - **Nunca eliminar la variante legacy del parsing** al tocar marcadores de nuevo (ver CUSTOMIZATIONS.md); mantener la tolerancia bilingüe
 
-### P6 — CI/CD (del plan original, ÚNICO pendiente de la Fase 1)
-- Pipeline GitHub Actions: build + tests + empaquetado desktop (hoy no existe; validar con `mvn compile` JDK 21 y `vue-tsc --noEmit`)
-- Conversación: se acordó dejarlo **para el final** — priorizar producto/features antes que CI
+### P6 — CI/CD
+- ~~Pipeline GitHub Actions~~ → **✅ CREADO en la sesión 11ª (2026-09-15)**: `.github/workflows/ci.yml` con jobs `server` (JDK 21 + suite completa), `ui` (pnpm frozen + vue-tsc + vitest + vite build) y `desktop` (manual, no validado). Dispara en push/PR a `main`, nightly y manual. **Pendiente**: validar el primer run real en GitHub (el workflow se validó localmente: YAML OK, 285 tests UI verdes, `vue-tsc` limpio, `vite build` OK, suite server verde tras los fixes) y decidir si se añade gate obligatorio de rama
 
 ### Futuro (post-P6)
 - Regresiones residuales P4/P5 (research `draft`/`compose`, skill, content-studio, webchat) — opcionales, fuera del bloqueo
