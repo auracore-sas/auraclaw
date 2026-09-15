@@ -19,6 +19,46 @@
 > **Sesión 2026-09-01 (10ª-b): conexión MCP PowerFin operativa — proxy bridge por GET 405 + negociación de versión; fix de loop del agente (structuredContent descartado) y schemas en el caché. Desplegado y verificado en vivo.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
 > **Sesión 2026-09-15 (11ª): release `v2.1.0-mc.2` (38 commits sin tag) + presupuesto de disclosure persistido en `docker-compose.yml` + CI/CD (P6) creado — que a su vez destapó y corrigió 12 fallos de test nuestros.** Detalle abajo.
+> **Sesión 2026-09-15 (12ª): adopción del upstream v2.2.0 en rama `feature/upstream-v2.2.0` — merge desde el commit de release de `dev` (4 conflictos, no 313), 5 arreglos, suite completa 5022 tests verde y despliegue en vivo con Flyway out-of-order. Pendiente: mergear a `main`.** Detalle arriba.
+
+---
+
+## ✅ Sesión 12ª (2026-09-15) — Adopción de upstream **v2.2.0** (spike verificado, en rama)
+
+> Rama `feature/upstream-v2.2.0`. **Pendiente de decisión: mergear a `main` + tag `v2.2.0-mc.1`.**
+
+### El hallazgo que definió la estrategia
+- `upstream/main` está **aplanado** (squash `release: ...`, un solo padre) y su merge-base con nuestra base es **v1.1.0** → `git merge v2.2.0` daba **313 archivos en conflicto**. El tag de `main` además es *curado* y omite 4 archivos que `dev` sí tiene (los habría borrado).
+- `upstream/dev` **sí desciende de v2.1.0** y publica un commit `release: vX.Y.Z` por versión → merge 3-way normal con ancestro real: **4 conflictos**, y **repetible en cada versión futura**.
+- Objetivo usado: `08a5bf69` (`release: v2.2.0` en `dev`). Resultado: 288 archivos, +14103/-670, **0 borrados**.
+
+### Conflictos resueltos (4, todos mecánicos)
+`ConversationController` (unión import+campo) · `ConversationControllerBatchDeleteTest` (unión) · `McpServerServiceListToolsTest` (conservar ambos tests) · `mateclaw-ui/src/types/index.ts` (estructura del upstream + campo `stream_progress` traducido). `rerere` memorizó las 4 resoluciones.
+
+### Arreglos aplicados (5 commits)
+1. `fallbackLocale: 'en-US'` en `i18n/index.ts` (+ carga del diccionario de respaldo) — antes apuntaba a `es-ES` y las 37 claves nuevas de v2.2.0 se habrían visto crudas
+2. **Flyway `out-of-order: true`** — en `application.yml` (base, cubre todos los perfiles). Ver §lecciones
+3. Re-aplicación de branding en los archivos nuevos (`docs/en+zh/{a2a,deepseek-harness,roadmap}.md`, claves `runtimeNativeHint`)
+4. `ConversationControllerTeamWorkerTranscriptTest` (test NUEVO del upstream) adaptado a nuestro constructor de 4 args
+5. `TeamRunProjectorTest` — el upstream eliminó a propósito el attention item `synthesis` y dejó el test asertándolo; invertido a `assertFalse`
+
+### Verificación
+- `mvn test-compile` OK · **suite completa: 5022 tests / 0 fallos / BUILD SUCCESS** (subió de 4794 en v2.1.0)
+- UI: `vue-tsc --noEmit` limpio · CI-config vitest 48 archivos/314 tests verdes · suite completa 335 verdes + los **mismos 8 fallos de siempre** (el upstream NO los arregló en v2.2.0 → las exclusiones de `vitest.config.ci.ts` siguen vigentes)
+- **En vivo** (imagen Docker reconstruida y desplegada): Flyway aplicó **V186–V189 `[out of order]`** → `now at version v189`; tablas `mate_goal_continuation`/`mate_goal_attempt` y columnas `runtime_type`, `runtime_config`, `prompt_timeout_seconds`, `persistent_execution` creadas; `health=UP`, 3 proveedores OK; chat real → respuesta correcta; presupuesto de tools **33222 < 40000 con 0 degradaciones** (subió desde 32774)
+- Imagen anterior resguardada como `mateclaw-mateclaw-server:pre-v220` para rollback
+
+### Lecciones
+- **El merge no marca los archivos NUEVOS que asumen firmas viejas**: `ConversationControllerTeamWorkerTranscriptTest` rompió `test-compile`. Correr siempre `mvn test-compile` antes de la suite.
+- **Flyway out-of-order es transversal, no solo de Postgres**: al ponerlo únicamente en `application-postgres.yml`, el perfil de tests (H2) falló al arrancar el contexto y tumbó **10 clases** (`ApplicationContextSmokeTest`, `OpenApi*AccessTest`, `SecurityAsyncDispatchTest`, `Wiki*E2ETest`…). Va en la config base.
+- **El upstream no tiene CI**: se le colaron un test obsoleto (`TeamRunProjectorTest`) y 8 fallos de UI que sobreviven a un release completo.
+- **Anomalía en la BD (pendiente menor)**: `flyway_schema_history` tiene **3 filas para V186** (2026-08-20, 08-22 y ahora), todas con el **mismo checksum** (`-406583608`) — sin drift de contenido. Las dos primeras venían de un deploy anterior con código de `dev` (la BD ya tenía `runtime_type`/`runtime_config`). No rompe nada (la app arranca y migra), pero conviene limpiarlas (borrar las 2 más antiguas conservando la última).
+
+### Pendiente de esta sesión
+1. **Decidir**: mergear `feature/upstream-v2.2.0` → `main` + tag `v2.2.0-mc.1` + push
+2. Limpiar las 2 filas duplicadas de V186 en `flyway_schema_history`
+3. Revisar los 39 archivos de solape donde upstream reescribió y nosotros inyectamos (`ReasoningNode` +173 líneas, `ChatController` +178) — verificados los símbolos (citas, marcadores), falta prueba funcional de citas del Wiki
+4. Traducir los 2 slugs nuevos de docs (`a2a`, `deepseek-harness`) — hoy caen al fallback es→en con badge EN
 
 ---
 
