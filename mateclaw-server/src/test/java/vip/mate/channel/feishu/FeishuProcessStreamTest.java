@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import vip.mate.agent.AgentService.StreamDelta;
 import vip.mate.agent.ContentKind;
+import vip.mate.channel.ChannelErrorClassifier;
 import vip.mate.channel.ChannelMessage;
 import vip.mate.channel.ChannelMessageRouter;
 import vip.mate.channel.model.ChannelEntity;
@@ -183,7 +184,7 @@ class FeishuProcessStreamTest {
 
         String result = f.adapter.processStream(stream, inbound(), "feishu:test");
 
-        assertTrue(result.startsWith("[错误]"));
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result));
         assertEquals(1, f.adapter.fallbackMessages.size());
         assertTrue(f.adapter.fallbackMessages.get(0).contains("upstream failed"));
     }

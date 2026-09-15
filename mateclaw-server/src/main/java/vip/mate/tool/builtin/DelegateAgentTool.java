@@ -292,7 +292,7 @@ public class DelegateAgentTool {
         if ((parentConversationId != null && subagentRegistry.isSpawnPaused(parentConversationId))
                 || (rootConversationId != null && subagentRegistry.isSpawnPaused(rootConversationId))) {
             return new SingleDelegation(ChildResult.ofError(0, target.getName(),
-                    "Spawning paused for this conversation; resume via /api/v1/subagents/spawn-pause"), null);
+                    "La generación de sub-agentes está pausada para esta conversación; reanuda vía /api/v1/subagents/spawn-pause"), null);
         }
 
         String childConversationId = createChildConv(target, parentConversationId);
@@ -821,7 +821,7 @@ public class DelegateAgentTool {
         int childDepth = depth + 1;
         if (subagentRegistry.isSpawnPaused(parentConversationId)
                 || subagentRegistry.isSpawnPaused(rootConversationId)) {
-            return errorJson("Spawning paused for this conversation; resume via /api/v1/subagents/spawn-pause");
+            return errorJson("La generación de sub-agentes está pausada para esta conversación; reanuda vía /api/v1/subagents/spawn-pause");
         }
 
         // Capture origin / user on the calling thread — the Callable runs on

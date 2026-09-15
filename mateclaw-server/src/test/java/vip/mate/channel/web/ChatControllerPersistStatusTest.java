@@ -77,7 +77,7 @@ class ChatControllerPersistStatusTest {
         assertThat(ChatController.emptyAssistantPlaceholder("completed"))
                 .isEqualTo("[本次没有输出]");
         assertThat(ChatController.emptyAssistantPlaceholder("awaiting_approval"))
-                .isEqualTo("[等待审批]");
+                .isEqualTo("[Pendiente de aprobación]");
     }
 
     @Test

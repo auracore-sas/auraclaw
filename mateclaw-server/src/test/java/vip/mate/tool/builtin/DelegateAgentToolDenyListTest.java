@@ -14,6 +14,7 @@ import vip.mate.agent.delegation.SubagentRegistry;
 import vip.mate.agent.model.AgentEntity;
 import vip.mate.agent.repository.AgentMapper;
 import vip.mate.audit.service.AuditEventService;
+import vip.mate.channel.ChannelErrorClassifier;
 import vip.mate.channel.web.ChatStreamTracker;
 import vip.mate.workspace.conversation.ConversationService;
 
@@ -132,7 +133,7 @@ class DelegateAgentToolDenyListTest {
 
         String result = tool.delegateToAgent("Worker", "do thing", null, null);
 
-        assertThat(result).contains("Spawning paused");
+        assertThat(result).contains("está pausada");
         // No child registered when the spawn is rejected.
         assertThat(registry.snapshot("parent-conv")).isEmpty();
     }
@@ -146,7 +147,7 @@ class DelegateAgentToolDenyListTest {
         String result = tool.delegateParallel(
                 "[{\"agentName\":\"Worker\",\"task\":\"task1\"}]", null);
 
-        assertThat(result).contains("Spawning paused");
+        assertThat(result).contains("está pausada");
         assertThat(registry.snapshot("parent-conv")).isEmpty();
     }
 

@@ -212,7 +212,7 @@ class DelegateAsyncToolTest {
         String result = tool.delegateAsync("Researcher", "task", null, makeCtx("user-1", "parent-conv-1"));
         Map<String, Object> parsed = objectMapper.readValue(result, new TypeReference<>() {});
         assertThat(parsed).containsEntry("error", true);
-        assertThat((String) parsed.get("message")).contains("paused");
+        assertThat((String) parsed.get("message")).contains("pausada");
         verify(asyncTaskService, never()).submitOneShot(any(), any(), any(), any(), any(), any());
         verify(subagentRegistry, never()).register(any(), any(), any(), any(), any(),
                 any(), anyInt(), any());

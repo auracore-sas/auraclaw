@@ -20,6 +20,7 @@ import vip.mate.agent.delegation.SubagentRegistry;
 import vip.mate.agent.model.AgentEntity;
 import vip.mate.agent.repository.AgentMapper;
 import vip.mate.audit.service.AuditEventService;
+import vip.mate.channel.ChannelErrorClassifier;
 import vip.mate.channel.web.ChatStreamTracker;
 import vip.mate.workspace.conversation.ConversationService;
 
@@ -93,7 +94,7 @@ class DelegateAgentToolTest {
         String result = delegateAgentTool.delegateToAgent("NonExistentAgent", "do something", null, null);
 
         assertTrue(result.contains("NonExistentAgent"), "Should mention the missing agent name");
-        assertTrue(result.contains("[错误]") || result.contains("未找到"), "Should indicate an error");
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result) || result.contains("No se encontró"), "Should indicate an error");
     }
 
     @Test
@@ -103,7 +104,7 @@ class DelegateAgentToolTest {
 
         String result = delegateAgentTool.delegateToAgent("", "do something", null, null);
 
-        assertTrue(result.contains("[错误]"), "Should indicate an error for blank name");
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result), "Should indicate an error for blank name");
     }
 
     @Test
@@ -111,7 +112,7 @@ class DelegateAgentToolTest {
     void delegateToAgentBlankTask() {
         String result = delegateAgentTool.delegateToAgent("SomeAgent", "", null, null);
 
-        assertTrue(result.contains("[错误]"), "Should indicate an error for blank task");
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result), "Should indicate an error for blank task");
     }
 
     // ===== delegateToAgent: depth limit =====
@@ -126,7 +127,7 @@ class DelegateAgentToolTest {
 
         String result = delegateAgentTool.delegateToAgent("SomeAgent", "task", null, null);
 
-        assertTrue(result.contains("上限"), "Should mention the depth limit");
+        assertTrue(result.contains("límite de niveles"), "Should mention the depth limit");
     }
 
     // ===== delegateParallel: invalid JSON =====
@@ -136,7 +137,7 @@ class DelegateAgentToolTest {
     void delegateParallelBadJson() {
         String result = delegateAgentTool.delegateParallel("not valid json", null);
 
-        assertTrue(result.contains("[错误]"), "Should indicate parse error");
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result), "Should indicate parse error");
         assertTrue(result.contains("JSON"), "Should mention JSON");
     }
 
@@ -147,7 +148,7 @@ class DelegateAgentToolTest {
     void delegateParallelEmptyList() {
         String result = delegateAgentTool.delegateParallel("[]", null);
 
-        assertTrue(result.contains("[错误]"), "Should indicate empty list error");
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result), "Should indicate empty list error");
     }
 
     // ===== delegateParallel: all agents not found =====
@@ -160,8 +161,8 @@ class DelegateAgentToolTest {
         String json = "[{\"agentName\":\"Missing1\",\"task\":\"task1\"},{\"agentName\":\"Missing2\",\"task\":\"task2\"}]";
         String result = delegateAgentTool.delegateParallel(json, null);
 
-        assertTrue(result.contains("[错误]"), "Should indicate error");
-        assertTrue(result.contains("校验失败"), "Should mention validation failure");
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result), "Should indicate error");
+        assertTrue(result.contains("validación de tareas falló"), "Should mention validation failure");
     }
 
     // ===== delegateParallel: timeout returns explicit error =====
@@ -214,8 +215,8 @@ class DelegateAgentToolTest {
 
         String result = delegateAgentTool.delegateParallel(sb.toString(), null);
 
-        assertTrue(result.contains("[错误]"), "Should indicate error for too many tasks");
-        assertTrue(result.contains("最多"), "Should mention the limit");
+        assertTrue(ChannelErrorClassifier.hasErrorPrefix(result), "Should indicate error for too many tasks");
+        assertTrue(result.contains("como máximo"), "Should mention the limit");
     }
 
     // ===== delegateParallel: partial completion + partial timeout (mixed case) =====
