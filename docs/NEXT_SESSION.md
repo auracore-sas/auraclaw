@@ -21,6 +21,30 @@
 
 ---
 
+## 🏷️ Release `v2.1.0-mc.2` (2026-09-15) — corte de release
+
+Cierre de la deuda de versionado: había **38 commits sin tag** desde `v2.1.0-mc.1` (2026-08-20).
+El tag se corta sobre `main` (`9b2ee31e`) siguiendo la regla 5bis del `AGENTS.md`
+(`vX.Y.Z-mc.N` sobre la misma base upstream `v2.1.0`; sin nuevo tag de upstream).
+
+**Contenido acumulado en este release**
+- **V900** — `usage_scope`: modelos por propósito (chat / wiki) + cierre de los 3 leaks (selector UI, pin de conversación, default)
+- **V901** — canales individuales: canal con owner por usuario; conversaciones visibles solo al dueño
+- **V902** — Telegram: voz entrante (descarga + STT), gráficas como foto nativa, tablas markdown → monospace, tablas anchas → viñetas, scrub antes de unwrap
+- **V902** — Panel (dashboard) por usuario + secciones admin-only (modelos LLM, cron); Token Usage acotado por usuario
+- **Wiki** — citas canónicas `[n]` + `Fuentes:` vía `SourceEvidenceLedger`, safety net de formatos no canónicos, `CITATION_FORMAT_BLOCK` en el system prompt
+- **LLM** — `max_tokens` → `max_completion_tokens` para `gpt-5*`
+- **MCP** — `structuredContent` en resultados de tools (fin del loop de 100 iteraciones) + schemas completos en el caché (Jackson en vez de hutool con records)
+
+**Verificación previa al tag**
+- Árbol limpio y `HEAD == origin/main`; `mvn compile` (JDK 21) OK
+- 87/87 tests verdes en las áreas del release: MCP (17+5), token usage (3), dashboard (4), ledger de citas (20), GPT-5 max_tokens (6), model config (12+5+4), formato de tablas (11)
+- Todo el código de este release ya estaba desplegado en Docker y verificado en vivo en las sesiones 6ª–10ª-b
+
+**Pendiente del release**: ninguno funcional. Lo no incluido queda en la lista priorizada de abajo (P6 CI/CD, persistir vars de disclosure, Wiki/DashScope).
+
+---
+
 ## ✅ Sesión 10ª-b (2026-09-01) — MCP PowerFin conectado + fix del loop del agente
 
 ### Contexto
