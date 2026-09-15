@@ -20,6 +20,7 @@
 > **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
 > **Sesión 2026-09-15 (11ª): release `v2.1.0-mc.2` (38 commits sin tag) + presupuesto de disclosure persistido en `docker-compose.yml` + CI/CD (P6) creado — que a su vez destapó y corrigió 12 fallos de test nuestros.** Detalle abajo.
 > **Sesión 2026-09-16 (12ª-b): fix del falso "evidencia insuficiente" del Wiki (bug del upstream #334, presente también aquí) — portado a `main` desde la rama de v2.2.0 y verificado en vivo.** Detalle abajo.
+> **Sesión 2026-09-16 (12ª-c): runbook de canal de Telegram por miembro (opción A) + protocolo de pruebas en `AGENTS.md` + cierre. Queda PENDIENTE PROBAR TELEGRAM como gate para declarar v2.2.0 listo para producción.** Detalle abajo.
 
 ---
 
@@ -49,6 +50,38 @@ Mismo bug en el `merge()` que ejecuta `ActionNode` por ronda: una página leída
 
 ### Lección
 Este bug lo encontró el usuario en minutos de uso real; **ninguno de los ~5.000 tests lo detectaba**. Refuerza que el CI verde no sustituye la verificación funcional antes de declarar algo "listo para producción".
+
+---
+
+## ✅ Sesión 12ª-c (2026-09-16) — Protocolo de pruebas, runbook de Telegram y cierre
+
+### Entregables
+- **`docs/TELEGRAM_PER_MEMBER.md`** (nuevo): runbook para dar a cada miembro su propio canal de Telegram con la **opción A** elegida (el admin crea el canal por la UI y reasigna el dueño con un `UPDATE`). Incluye requisitos (bot propio por @BotFather + su user ID), pasos con comandos copiables, verificación end-to-end, troubleshooting de 6 síntomas y las dos advertencias de seguridad (no dejar `Usuarios Permitidos` vacío; no conceder `manage:channels` a miembros porque `GET /channels` expone `config_json` con el bot token).
+- **`AGENTS.md` §4bis y §4ter**: protocolo de testing (cuándo correr la suite completa vs tests dirigidos) y el gotcha de la BD H2 compartida.
+
+### Descubrimientos relevantes
+- **El canal de Telegram por miembro es viable sin tocar código**: `mate_channel` no tiene índice único por tipo, `ChannelManager` arranca todos los canales habilitados, cada canal usa su propio `bot_token`, el liderazgo es por canal y **V901 propaga `owner_username` a las conversaciones**. El router relee el canal en cada mensaje → cambiar el dueño por SQL aplica **sin reiniciar**.
+- **Los 3 bloqueos son de UI/código**: los 11 endpoints de canales son `admin`; `POST /channels` fuerza el dueño al llamante (V901: *"never trust a client-supplied ownerUsername"*) → un admin no puede crear a nombre de otro; la UI nunca maneja `ownerUsername`. Por eso el último paso es SQL.
+- **La UI sí expone el control de acceso** del canal (sección en español: política de DM/grupo, **Usuarios Permitidos**, mensaje de rechazo) — el punto de seguridad clave del runbook.
+- Usuarios existentes en la BD: `admin` (admin), `pvalarezo` y `ebermeo` (user) → sirven para probar el flujo por miembro.
+
+### Errores operativos propios (documentados para no repetirlos)
+Al portar el fix del Wiki cometí dos fallos que invalidaron dos corridas completas:
+1. **Dos `mvn test` concurrentes** sobre el mismo `target/` → el segundo reescribió `target/classes` bajo la JVM del primero → **838 fallos por `NoClassDefFoundError`**.
+2. **Acceso concurrente al mismo H2** (`data/mateclaw.mv.db`) → **corrupción** del archivo (`MVStoreException: Double mark`) → 87 fallos más.
+
+Se resolvió borrando el H2 corrupto (respaldo en `/tmp/auraclaw-h2-backup/`) y relanzando limpio. Ambos quedaron documentados en `AGENTS.md` §4ter. **Coste: ~50-60 min de máquina evitables** en el día.
+
+### Estado al cerrar la sesión (2026-09-16)
+| Elemento | Estado |
+|---|---|
+| `main` | `f6cdebf9` + este commit, sincronizado con `origin/main` |
+| `feature/upstream-v2.2.0` | `0a583d65`, **pusheada** a origin (44 commits) |
+| Suite de `main` | 4799 tests / 0 fallos |
+| Suite de la rama v2.2.0 | 5025 tests / 0 fallos (corrida previa al 2º fix; pendiente re-correr limpio) |
+| Stack Docker | corriendo **v2.2.0** con el fix del Wiki, `health=UP` |
+| BD H2 de dev | regenerada limpia (la corrupta respaldada en `/tmp`) |
+| Pendiente bloqueante | **probar Telegram** |
 
 ---
 
@@ -551,6 +584,28 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 ---
 
 ## 📌 Pendiente para la siguiente sesión (priorizado)
+
+### 🔴 BLOQUEANTE — Probar Telegram (única cosa que falta para declarar v2.2.0 listo para producción)
+
+**Estado**: v2.2.0 está mergeado en `feature/upstream-v2.2.0` (pusheada), **desplegado y corriendo en el stack Docker**, con la suite completa verde (5025 tests) y el fix del Wiki verificado en vivo. Lo único sin ejercitar es **Telegram**, que es justo donde más personalizamos.
+
+**Por qué es el gate**: upstream reescribió archivos donde inyectamos lógica (`ReasoningNode` +173 líneas, `ChatController` +178) y tocó código de canales. Los tests cubren piezas unitarias, **no el flujo real de un mensaje**.
+
+**Qué probar** (el usuario se encarga; el stack ya está arriba):
+1. Mensaje de texto → respuesta correcta
+2. **Nota de voz** → transcribe y responde como texto (V902)
+3. Pedir una **gráfica** → llega como **foto nativa** (V902)
+4. Una **tabla ancha** → se convierte en viñetas / monospace legible en el móvil (V902)
+5. Interruptor de **trazado de ejecución** del canal (`stream_progress`) → no rompe nada
+
+**Si algo falla**: revisar `docs/CUSTOMIZATIONS.md` (los marcadores y adaptadores que tocamos) y los commits de V901/V902 en `git log`.
+
+**Sinergia**: hacer estas pruebas configurando el canal de un miembro (`pvalarezo` o `ebermeo`) valida **dos cosas a la vez**: el canal de Telegram y el runbook de `docs/TELEGRAM_PER_MEMBER.md`.
+
+### Decisión pendiente — adoptar v2.2.0 en `main`
+- La rama `feature/upstream-v2.2.0` está verificada y pusheada pero **NO mergeada**: `main` sigue en v2.1.0.
+- Pasos cuando se decida: re-correr la suite de la rama limpia (una corrida se invalidó por corrupción del H2), `git checkout main && git merge feature/upstream-v2.2.0`, tag `v2.2.0-mc.1`, push.
+- ⚠️ El **stack Docker ya corre v2.2.0** → hoy el despliegue va por delante de `main`. Rollback disponible: imagen `mateclaw-mateclaw-server:pre-v220`.
 
 ### De la sesión 7ª (2026-08-24) — datos/Postgres
 - ~~**Persistir ajuste de disclosure en el repo**~~ → **✅ RESUELTO en la sesión 11ª (2026-09-15)**: las dos vars viven ahora en `docker-compose.yml` (commiteado) con defaults 40000 / 0.30, verificado con `docker compose config` y en vivo (`toolSchemas=32774` < 40000, **0 degradaciones**). El ratio pasó al nombre canónico `MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO` (el alias `MATECLAW_TOOL_SCHEMA_RATIO` se retiró de `.env`)
