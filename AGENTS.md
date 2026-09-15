@@ -50,12 +50,46 @@ git checkout main && git pull origin main        # empezar sesión siempre en ma
 
 Convención de commits (convencional): `feat(scope): …` · `fix(scope): …` · `chore(scope): …` · `docs: …` · `refactor(scope): …` · `test(scope): …`
 
-**Verificar ANTES de pushear** (no hay CI/CD todavía):
+**Verificar ANTES de pushear** (ya hay CI: `.github/workflows/ci.yml` corre la suite completa en cada push a `main`):
 ```bash
-mvn -q compile -DskipTests -pl mateclaw-server -am          # server compila
-mvn test -pl mateclaw-server -Dtest='<TestsAfectados>'      # tests del área tocada
-cd mateclaw-ui && npm run test                              # si se tocó UI
+mvn -q test-compile -pl mateclaw-server                    # atrapa tests que asumen firmas viejas
+mvn test -pl mateclaw-server -Dtest='<TestsAfectados>'     # tests del área tocada (~segundos)
+cd mateclaw-ui && npx vue-tsc --noEmit && npx vitest run --config vitest.config.ci.ts
 ```
+
+### 4bis. Cuándo correr la suite COMPLETA (leer: es lenta a propósito)
+
+La suite completa son **~5.000 tests / ~15-20 min** en esta máquina. Correrla después de
+cada cambio pequeño es un error de proceso: el CI ya la corre en la nube en cada push.
+
+| Momento | Qué correr | Coste |
+|---|---|---|
+| Mientras se codea | Solo la clase de test afectada | ~1-30 s |
+| Antes de pushear | `test-compile` + el paquete/área afectada | ~1 min |
+| Tras pushear | **Nada** — el CI corre la suite completa | 0 |
+| Merge del upstream, o cortar un tag | Suite local completa, esperando el verde | 15-20 min (una vez) |
+
+Medido en la sesión 12ª (2026-09-15): 11 corridas completas en un día, de las cuales
+**~50-60 min fueron evitables** (correrla tras cambios pequeños y por errores operativos).
+El merge del upstream sí justifica la suite completa: destapó fallos que ningún test
+dirigido veía.
+
+### 4ter. ⚠️ Nunca dos procesos contra la misma BD H2
+
+Los tests con perfil `dev` usan **un archivo compartido**:
+`mateclaw-server/data/mateclaw.mv.db`. Lanzar dos `mvn test` a la vez (o un server local
+mientras corren los tests) provoca:
+1. El segundo build reescribe `target/classes` bajo la JVM del primero → **cientos de
+   `NoClassDefFoundError`** (corrida inválida, no un fallo real).
+2. El acceso concurrente al H2 **corrompe el archivo** (`MVStoreException: Double mark`,
+   "File corrupted while reading record").
+
+Si el H2 se corrompe: respaldarlo, borrarlo y dejar que los tests lo regeneren
+(`mv mateclaw-server/data/mateclaw.mv.db /tmp/`). El stack Docker usa PostgreSQL y no
+se ve afectado.
+
+⚠️ `pkill -f "patrón"` **se mata a sí mismo** si el patrón coincide con su propia línea
+de comando — usar patrones que no se auto-matcheen.
 
 ## 5. Adopción de actualizaciones del upstream (cuando salga una versión estable)
 
