@@ -184,14 +184,70 @@ class SourceEvidenceLedgerTest {
         assertFalse(noMarker.valid());
         assertTrue(noMarker.unsupportedReferences().contains("missing wiki citation [n]"));
 
-        SourceEvidenceLedger.Validation unsupportedMarker = ledger.validateAnswer("""
-                Use the package manager [2].
+        // AuraClaw: the citation index is only a label the model chose. Page-level
+        // sources (wiki_read_page) cannot communicate a number to the model, and
+        // models renumber by relevance rather than read order, so citing a page
+        // that WAS read under a different number is truthful and no longer
+        // flagged. Upstream asserted the opposite only because its hardcoded
+        // index=1 made every renumbering look fabricated (upstream #334).
+        // What must stay rejected is citing a page that was never read.
+        SourceEvidenceLedger.Validation fabricated = ledger.validateAnswer("""
+                Use the package manager [1]. Check the FAQ [2].
 
                 来源：
-                [2] Install Guide
+                [1] Install Guide
+                [2] Made Up Manual
                 """);
-        assertFalse(unsupportedMarker.valid());
-        assertTrue(unsupportedMarker.unsupportedReferences().contains("wiki citation [2]"));
+        assertFalse(fabricated.valid());
+        assertTrue(fabricated.unsupportedReferences().stream()
+                        .anyMatch(ref -> ref.contains("[2]")),
+                fabricated.unsupportedReferences().toString());
+    }
+
+    @Test
+    @DisplayName("accepts a second page read with wiki_read_page in the same round")
+    void acceptsSecondPageReadInSameRound() {
+        // Reproduces a real trace (2026-09-16): the model read TWO pages in one
+        // round, each through `wiki_read_page`, which returns the page under a
+        // top-level "title" and carries no per-node index. That path registers a
+        // hardcoded index=1 (upstream #334), so the second page never gets a
+        // citation of its own and the answer is wrongly flagged as
+        // "wiki citation [2]" — even though both pages were really read.
+        SourceEvidenceLedger ledger = SourceEvidenceLedger.fromToolResponses(List.of(
+                new ToolResponseMessage.ToolResponse("c1", "wiki_read_page",
+                        "{\"title\":\"Menú completo\",\"content\":\"Pretzel $2.99\"}"),
+                new ToolResponseMessage.ToolResponse("c2", "wiki_read_page",
+                        "{\"title\":\"Productos destacados y precios\",\"content\":\"Agua $1.49\"}")));
+
+        SourceEvidenceLedger.Validation validation = ledger.validateAnswer("""
+                El Original Pretzel cuesta $2.99 [1]. El agua aromática cuesta $1.49 [2].
+
+                Fuentes:
+                [1] Menú completo
+                [2] Productos destacados y precios
+                """);
+        assertTrue(validation.valid(),
+                "both pages were really read, so both citations are supported: "
+                        + validation.unsupportedReferences());
+    }
+
+    @Test
+    @DisplayName("still rejects a citation whose source was never read")
+    void stillRejectsCitationForUnreadPage() {
+        SourceEvidenceLedger ledger = SourceEvidenceLedger.fromToolResponses(List.of(
+                new ToolResponseMessage.ToolResponse("c1", "wiki_read_page",
+                        "{\"title\":\"Menú completo\",\"content\":\"Pretzel $2.99\"}")));
+
+        SourceEvidenceLedger.Validation fabricated = ledger.validateAnswer("""
+                El Original Pretzel cuesta $2.99 [1]. El agua cuesta $1.49 [2].
+
+                Fuentes:
+                [1] Menú completo
+                [2] Guía de bebidas
+                """);
+        assertFalse(fabricated.valid(), "a page that was never read must not be citable");
+        assertTrue(fabricated.unsupportedReferences().stream()
+                .anyMatch(ref -> ref.contains("[2]")), fabricated.unsupportedReferences().toString());
     }
 
     @Test
@@ -358,6 +414,33 @@ class SourceEvidenceLedgerTest {
         String enriched = ledger.appendWikiSourceTable(answer);
         assertTrue(enriched.contains("[1] Ubicaciones y horarios"));
         assertTrue(ledger.validateAnswer(enriched).valid());
+    }
+
+    @Test
+    @DisplayName("two pages read in one round keep distinct indices in the canonical table")
+    void twoReadPages_keepDistinctIndices() {
+        // Upstream #334: wiki_read_page carries no index, so both pages used to be
+        // registered as index 1 and the second evicted the first. The appended
+        // table then either lost a page or repeated "[1]", and any answer citing
+        // [2] was flagged as unverifiable.
+        SourceEvidenceLedger ledger = SourceEvidenceLedger.fromToolResponses(List.of(
+                new ToolResponseMessage.ToolResponse("c1", "wiki_read_page",
+                        "{\"title\":\"Menú completo\",\"content\":\"Pretzel $2.99\"}"),
+                new ToolResponseMessage.ToolResponse("c2", "wiki_read_page",
+                        "{\"title\":\"Productos destacados y precios\",\"content\":\"Agua $1.49\"}")));
+
+        String enriched = ledger.appendWikiSourceTable("""
+                Precios de referencia.
+
+                Fuentes:
+                [[Menú completo]]
+                [[Productos destacados y precios]]
+                """);
+
+        assertTrue(enriched.contains("[1] Menú completo"), enriched);
+        assertTrue(enriched.contains("[2] Productos destacados y precios"), enriched);
+        assertEquals(1, enriched.split(java.util.regex.Pattern.quote("[1] "), -1).length - 1,
+                "index [1] must appear exactly once: " + enriched);
     }
 
     @Test
