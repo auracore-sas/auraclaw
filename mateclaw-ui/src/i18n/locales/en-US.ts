@@ -1635,7 +1635,7 @@ export default {
       type: 'Type',
       runtime: 'Runtime',
       runtimeConfig: 'DSH Configuration (JSON)',
-      runtimeNativeHint: 'Uses MateClaw\'s native Agent Loop.',
+      runtimeNativeHint: 'Uses AuraClaw\'s native Agent Loop.',
       runtimeDshHint: 'Uses the DeepSeek Harness Loop; workspace and provider are checked at startup.',
       runtimeConfigHint: 'JSON configuration consumed by the provider. Leave empty for provider defaults.',
       runtimeReady: 'DSH runtime is ready (command and Cordis config are available).',
