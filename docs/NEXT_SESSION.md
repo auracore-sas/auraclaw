@@ -22,6 +22,30 @@
 
 ---
 
+## 🏷️ Release `v2.1.0-mc.3` (2026-09-15) — CI/CD + arreglos de tests
+
+Motivo: `v2.1.0-mc.2` se cortó **antes** de crear el CI y de arreglar los 13 fallos de test
+que ese CI destapó. Como los tags son inmutables (§5bis), este release versiona esos cambios;
+`v2.1.0-mc.2` permanece intacto apuntando a `d04c4210`.
+
+**Contenido (sobre `v2.1.0-mc.2`)**
+- `bb64fcaf` — presupuesto de esquemas de tools persistido en `docker-compose.yml`
+  (antes solo en `.env`/override gitignoreados)
+- `8550bfe6` — 13 tests alineados con el branding `AuraClaw` y los marcadores en español
+  + cierre del gap de traducción del mensaje spawn-paused en `DelegateAgentTool`
+- `d3359125` — `.github/workflows/ci.yml` (jobs `server`, `ui`, `desktop` manual)
+  + `mateclaw-ui/vitest.config.ci.ts`
+- `6dc64370`, `d4ff34bf` — documentación de la sesión 11
+
+**Verificación previa al tag**
+- Suite completa del server: **4794 tests / 0 fallos / 0 errores / 2 skipped / BUILD SUCCESS** (~15 min)
+- UI: **285 tests / 42 archivos verdes** con el config de CI · `vue-tsc --noEmit` exit 0 · `vite build` OK (58s)
+- `docker compose config` → 40000 / 0.30 (también en caso clon limpio)
+- En vivo: `toolSchemas=32774` con budget 40000 y **0 degradaciones** (`[ToolDisclosure]` ausente en logs)
+- Workflow validado localmente (YAML con 3 jobs); el job `desktop` queda **sin validar end-to-end**
+
+---
+
 ## 🏷️ Release `v2.1.0-mc.2` (2026-09-15) — corte de release
 
 Cierre de la deuda de versionado: había **38 commits sin tag** desde `v2.1.0-mc.1` (2026-08-20).
