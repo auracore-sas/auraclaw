@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import vip.mate.channel.web.ChatStreamTracker;
 import vip.mate.common.result.R;
+import vip.mate.llm.service.ModelConfigService;
 import vip.mate.team.service.TeamWorkerConversationGovernanceService;
 import vip.mate.workspace.conversation.ConversationService;
 
@@ -23,6 +24,7 @@ class ConversationControllerTeamWorkerTranscriptTest {
 
     @Mock private ConversationService conversationService;
     @Mock private ChatStreamTracker streamTracker;
+    @Mock private ModelConfigService modelConfigService;
     @Mock private TeamWorkerConversationGovernanceService teamWorkerGovernanceService;
     @Mock private Authentication authentication;
 
@@ -30,7 +32,8 @@ class ConversationControllerTeamWorkerTranscriptTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ConversationController(conversationService, streamTracker, teamWorkerGovernanceService);
+        controller = new ConversationController(conversationService, streamTracker, modelConfigService,
+                teamWorkerGovernanceService);
         when(authentication.getName()).thenReturn("workspace-admin");
     }
 
