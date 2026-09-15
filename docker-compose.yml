@@ -170,6 +170,16 @@ services:
       # - 局域网私有源：PIP_INDEX_URL=http://192.168.1.100:8080/simple（trusted-host 自动推导）
       PIP_INDEX_URL: ${PIP_INDEX_URL:-}
       PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+      # [AuraClaw] Presupuesto de esquemas de tools (progressive disclosure).
+      # El catálogo de tools (browser/documentos/código/BD/MCP…) supera el default
+      # de Spring (12000 tokens) y entonces execute_sql / query_datasource se
+      # degradan al catálogo de extensión: el modelo no ve sus schemas y las usa
+      # mal. Presupuesto efectivo = min(ratio × ventana_efectiva, max-tokens);
+      # con ventanas grandes manda el tope absoluto.
+      # Viven AQUÍ (no solo en .env) para que un `docker compose up` limpio
+      # conserve el ajuste y no reintroduzca las degradaciones.
+      MATECLAW_TOOL_SCHEMA_MAX_TOKENS: ${MATECLAW_TOOL_SCHEMA_MAX_TOKENS:-40000}
+      MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO: ${MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO:-0.30}
     # Chromium needs a real /dev/shm. Docker defaults to 64MB which causes
     # SIGBUS / "Target page closed" errors under load. 2GB is the usual
     # recommendation for Playwright / headless chrome.
