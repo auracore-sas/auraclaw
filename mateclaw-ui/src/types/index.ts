@@ -37,6 +37,8 @@ export interface Agent {
   name: string
   description?: string
   agentType: 'react' | 'plan_execute'
+  runtimeType?: 'native' | 'dsh' | string
+  runtimeConfig?: string | null
   systemPrompt?: string
   modelName?: string
   maxIterations: number
@@ -671,6 +673,7 @@ export const CHANNEL_FIELD_DEFS: Record<string, ChannelFieldDef[]> = {
     { key: 'bot_id', label: 'ID del robot', placeholder: 'bot_xxxxxxxxxx', required: true, type: 'text', tooltip: 'Bot ID del robot inteligente de WeChat Work (se obtiene al crearlo en la consola de WeChat Work)' },
     { key: 'secret', label: 'Secret', placeholder: 'xxxxxxxxxxxxxxxx', required: true, sensitive: true, type: 'password', tooltip: 'Secret del robot inteligente de WeChat Work' },
     { key: 'welcome_text', label: 'Mensaje de bienvenida', placeholder: '¡Hola! Soy tu asistente de IA', type: 'text', tooltip: 'Mensaje de bienvenida enviado automáticamente la primera vez que el usuario inicia una conversación (vacío = no enviar)' },
+    { key: 'stream_progress', label: 'Trazado de ejecución', placeholder: '', type: 'switch', defaultValue: true, tooltip: 'Muestra progreso en tiempo real y narración por etapas durante el procesamiento; al desactivarlo solo se envía la respuesta final. El pensamiento crudo y los nombres de herramientas siguen controlados por los filtros de abajo' },
     { key: 'media_download_enabled', label: 'Descarga de medios', placeholder: '', type: 'switch', defaultValue: false, tooltip: 'Descarga y descifra imágenes y archivos de los mensajes a local (requiere espacio en disco)' },
     { key: 'media_dir', label: 'Directorio de medios', placeholder: 'data/media', type: 'text', tooltip: 'Directorio donde se guardan los archivos multimedia (por defecto data/media)' },
     { key: 'max_reconnect_attempts', label: 'Máx. reintentos de conexión', placeholder: '-1 = reintentos ilimitados', type: 'number', defaultValue: -1, tooltip: 'Máximo de reintentos tras cortarse el WebSocket; -1 = ilimitado' },
@@ -678,6 +681,7 @@ export const CHANNEL_FIELD_DEFS: Record<string, ChannelFieldDef[]> = {
   weixin: [
     { key: 'bot_token', label: 'Bot Token', placeholder: 'Se obtiene automáticamente tras el login por QR', required: true, sensitive: true, type: 'password', tooltip: 'Token del bot iLink de WeChat, obtenido iniciando sesión con el código QR' },
     { key: 'base_url', label: 'URL de la API', placeholder: 'https://ilinkai.weixin.qq.com', type: 'text', defaultValue: 'https://ilinkai.weixin.qq.com', tooltip: 'URL base de la API de iLink Bot (normalmente no requiere cambios)' },
+    { key: 'stream_progress', label: 'Trazado de ejecución', placeholder: '', type: 'switch', defaultValue: true, tooltip: 'Muestra progreso en tiempo real y narración por etapas durante el procesamiento; al desactivarlo solo se envía la respuesta final. El pensamiento crudo y los nombres de herramientas siguen controlados por los filtros de abajo' },
     { key: 'media_download_enabled', label: 'Descarga de medios', placeholder: '', type: 'switch', defaultValue: false, tooltip: 'Descarga y descifra imágenes, archivos y videos de los mensajes a local' },
     { key: 'media_dir', label: 'Directorio de medios', placeholder: 'data/media', type: 'text', tooltip: 'Directorio donde se guardan los archivos multimedia (por defecto data/media)' },
   ],
