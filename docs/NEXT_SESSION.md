@@ -65,6 +65,22 @@ responden 200; resolución de targets de `download-jre.sh` con `--dry-run`; `ci.
 - ⚠️ **El stack Docker ya corría v2.2.0**, así que el despliegue iba por delante de `main`; ahora `main` lo alcanza. El delta no toca Java → **no hace falta reconstruir la imagen**.
 - **Upstream ya publicó v2.3.0** (tag `472d184d`, 2026-09-20): su commit de release **es un squash** de todo el trabajo de `dev` — **369 archivos / +21.330 líneas en un solo commit**. Para mergearlo hay que usar el release commit de `dev` (`a2f35f7c`), no el tag, por la misma razón que con v2.2.0 (ver `AGENTS.md` §5.1).
 
+### 4. Panel de archivos por conversación (post-merge, 2026-09-21)
+
+**Motivo:** en un chat donde se construyeron archivos, los enlaces de descarga solo se encuentran releyendo el historial. El upstream **ya lo pidió** (issue **#384**, abierto desde 2026-06-19) y solo resolvió la mitad: el PR **#447** añadió la sección "Archivos Generados" al rail derecho, pero mira **solo el último turno** (`RunOverviewPanel.vue:97` → `latestAssistant`). No hay ningún PR abierto que agregue el resto (verificado en GitHub).
+
+**Implementado (frontend-only, sin tocar backend):**
+- `mateclaw-ui/src/utils/conversationFiles.ts` — inventario a nivel de conversación: agrupa por turno, **fusiona versiones por nombre** (el mismo PDF regenerado aparece con URLs distintas) y clasifica **entregables vs intermedios** con reglas fail-open: citado en la respuesta final → tool de entrega → extensión de documento → intermedio, con **fallback** para que un turno nunca quede vacío.
+- `mateclaw-ui/src/components/chat/ConversationFilesPanel.vue` — panel **colapsable** (arranca como riel con contador; estado en localStorage), botón "Mostrar intermedios (N)" y comportamiento de *drawer* en pantallas angostas. Las filas son `<a href="/api/v1/files/generated/…">` → las maneja el delegador global `useGlobalFileDownloadClick` (previsualización o descarga autenticada; sin lógica de descarga propia).
+- Montado en `ChatConsole.vue` junto a `RunOverviewPanel`; i18n es/en/zh (`chat.filesPanel.*`); registrado en `CUSTOMIZATIONS.md`.
+- Costura **`ConversationFilesSource`** para re-apuntar al catálogo de artefactos del upstream (**#514 / PR #539**, abierto) sin tocar el panel.
+
+**Efecto con datos reales:** el turno de **19 entradas** (8 PNG + 7 `test_*` + `informe_final.md` + el PDF final **3 veces con URLs distintas**) queda en **1 entregable + 16 intermedios**; y un turno con 0 archivos citados muestra todo (fallback).
+
+**Verificado:** `vue-tsc --noEmit` limpio · 11 + 5 tests nuevos verdes · los 2 tests que montan `ChatConsole` siguen verdes (30/30). **No se corrió la suite completa** (la corre el CI).
+
+⚠️ **Para verlo en el navegador hay que reconstruir la imagen Docker** (`docker compose build mateclaw-server && docker compose up -d mateclaw-server`): la UI se sirve desde dentro del JAR. **Pendiente de hacer.**
+
 ### Estado al cerrar la sesión (2026-09-21)
 
 | Elemento | Estado |
@@ -76,6 +92,7 @@ responden 200; resolución de targets de `download-jre.sh` con `--dry-run`; `ci.
 | Suite (Java) | 5.025 tests verdes en la rama integrada; el delta del merge no toca Java → no se re-corrió |
 | `test-compile` | ✅ JDK 21 |
 | Pendiente bloqueante | **probar Telegram** (ahora `main` = v2.2.0) |
+| Panel de archivos por conversación | ✅ implementado y probado en tests · ⏳ pendiente reconstruir la imagen Docker para verlo en el navegador |
 | Upstream nuevo | **v2.3.0** (369 archivos en un squash) — adopción aparte, no gratuita |
 
 ### Errores/lecciones de esta sesión

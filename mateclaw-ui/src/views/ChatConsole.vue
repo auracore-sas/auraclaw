@@ -282,6 +282,9 @@
           :agent-type="currentAgent?.agentType"
         />
 
+        <!-- 会话文件侧栏（AuraClaw）：整段会话的产出文件，交付物/中间产物两级 -->
+        <ConversationFilesPanel :messages="messages" />
+
         <!-- Talk Mode 覆盖层 -->
         <TalkMode
           v-if="showTalkMode"
@@ -316,6 +319,7 @@ import { useTeamRuns } from '@/composables/chat/useTeamRuns'
 import { useWorkerConversationGuard } from '@/composables/chat/useWorkerConversationGuard'
 import { parseTeamMessageMetadata } from '@/composables/chat/messageMetadata'
 import RunOverviewPanel from '@/components/chat/RunOverviewPanel.vue'
+import ConversationFilesPanel from '@/components/chat/ConversationFilesPanel.vue'
 import { reconstructErrorInfo } from '@/types/chatError'
 import { reconcileMessages, extractMessages } from '@/utils/messageReconcile'
 import {
