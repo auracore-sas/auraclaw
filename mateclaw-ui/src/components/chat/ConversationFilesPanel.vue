@@ -25,11 +25,13 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Message } from '@/types'
+import { isFileUnavailable } from '@/composables/useUnavailableFiles'
 import {
   messageMetadataFilesSource,
   summarizeConversationFiles,
   type ConversationFile,
   type ConversationFilesSource,
+  type ConversationFileTurn,
 } from '@/utils/conversationFiles'
 
 const props = defineProps<{
@@ -42,6 +44,7 @@ const { t, locale } = useI18n()
 
 const COLLAPSED_KEY = 'mc-files-collapsed'
 const SHOW_AUXILIARY_KEY = 'mc-files-show-aux'
+const HIDE_UNAVAILABLE_KEY = 'mc-files-hide-unavailable'
 
 /**
  * Preferences are read defensively: Node >= 22 exposes an experimental global
@@ -68,6 +71,13 @@ function writePreference(key: string, value: string): void {
 // Collapsed by default: the chat column keeps its space until asked for.
 const collapsed = ref(readPreference(COLLAPSED_KEY) !== 'false')
 const showAuxiliary = ref(readPreference(SHOW_AUXILIARY_KEY) === 'true')
+// Unavailable rows are shown (struck through) until the user asks for them gone.
+const hideUnavailable = ref(readPreference(HIDE_UNAVAILABLE_KEY) === 'true')
+
+function toggleHideUnavailable() {
+  hideUnavailable.value = !hideUnavailable.value
+  writePreference(HIDE_UNAVAILABLE_KEY, String(hideUnavailable.value))
+}
 
 function setCollapsed(value: boolean) {
   collapsed.value = value
@@ -83,6 +93,40 @@ const activeSource = computed<ConversationFilesSource>(() => props.source || mes
 const turns = computed(() => activeSource.value(props.messages))
 const summary = computed(() => summarizeConversationFiles(turns.value))
 const hasFiles = computed(() => summary.value.total > 0)
+
+/**
+ * Files this session saw the server refuse (404/410 while downloading or
+ * previewing). Learned, not guessed: the TTL is a server setting, so no constant
+ * here could keep up with it. See `useUnavailableFiles`.
+ */
+const unavailableCount = computed(() =>
+  summarizeUnavailable(turns.value),
+)
+
+function summarizeUnavailable(groups: ConversationFileTurn[]): number {
+  let count = 0
+  for (const turn of groups) {
+    for (const file of [...turn.primary, ...turn.auxiliary]) {
+      if (isFileUnavailable(file.url)) count += 1
+    }
+  }
+  return count
+}
+
+/** Rows to render: the user can hide the ones known to be gone. */
+const displayTurns = computed<ConversationFileTurn[]>(() =>
+  turns.value
+    .map(turn => ({
+      ...turn,
+      primary: visibleFiles(turn.primary),
+      auxiliary: visibleFiles(turn.auxiliary),
+    }))
+    .filter(turn => turn.primary.length > 0 || turn.auxiliary.length > 0),
+)
+
+function visibleFiles(files: ConversationFile[]): ConversationFile[] {
+  return hideUnavailable.value ? files.filter(file => !isFileUnavailable(file.url)) : files
+}
 
 // Narrow viewports: the expanded panel floats over the chat as a drawer instead
 // of squeezing the conversation column (same behaviour as the run-overview rail).
@@ -168,6 +212,11 @@ function reasonLabel(file: ConversationFile): string {
         class="conv-files__rail-badge is-aux"
         :title="t('chat.filesPanel.auxiliaryTitle')"
       >{{ summary.auxiliary }}</span>
+      <span
+        v-if="unavailableCount"
+        class="conv-files__rail-badge is-unavailable"
+        :title="t('chat.filesPanel.unavailableTitle')"
+      >{{ unavailableCount }}</span>
     </button>
 
     <template v-else>
@@ -193,7 +242,7 @@ function reasonLabel(file: ConversationFile): string {
 
       <div class="conv-files__body">
         <section
-          v-for="(turn, index) in turns"
+          v-for="(turn, index) in displayTurns"
           :key="String(turn.messageId ?? index)"
           class="conv-files__turn"
         >
@@ -208,13 +257,18 @@ function reasonLabel(file: ConversationFile): string {
               v-for="file in turn.primary"
               :key="`p-${file.name}`"
               class="conv-files__file"
-              :href="file.url"
+              :class="{ 'is-unavailable': isFileUnavailable(file.url) }"
+              :href="isFileUnavailable(file.url) ? undefined : file.url"
+              :aria-disabled="isFileUnavailable(file.url) || undefined"
               target="_blank"
               rel="noopener"
-              :title="reasonLabel(file)"
+              :title="isFileUnavailable(file.url) ? t('chat.filesPanel.unavailableHint') : reasonLabel(file)"
             >
               <span class="conv-files__ext">{{ extensionOf(file.name) }}</span>
               <span class="conv-files__name">{{ file.name }}</span>
+              <span v-if="isFileUnavailable(file.url)" class="conv-files__unavailable-chip">
+                {{ t('chat.filesPanel.unavailable') }}
+              </span>
               <span v-if="file.versions.length > 1" class="conv-files__versions">
                 {{ t('chat.filesPanel.versions', { count: file.versions.length }) }}
               </span>
@@ -225,13 +279,18 @@ function reasonLabel(file: ConversationFile): string {
               v-for="file in turn.auxiliary"
               :key="`a-${file.name}`"
               class="conv-files__file is-auxiliary"
-              :href="file.url"
+              :class="{ 'is-unavailable': isFileUnavailable(file.url) }"
+              :href="isFileUnavailable(file.url) ? undefined : file.url"
+              :aria-disabled="isFileUnavailable(file.url) || undefined"
               target="_blank"
               rel="noopener"
-              :title="reasonLabel(file)"
+              :title="isFileUnavailable(file.url) ? t('chat.filesPanel.unavailableHint') : reasonLabel(file)"
             >
               <span class="conv-files__ext">{{ extensionOf(file.name) }}</span>
               <span class="conv-files__name">{{ file.name }}</span>
+              <span v-if="isFileUnavailable(file.url)" class="conv-files__unavailable-chip">
+                {{ t('chat.filesPanel.unavailable') }}
+              </span>
               <span v-if="file.versions.length > 1" class="conv-files__versions">
                 {{ t('chat.filesPanel.versions', { count: file.versions.length }) }}
               </span>
@@ -248,6 +307,18 @@ function reasonLabel(file: ConversationFile): string {
             showAuxiliary
               ? t('chat.filesPanel.hideAuxiliary')
               : t('chat.filesPanel.showAuxiliary', { count: summary.auxiliary })
+          }}
+        </button>
+
+        <button
+          v-if="unavailableCount"
+          class="conv-files__toggle is-filter"
+          @click="toggleHideUnavailable"
+        >
+          {{
+            hideUnavailable
+              ? t('chat.filesPanel.showUnavailable', { count: unavailableCount })
+              : t('chat.filesPanel.hideUnavailable', { count: unavailableCount })
           }}
         </button>
       </div>
@@ -313,6 +384,9 @@ function reasonLabel(file: ConversationFile): string {
 }
 .conv-files__rail-badge.is-aux {
   color: var(--mc-text-tertiary);
+}
+.conv-files__rail-badge.is-unavailable {
+  color: var(--mc-danger, #f56c6c);
 }
 .conv-files__header {
   display: flex;
@@ -385,6 +459,24 @@ function reasonLabel(file: ConversationFile): string {
   color: var(--mc-text-secondary);
   opacity: 0.85;
 }
+/* Known gone (the server answered 404/410 for this row): keep the name for
+   traceability, but stop offering a link that cannot work. */
+.conv-files__file.is-unavailable {
+  color: var(--mc-text-tertiary);
+  cursor: default;
+}
+.conv-files__file.is-unavailable .conv-files__name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.conv-files__unavailable-chip {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--mc-danger, #f56c6c);
+  border: 1px solid var(--mc-danger, #f56c6c);
+  border-radius: 4px;
+  padding: 0 3px;
+}
 .conv-files__ext {
   flex-shrink: 0;
   font-size: 9px;
@@ -423,5 +515,8 @@ function reasonLabel(file: ConversationFile): string {
 .conv-files__toggle:hover {
   color: var(--mc-primary);
   border-color: var(--mc-primary);
+}
+.conv-files__toggle.is-filter {
+  margin-top: 6px;
 }
 </style>

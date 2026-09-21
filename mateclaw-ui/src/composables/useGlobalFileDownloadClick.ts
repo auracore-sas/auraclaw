@@ -16,6 +16,10 @@
 //   - failure (404 / expired / network) → an inline toast; the user stays in
 //     the conversation with the chat intact.
 //
+// A 404/410 additionally registers the file as unavailable
+// (`useUnavailableFiles`), which is how the conversation-file panel learns which
+// of its rows point at swept artifacts instead of guessing from the TTL.
+//
 // Mounted exactly once at app root (see App.vue). Because the root component
 // never unmounts, detaching the listener on unmount is a formality.
 
@@ -23,6 +27,7 @@ import { onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { fetchAuthenticatedBlob } from '@/api/index'
 import { mcToast } from '@/composables/useMcToast'
+import { isMissingFileStatus, markFileUnavailable } from '@/composables/useUnavailableFiles'
 import { previewKindOf } from '@/components/chat/preview/previewKind'
 import { openFilePreview } from '@/components/chat/preview/previewBus'
 
@@ -71,7 +76,9 @@ export function useGlobalFileDownloadClick() {
           const objectUrl = URL.createObjectURL(blob)
           win.location.href = objectUrl
           setTimeout(() => URL.revokeObjectURL(objectUrl), 300000)
-        } catch {
+        } catch (err) {
+          // A refused image is a dead artifact too: remember it for the panel.
+          if (isMissingFileStatus((err as Error)?.message)) markFileUnavailable(src)
           win.close()
         }
         return
@@ -123,7 +130,10 @@ export function useGlobalFileDownloadClick() {
     } catch (err: any) {
       // A cache-miss / expiry surfaces as a non-OK fetch ("Fetch failed: 404").
       const status = /(\d{3})/.exec(err?.message || '')?.[1]
-      if (status === '404' || status === '410') {
+      if (isMissingFileStatus(err?.message)) {
+        // Teach the conversation-file panel that this row is gone, so the next
+        // look shows it struck through instead of offering the same dead link.
+        markFileUnavailable(relPath)
         mcToast.error(t('chat.downloadExpired'))
       } else {
         mcToast.error(t('chat.downloadFailed', { reason: err?.message || 'unknown' }))

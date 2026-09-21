@@ -65,6 +65,7 @@
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { Aim, Download, FullScreen } from '@element-plus/icons-vue'
 import { fetchAuthenticatedBlob } from '@/api/index'
+import { isMissingFileStatus, markFileUnavailable } from '@/composables/useUnavailableFiles'
 import { useAuthenticatedAttachment } from '@/composables/useAuthenticatedAttachment'
 import type { ChatAttachment } from '@/types'
 import { previewKindOf, type PreviewKind } from './previewKind'
@@ -159,6 +160,11 @@ async function open(target: PreviewTarget) {
     }
   } catch (e) {
     console.warn('[FilePreviewDialog] preview load failed:', att.name, e)
+    // A 404/410 on the artifact itself means the file is gone (swept past its
+    // TTL): record it so the conversation-file panel stops offering the link.
+    // 501 (no office converter) is NOT missing content, hence the status check
+    // on the original URL rather than on the /preview endpoint.
+    if (isMissingFileStatus((e as Error)?.message)) markFileUnavailable(att.url)
     if (visible.value && reqId === openSeq) {
       state.value = kind === 'office' ? 'unsupported' : 'error'
     }

@@ -283,6 +283,11 @@ export default {
       showAuxiliary: '显示中间文件（{count}）',
       hideAuxiliary: '隐藏中间文件',
       versions: '{count} 个版本',
+      unavailable: '已不可用',
+      unavailableHint: '服务器上已不存在，请让助手重新生成',
+      unavailableTitle: '服务器上已不存在的文件',
+      hideUnavailable: '隐藏不可用（{count}）',
+      showUnavailable: '显示不可用（{count}）',
       reason: {
         cited: '已在最终回答中引用',
         deliveryTool: '由交付类工具生成',

@@ -283,6 +283,11 @@ export default {
       showAuxiliary: 'Show intermediates ({count})',
       hideAuxiliary: 'Hide intermediates',
       versions: '{count} versions',
+      unavailable: 'unavailable',
+      unavailableHint: 'No longer available on the server; ask the assistant to produce it again',
+      unavailableTitle: 'Files the server no longer has',
+      hideUnavailable: 'Hide unavailable ({count})',
+      showUnavailable: 'Show unavailable ({count})',
       reason: {
         cited: 'Cited in the final answer',
         deliveryTool: 'Produced by a delivery tool',

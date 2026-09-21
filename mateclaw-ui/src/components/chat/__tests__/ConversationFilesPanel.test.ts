@@ -3,6 +3,7 @@ import { createI18n } from 'vue-i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Message } from '@/types'
 
+import { markFileUnavailable, resetUnavailableFiles } from '@/composables/useUnavailableFiles'
 import ConversationFilesPanel from '../ConversationFilesPanel.vue'
 
 /**
@@ -61,6 +62,11 @@ function mount(messages: Message[]) {
               showAuxiliary: 'Mostrar intermedios ({count})',
               hideAuxiliary: 'Ocultar intermedios',
               versions: '{count} versiones',
+              unavailable: 'no disponible',
+              unavailableHint: 'Ya no está disponible en el servidor',
+              unavailableTitle: 'Archivos que el servidor ya no tiene',
+              hideUnavailable: 'Ocultar no disponibles ({count})',
+              showUnavailable: 'Mostrar no disponibles ({count})',
               reason: {
                 cited: 'Citado en la respuesta final',
                 deliveryTool: 'Generado por una herramienta de entrega',
@@ -81,6 +87,7 @@ function mount(messages: Message[]) {
 }
 
 beforeEach(() => {
+  resetUnavailableFiles()
   // Node 26 exposes an experimental global `localStorage` that is undefined
   // unless `--localstorage-file` is passed, which shadows happy-dom's. Give the
   // component a real store to talk to (in the browser it is the real one).
@@ -175,6 +182,42 @@ describe('ConversationFilesPanel', () => {
     expect(link.getAttribute('target')).toBe('_blank')
     // The row explains why it is a deliverable.
     expect(link.getAttribute('title')).toBe('Citado en la respuesta final')
+  })
+
+  it('strikes through a file the server refused, and hides it on request', async () => {
+    const host = mount([deliverableTurn])
+
+    // The registry is fed by the download handler learning from a 404 — the UI
+    // never guesses from a TTL. Marking must re-render without a reload.
+    markFileUnavailable(`${URL_BASE}pdf-cited`)
+    await nextTick()
+    expect(host.querySelector('.conv-files__rail-badge.is-unavailable')?.textContent).toBe('1')
+
+    host.querySelector<HTMLButtonElement>('.conv-files__rail')!.click()
+    await nextTick()
+
+    const row = [...host.querySelectorAll<HTMLAnchorElement>('.conv-files__file')]
+      .find(el => el.textContent?.includes(deliverable))!
+    expect(row.classList.contains('is-unavailable')).toBe(true)
+    expect(row.querySelector('.conv-files__unavailable-chip')?.textContent?.trim()).toBe('no disponible')
+    // Name kept for traceability, but the dead link is no longer offered.
+    expect(row.getAttribute('href')).toBeNull()
+    expect(row.getAttribute('title')).toBe('Ya no está disponible en el servidor')
+
+    // (c) hide the rows known to be gone.
+    const filter = host.querySelector<HTMLButtonElement>('.conv-files__toggle.is-filter')!
+    expect(filter.textContent).toContain('Ocultar no disponibles (1)')
+    filter.click()
+    await nextTick()
+    expect([...host.querySelectorAll('.conv-files__name')].map(n => n.textContent))
+      .not.toContain(deliverable)
+    expect(filter.textContent).toContain('Mostrar no disponibles (1)')
+
+    // …and the same toggle brings it back.
+    filter.click()
+    await nextTick()
+    expect([...host.querySelectorAll('.conv-files__name')].map(n => n.textContent))
+      .toContain(deliverable)
   })
 
   it('remembers the expanded state across mounts', async () => {
