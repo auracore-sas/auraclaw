@@ -825,9 +825,32 @@ const parseErrorText = computed(() => {
   return errorPart?.text || ''
 })
 
+/**
+ * Whether this answer's source table is a WIKI citation table.
+ *
+ * The canonical table the backend appends for wiki pages is `[n] <page title>`,
+ * indistinguishable from a model-written list of WEB sources ("[1] Worldometer
+ * — …"). Only the turn's own tool calls tell them apart: if the agent read the
+ * wiki, the citations are wiki pages; if it searched the web, they are not, and
+ * treating them as wiki links produced dead `href="#"` anchors — the browser
+ * showed the chat's own URL on hover ("the sources point to localhost") and a
+ * click hunted for a wiki page that does not exist.
+ */
+const hasWikiCitations = computed(() => {
+  const tools = [
+    ...(parsedMetadata.value?.toolCalls || []).map((tc: ToolCallMeta) => tc.name),
+    ...(((parsedMetadata.value?.segments as MessageSegment[] | undefined) || [])
+      .map(seg => seg.toolName || '')),
+  ]
+  return tools.some(name => name.trim().toLowerCase().startsWith('wiki_'))
+})
+
 const { html: renderedContent } = useStreamingMarkdown(
   () => displayContent.value,
   () => isGenerating.value,
+  // A getter so a decision that arrives with the metadata (mid-turn) is read on
+  // the next render instead of freezing at mount time.
+  { get wikiCitations() { return hasWikiCitations.value } },
 )
 
 const showLoadingIndicator = computed(() => {

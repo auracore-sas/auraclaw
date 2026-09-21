@@ -570,13 +570,15 @@ ensureProductCardHook()
 const RENDER_CACHE = new Map<string, string>()
 const RENDER_CACHE_CAP = 200
 
-function cacheKey(text: string, wikilink: WikilinkMode): string {
+function cacheKey(text: string, wikilink: WikilinkMode, wikiCitations: boolean): string {
   // Compact key — collisions on the order of 10^-6 in single-conversation
   // scope, and a false hit only causes a "stale" render of unchanged content
   // (no security implication since cached values are sanitized HTML).
   // The wikilink mode is part of the key so a 'none' caller cannot read back
-  // a 'legacy'-substituted cached entry of the same source.
-  return `${wikilink}:${text.length}:${text.slice(0, 40)}:${text.slice(-40)}`
+  // a 'legacy'-substituted cached entry of the same source, and so is the
+  // wiki-citation decision: the same text renders differently with and without
+  // citation wrapping, so it must not be shared between the two.
+  return `${wikilink}:${wikiCitations ? 'c' : 'n'}:${text.length}:${text.slice(0, 40)}:${text.slice(-40)}`
 }
 
 // ---------------------------------------------------------------------------
@@ -601,6 +603,20 @@ export interface RenderMarkdownOptions {
   /** How to handle `[[...]]` syntax. Defaults to `'legacy'`. */
   wikilink?: WikilinkMode
   /**
+   * Whether the answer's source table is a WIKI citation table. `true` wraps the
+   * `[n]` markers and the source rows so the click handler can resolve them
+   * against the wiki; `false` leaves the text untouched; `undefined` keeps the
+   * historical shape-based heuristic for callers that have no better signal.
+   *
+   * <p>Callers that DO know should say so: the canonical table the backend
+   * appends for wiki pages is `[n] <page title>`, which is indistinguishable
+   * from a model-written list of WEB sources. Without the flag, a web-research
+   * answer got its sources turned into wiki citations pointing at
+   * `href="#"` — the browser showed the chat's own URL on hover and clicking
+   * sent the user looking for a wiki page that does not exist.
+   */
+  wikiCitations?: boolean
+  /**
    * Streaming-friendly render. When `true`, the renderer skips code-block
    * language auto-detection (the most expensive step) and bypasses the LRU
    * cache. Use it for the throttled mid-stream renders driven by
@@ -624,7 +640,14 @@ let streamingRenderMode = false
 // or legacy Chinese ("来源：") — to build a citation index → title map, then
 // replaces every [n] marker in the answer body with a clickable <a> and wraps
 // entire source-table rows so the full line is clickable.
-function preprocessWikiCitations(text: string): string {
+function preprocessWikiCitations(text: string, enabled: boolean): string {
+  // No wiki context in this answer: leave the model's own source list alone.
+  // Web research lists pages like `[1] Worldometer — …`, which are NOT wiki
+  // citations; wrapping them produced dead `href="#"` anchors (the browser
+  // showed the chat URL on hover) and a click that hunted for a wiki page that
+  // does not exist.
+  if (!enabled) return text
+
   let sourceIdx = -1
   const dblIdx = Math.max(text.indexOf('\n\nFuentes:'), text.indexOf('\n\n来源：'))
   if (dblIdx >= 0) {
@@ -662,9 +685,9 @@ function preprocessWikiCitations(text: string): string {
       const title = map.get(idx)
       if (!title) return match
       return (
-        '<a class="wiki-citation" href="#" data-citation-index="' + idx +
+        '<a class="wiki-citation" data-citation-index="' + idx +
         '" data-citation-title="' + escapeHtml(title) +
-        '">' + match + '</a>'
+        '" title="' + escapeHtml(title) + '">' + match + '</a>'
       )
     },
   )
@@ -677,7 +700,7 @@ function preprocessWikiCitations(text: string): string {
       const title = map.get(idx)
       if (!title) return fullLine
       return (
-        '<a class="wiki-citation" href="#" data-citation-index="' + idx +
+        '<a class="wiki-citation" data-citation-index="' + idx +
         '" data-citation-title="' + escapeHtml(title) +
         '">' + fullLine + '</a>'
       )
@@ -692,7 +715,10 @@ export function useMarkdownRenderer() {
     if (!content) return ''
     const wikilink: WikilinkMode = opts?.wikilink ?? 'legacy'
     const streaming = opts?.streaming ?? false
-    const k = cacheKey(content, wikilink)
+    // `undefined` keeps the historical shape-based behaviour for callers that
+    // have no way to know; MessageBubble passes an explicit decision.
+    const wikiCitations = opts?.wikiCitations !== false
+    const k = cacheKey(content, wikilink, wikiCitations)
     // Streaming renders bypass the cache entirely: their length-based keys
     // collide with the final full-fidelity render of the same text, and a
     // streaming entry (no auto-highlight) must never be served as the final
@@ -735,7 +761,7 @@ export function useMarkdownRenderer() {
             },
           )
     // 2.5 Wiki citation preprocessing: [n] → <a class="wiki-citation" …>
-    const withCitations = preprocessWikiCitations(withWikiLinks)
+    const withCitations = preprocessWikiCitations(withWikiLinks, wikiCitations)
     // 3. Marked → 4. DOMPurify.
     let rawHtml: string
     streamingRenderMode = streaming
