@@ -740,6 +740,12 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 - `feature/upstream-v2.2.0` está **mergeada en `main`** con el tag **`v2.2.0-mc.1`**. Detalle del merge (2 conflictos de docs, 0 archivos borrados, delta de 23 archivos sin Java) en la **sesión 13ª** de este documento.
 - El stack Docker ya corría v2.2.0, así que el despliegue dejó de ir por delante de `main`. Rollback disponible: imagen `mateclaw-mateclaw-server:pre-v220`.
 
+### TTL de archivos generados — alcance y pendiente (2026-09-21)
+- **Hoy es POR DESPLIEGUE**: `MATECLAW_GENERATED_FILE_TTL` es una sola variable para todo el servidor (default `365d`, `0` = nunca caducan). **No** hay TTL por plan ni por workspace.
+- Si la comercialización lo requiere (free 30d / pro 365d / enterprise nunca): hace falta introducir la noción de plan (o un campo de política por workspace) y resolverla al escribir el archivo → migración propia `V903+` + tests. Estimado: ~media sesión.
+- **La caducidad borra los bytes, no las referencias**: `mate_message.metadata.generatedFiles` se conserva, así que los nombres/enlaces caducados **siguen listados** en el historial y en el panel (fallan solo al hacer clic → toast 404). En la instancia actual son 101 filas = 91 vivas + 11 muertas (agosto y 02-sep).
+- Opciones para avisar en la UI sin que el cliente adivine el TTL: (a) marcar la fila cuando el servidor responde 404 (lo aprende el handler global de descargas: cero falsos positivos), o (b) exponer TTL/existencia desde el servidor y que el panel los consuma.
+
 ### 🔜 SIGUIENTE ADOPCIÓN — upstream v2.3.0 (ya publicado)
 - Tag `v2.3.0` = `472d184d` (2026-09-20) y su commit de release **es un squash de todo `dev`**: 369 archivos / +21.330 líneas. El release commit equivalente en `dev` es **`a2f35f7c`**.
 - Procedimiento: `AGENTS.md` §5.1, **usando el release commit de `dev`** (`git log --grep='^release: v2.3.0$' upstream/dev`), nunca el tag ni `upstream/main`. No es un merge gratuito: son ~21k líneas y toca nodos del grafo donde inyectamos lógica.
