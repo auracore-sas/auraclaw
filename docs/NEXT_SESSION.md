@@ -882,6 +882,28 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 
 ## 📌 Pendiente para la siguiente sesión (priorizado)
 
+### 🔴 PENDIENTE — «Fuentes» de investigación web: deben ser enlaces REALES (2026-09-21, para retomar)
+
+**Estado**: tras dos fixes (gate por contexto + sin `href="#"`), las fuentes **ya no parecen enlaces a localhost**, pero el usuario reporta que **siguen sin ser enlaces accesibles**: el HTML que pegó es
+`<a class="wiki-citation" data-citation-index="1" data-citation-title="Worldometer — …">[1] Worldometer — …</a>` — un ancla **sin `href`** (parece texto, no se puede abrir).
+
+**Causa (diagnóstico cerrado)**: la decisión `wikiCitations` (¿esta tabla de fuentes es del wiki o web?) se enhebró en `MessageBubble` y `ContentSegment`, pero **hay 6 componentes más que renderizan markdown sin pasarla** y por tanto usan la heurística por forma (que envuelve CUALQUIER bloque `Fuentes:`):
+`ThinkingSegment.vue`, `TeamAnnouncePanel.vue`, `TeamRunOutcome.vue`, `TeamRunDetail.vue`, `ChatConsole.vue`, `AgentContext.vue` (verificado con grep).
+⚠️ Además: **las fuentes de este caso no llevan URL en el texto** (el modelo solo escribió nombres), así que aunque se quite el ancla **no habría nada que enlazar**. Es decir: quitar el envoltorio NO resuelve la petición del usuario ("enlaces accesibles"); hay que **aportar las URLs**.
+
+**Plan de arreglo (dos partes, en este orden):**
+
+1. **Gate sistémico (~30 min, bajo riesgo)** — invertir el default: hoy `wikiCitations: undefined` = heurística por forma (**envuelve**). Cambiarlo a **default OFF** (`true` solo si el llamador lo pide explícitamente), y pasar `true` únicamente donde el contexto esté comprobado (las dos rutas del chat ya lo calculan desde las tools `wiki_*`). Así ninguna ruta desconocida vuelve a secuestrar fuentes web. Verificar los **6 consumidores** de arriba + los 2 caminos del chat, y revisar los tests: `wikiCitations.test.ts` (el caso "default legacy" pasará a esperar texto plano) y `ContentSegment.citations.test.ts`.
+   ⚠️ Ojo con la caché: la decisión ya está en `cacheKey` → mantenerla consistente al invertir el default.
+   ⚠️ Ojo con el CSS: `.wiki-citation` (punteado + pointer, añadido hoy en `main.css`) debe quedar **solo** para citas que de verdad hacen algo (wiki); si una cita no resuelve, no debe verse clicable.
+
+2. **Traer las URLs de verdad (~1-2 h, la petición real)** — que «Fuentes» sea clicable siempre:
+   - **Servidor**: al terminar el turno, volcar los resultados reales de la búsqueda web (título + URL, de `WebSearchService`/SearXNG) al `metadata` del mensaje (p. ej. `metadata.sources = [{title, url}]`), con dedupe y límite.
+   - **UI**: si `metadata.sources` existe, renderizar el bloque «Fuentes» como **lista de `<a href="{url}" target="_blank" rel="noopener">`** (dejando el texto del modelo como está, o sustituyendo su lista). Así las fuentes son accesibles y verificables sin depender del formato del modelo.
+   - Tests: servidor (metadata con sources) + UI (render con links reales, sin `wiki-citation`).
+
+**Criterio de cierre**: en la conversación `conv_1790029096976_tsdw26`, las tres líneas de «Fuentes» deben ser enlaces abribles a worldometers.info / un.org / populationtoday (o, si el buscador no devolvió esa fuente, no mostrarse como enlace falso); y una respuesta de wiki debe seguir con citas clicables al wiki.
+
 ### 🔴 BLOQUEANTE — Probar Telegram (única cosa que falta para declarar v2.2.0 listo para producción)
 
 **Estado**: v2.2.0 es ya la base de `main` (tag `v2.2.0-mc.1`, sesión 13ª), **desplegado y corriendo en el stack Docker**, con la suite completa verde (5.025 tests) y el fix del Wiki verificado en vivo. Lo único sin ejercitar es **Telegram**, que es justo donde más personalizamos.
