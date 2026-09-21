@@ -20,6 +20,7 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -233,7 +234,12 @@ class TeamRunProjectorTest {
         TeamRunView view = projector.project(RUN_ID);
 
         assertEquals("review", view.attentionItems().getFirst().type());
-        assertTrue(view.attentionItems().stream().anyMatch(item -> "synthesis".equals(item.type())));
+        // v2.2.0 deliberately dropped the "synthesis" attention item: a degraded
+        // (fallback/partial) summary is already exposed through outcomeQuality and
+        // carries no user action, so it must not inflate the needs-attention count.
+        // The upstream left this assertion behind (they have no CI); pinning the
+        // new intent here instead of deleting it catches a silent regression.
+        assertFalse(view.attentionItems().stream().anyMatch(item -> "synthesis".equals(item.type())));
         assertTrue(view.attentionItems().stream().anyMatch(item -> "stopped".equals(item.type())));
     }
 

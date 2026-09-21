@@ -24,7 +24,7 @@
 
 </div>
 
-> **AuraClaw** — commercial fork of [MateClaw](https://github.com/mateaix/mateclaw) (Apache-2.0), maintained by **Auracore SAS**. Based on upstream `v2.1.0` with branding and enterprise customizations. Upstream updates are integrated via stable tags; see [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) for the customization registry and sync procedure.
+> **AuraClaw** — commercial fork of [MateClaw](https://github.com/mateaix/mateclaw) (Apache-2.0), maintained by **Auracore SAS**. Based on upstream `v2.2.0` with branding and enterprise customizations. Upstream updates are integrated via stable tags; see [docs/CUSTOMIZATIONS.md](docs/CUSTOMIZATIONS.md) for the customization registry and sync procedure.
 
 <p align="center">
   <img src="assets/images/preview.png" alt="AuraClaw Preview" width="800">

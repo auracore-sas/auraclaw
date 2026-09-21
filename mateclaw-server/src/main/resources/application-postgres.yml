@@ -42,6 +42,8 @@ spring:
       - CREATE SCHEMA IF NOT EXISTS mateclaw
     # Skip checksum validation so an in-place migration edit doesn't block startup.
     validate-on-migrate: false
+    # NOTE: out-of-order=true lives in application.yml (base) so it covers every
+    # profile; see the comment there for why our V900+ scheme requires it.
 
   h2:
     console:

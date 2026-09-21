@@ -8,6 +8,16 @@ export type AppLocale = 'zh-CN' | 'en-US' | 'es-ES'
 const STORAGE_KEY = 'mateclaw_locale'
 const DEFAULT_LOCALE: AppLocale = 'es-ES'
 
+/**
+ * Missing keys in the active locale resolve against this one.
+ *
+ * It MUST be 'en-US' (the upstream source of truth), never DEFAULT_LOCALE:
+ * with `fallbackLocale: 'es-ES'` any string the upstream adds and `es-ES.ts`
+ * has not translated yet renders in the UI as the raw key path. English is
+ * the one dictionary guaranteed to be complete, because upstream ships it.
+ */
+export const FALLBACK_LOCALE: AppLocale = 'en-US'
+
 export const currentLocale = ref<AppLocale>(DEFAULT_LOCALE)
 
 // Replace vue-i18n's default message compiler with a safety wrapper. The
@@ -31,7 +41,7 @@ registerMessageCompiler(safeMessageCompiler)
 export const i18n = createI18n({
   legacy: false,
   locale: DEFAULT_LOCALE,
-  fallbackLocale: DEFAULT_LOCALE,
+  fallbackLocale: FALLBACK_LOCALE,
   messages: {} as Record<AppLocale, any>,
   messageCompiler: safeMessageCompiler,
 })
@@ -70,6 +80,13 @@ export async function applyLocale(locale?: string | null) {
   // Must finish loading messages before flipping currentLocale, otherwise the
   // first render after a switch would show the i18n keys verbatim.
   await loadLocaleMessages(normalized)
+  // The fallback dictionary has to be resident too, or vue-i18n cannot resolve
+  // keys the active locale does not define yet (strings added by a newer
+  // upstream release). Costs one extra ~78KB chunk, only when the active
+  // locale is not English.
+  if (normalized !== FALLBACK_LOCALE) {
+    await loadLocaleMessages(FALLBACK_LOCALE)
+  }
   currentLocale.value = normalized
   i18n.global.locale.value = normalized
   localStorage.setItem(STORAGE_KEY, normalized)

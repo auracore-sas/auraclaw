@@ -9,7 +9,7 @@
 mantenido por **Auracore SAS**. Plataforma de "empleados digitales" (agentes IA) multi-usuario:
 Spring Boot 3.5 + Spring AI Alibaba (runtime StateGraph) + Vue 3 + Electron.
 
-Base: tag estable **v2.1.0** del upstream. El renombrado de marca es parcial (solo nivel visible).
+Base: **v2.2.0** (integrada el 2026-09-15 desde el commit de release de `upstream/dev`; ver §5.0). El renombrado de marca es parcial (solo nivel visible).
 
 ## 2. Topología de git (CRÍTICO — leer antes de tocar nada)
 
@@ -25,7 +25,7 @@ upstream → https://github.com/mateaix/mateclaw.git                 (repo ofici
 
 ## 3. Reglas de oro (inmutables)
 
-1. **Actualizaciones del upstream SOLO vía tags estables**: `git fetch upstream --tags` + `git merge vX.Y.Z`. Nunca mergear `upstream/dev` ni `upstream/main` directamente.
+1. **Actualizaciones del upstream SOLO vía versiones estables**: `git fetch upstream --tags` + merge del **commit `release: vX.Y.Z` de `upstream/dev`** — **NO** del tag `vX.Y.Z` (ver §5.0, es la diferencia entre 4 y 313 conflictos). Nunca mergear `upstream/main` ni la punta de `upstream/dev` (solo sus commits de release).
 2. **NUNCA** hacer `rebase` sobre `main` — solo `merge` (historia compartida: deploys, tags propios).
 3. **NUNCA** usar el botón "Sync fork" de GitHub (el `main` del upstream es una línea curada/aplanada sin los tags; rompería nuestra historia).
 4. **NUNCA** forzar push a `origin/main` (el setup inicial ya está hecho).
@@ -93,23 +93,75 @@ de comando — usar patrones que no se auto-matcheen.
 
 ## 5. Adopción de actualizaciones del upstream (cuando salga una versión estable)
 
+> ⚠️ **El tag NO es el objetivo del merge.** Ver §5.0.
+
+### 5.0 Por qué: la historia del upstream está aplanada
+
+| Hecho | Evidencia (medido 2026-09-15) |
+|---|---|
+| `upstream/main` es una cadena de **squash commits** | `release: merge dev into main` tiene **un solo padre** |
+| Su ancestro común con nuestra base es **v1.1.0** | no contiene la historia de `dev` |
+| Los tags viven en líneas distintas | `v2.1.0` en `dev`; `v2.2.0` en `main` |
+| `git merge v2.2.0` (el tag) | **313 archivos en conflicto** — inviable |
+| `git merge <release de dev>` | **4 archivos en conflicto** — correcto |
+
+`upstream/dev` **sí desciende de nuestra base** y publica un commit
+`release: vX.Y.Z` por cada versión. Mergear ese commit es un 3-way normal con
+ancestro real, y **se repite igual en cada versión futura**.
+
+El tag de `main` además es *curado*: omite archivos que `dev` sí tiene
+(`docs/superpowers/*`, `rfcs/*`, `docs/fix-duplicate-raws.sql`…). Mergearlo los
+habría **borrado**; el commit de `dev` no borra nada.
+
+### 5.1 Procedimiento
+
 ```bash
-git fetch upstream --tags
-git tag | sort -V | tail -5                 # identificar nueva versión estable (ej. v2.2.0)
-git checkout main
-git merge v2.2.0                            # MERGE, nunca rebase
+ git fetch upstream --tags
+# 1. localizar el commit de release en dev (NO el tag)
+ UP=$(git log --format='%H' upstream/dev --grep='^release: v2.2.0$' -1)
+ git log -1 --format='%ci %s' "$UP"        # verificar fecha/mensaje antes de seguir
 
-# Resolver conflictos:
-#  - README.md (branding): conservar nuestra versión y re-aplicar:
-sed -i 's/MateClaw/AuraClaw/g' README.md
-#  - Otros archivos que hayamos personalizado: ver docs/CUSTOMIZATIONS.md (registro)
-#  - Migraciones nuevas del upstream: NO renumerar; las nuestras ya son V900+
+# 2. rama de trabajo (nunca mergear directo sobre main)
+ git checkout -b feature/upstream-v2.2.0 main
+ git merge "$UP"                            # MERGE, nunca rebase
 
-# Verificar y publicar:
-mvn -q compile -DskipTests -pl mateclaw-server -am && mvn test -pl mateclaw-server
-git add -A && git commit -m "merge: integrate upstream vX.Y.Z"
-git tag vX.Y.Z-mc.1 && git push origin main --tags
+# 3. resolver conflictos segun docs/CUSTOMIZATIONS.md
+#    - unión de imports/campos cuando ambos lados añaden algo
+#    - conservar NUESTROS tests y añadir los suyos
+#    - re-aplicar el español en los archivos de UI que upstream toque
+#    - migraciones nuevas del upstream: NO renumerar (las nuestras son V900+)
+
+# 4. re-aplicar branding en los archivos NUEVOS del upstream
+ grep -rl "MateClaw" --include='*.md' mateclaw-server/src/main/resources/docs \
+   | xargs sed -i 's/MateClaw/AuraClaw/g'
+#    NO tocar identificadores: MateClawDocService, MATECLAW_*, rutas, ni el
+#    aviso de fork del README
+
+# 5. verificar (la suite completa son ~4800 tests / ~15 min)
+ mvn -q test-compile -pl mateclaw-server   # ← los tests NUEVOS del upstream
+ mvn test -pl mateclaw-server              #   pueden asumir firmas viejas
+ cd mateclaw-ui && npx vue-tsc --noEmit && npx vitest run --config vitest.config.ci.ts
+
+# 6. verificar en vivo y publicar
+#    rebuild Docker + confirmar que Flyway aplica las migraciones nuevas
+ git checkout main && git merge feature/upstream-v2.2.0
+ git tag v2.2.0-mc.1 && git push origin main --tags
 ```
+
+### 5.2 Lecciones de la adopción de v2.2.0 (2026-09-15)
+
+- **El merge no marca los archivos NUEVOS que asumen firmas viejas**: v2.2.0 añadió
+  `ConversationControllerTeamWorkerTranscriptTest` construyendo el controlador con 3
+  argumentos, y nuestra unión de campos lo dejó en 4 → falló `test-compile`.
+  **Siempre correr `test-compile` antes de la suite.**
+- **Los conflictos no son el trabajo**: 4 conflictos textuales, pero 39 archivos se
+  solapan y los que upstream *reescribió* (ReasoningNode +173 líneas, ChatController
+  +178) hay que verificar a mano aunque git los fusione en silencio.
+- **Riesgo Flyway**: nuestras V900+ dejan la versión máxima por encima de las nuevas
+  del upstream → requiere `out-of-order: true` (ya activado en `application-postgres.yml`).
+- **Curado de `main`**: los archivos que solo existen en `dev` no se pierden si se
+  mergea el commit de `dev`.
+
 
 ## 5bis. VERSIONADO PROPIO (reglas para no romper el sync con upstream) ⭐
 
@@ -158,7 +210,8 @@ mateclaw-server/        Backend Spring Boot 3.5 (TODO el negocio)
     acp/                Bridge ACP (Claude Code / Codex)
     plugin/             SDK de plugins
     llm/                Modelos, proveedores, failover multi-vendor
-  src/main/resources/db/migration/{h2,postgres,mysql}/   Flyway (V1..V179 upstream; V900+ NUESTRAS)
+  src/main/resources/db/migration/{h2,kingbase,mysql}/   Flyway (V1..V189 upstream; V900+ NUESTRAS)
+    (PostgreSQL usa el árbol kingbase: comparten dialecto SQL — no existe dir `postgres`)
 mateclaw-ui/            SPA Vue 3 + TS + Element Plus (consola admin) — i18n en src/i18n/locales/{en-US,zh-CN,es-ES}.ts
 docs/                   CUSTOMIZATIONS.md (registro) · NEXT_SESSION.md (contexto de sesión) · docs/es/ (documentación en español)
   (NOTA: la UI se sirve DENTRO del JAR — tras cambios de UI hay que reconstruir la imagen Docker)
