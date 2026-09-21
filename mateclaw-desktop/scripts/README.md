@@ -5,8 +5,8 @@
 | Script | Description |
 |--------|-------------|
 | `build.sh` | Build backend JAR (frontend + Spring Boot) |
-| `download-jre.sh` | Download Adoptium JRE 21 for target platform |
-| `build-all-platforms.sh` | One-click build for all platforms (macOS + Windows) |
+| `download-jre.sh` | Download Adoptium JRE 21 for target platform (macOS / Linux / Windows) |
+| `build-all-platforms.sh` | One-click build for all platforms (macOS + Windows + Linux) |
 | `publish-github.sh` | Publish release artifacts to GitHub Releases |
 
 ## Quick Start
@@ -34,6 +34,8 @@ bash scripts/build.sh
 # 2. Download JRE for target platform
 bash scripts/download-jre.sh mac-arm64    # Apple Silicon
 bash scripts/download-jre.sh mac-x64      # Intel Mac
+bash scripts/download-jre.sh linux-x64    # Linux x64
+bash scripts/download-jre.sh linux-arm64  # Linux ARM
 bash scripts/download-jre.sh win-x64      # Windows x64
 bash scripts/download-jre.sh win-arm64    # Windows ARM
 
@@ -42,6 +44,7 @@ npm run build
 npx electron-builder --mac               # macOS
 npx electron-builder --win --x64         # Windows x64
 npx electron-builder --win --arm64       # Windows ARM
+npx electron-builder --linux             # Linux AppImage
 ```
 
 ## build.sh
@@ -66,24 +69,42 @@ Download Adoptium JRE 21 for the target platform.
 # Auto-detect current platform
 bash scripts/download-jre.sh
 
-# Specify platform
+# Specify platform (one or several targets)
 bash scripts/download-jre.sh mac-arm64
 bash scripts/download-jre.sh mac-x64
+bash scripts/download-jre.sh linux-x64
+bash scripts/download-jre.sh linux-arm64
 bash scripts/download-jre.sh win-x64
 bash scripts/download-jre.sh win-arm64
+bash scripts/download-jre.sh win-x64 win-arm64      # several at once
+
+# Shortcuts
+bash scripts/download-jre.sh all                    # both macOS arches
+bash scripts/download-jre.sh all-platforms          # every supported target
+bash scripts/download-jre.sh --dry-run all-platforms  # resolve, do not download
 ```
 
-JRE will be saved to `resources/jre/{os}-{arch}/`.
+JRE will be saved to `resources/jre/{os}-{arch}/` (macOS keeps its
+`Contents/Home` bundle layout). `JRE_DIR=<dir>` overrides the output directory.
+For Windows x64 a `resources/jre/win32-x64 → win-x64` symlink is also created,
+because `electron/main/index.ts` looks for that name in dev mode while
+electron-builder's `${os}` expands to `win`.
 
 ## build-all-platforms.sh
 
 Orchestrates the full build pipeline: JAR build -> JRE download -> frontend compile -> electron-builder package.
 
 ```bash
-bash scripts/build-all-platforms.sh --all       # macOS + Windows
-bash scripts/build-all-platforms.sh --mac-only   # macOS only
-bash scripts/build-all-platforms.sh --win-only   # Windows only
+bash scripts/build-all-platforms.sh --all              # macOS + Windows (local mode)
+bash scripts/build-all-platforms.sh --mac-only         # macOS only
+bash scripts/build-all-platforms.sh --win-only         # Windows only
+bash scripts/build-all-platforms.sh --linux-only       # Linux only
+bash scripts/build-all-platforms.sh --all-platforms    # macOS + Windows + Linux
+bash scripts/build-all-platforms.sh --remote --all-platforms  # no JRE/JAR bundled
 ```
+
+In `--remote` mode the JAR and JRE steps are skipped (electron-builder omits
+them from the package too), so the run is much faster.
 
 Build artifacts are output to `release/` directory.
 
@@ -136,6 +157,7 @@ npm run setup:jre              # download-jre.sh
 npm run setup                  # build.sh + download-jre.sh
 npm run package:mac            # Build frontend + electron-builder --mac
 npm run package:win            # Build frontend + electron-builder --win
+npm run package:linux          # Build frontend + electron-builder --linux
 npm run package:all            # build-all-platforms.sh --all
 npm run publish:github         # publish-github.sh
 npm run publish:github:draft   # publish-github.sh --draft

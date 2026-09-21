@@ -24,7 +24,15 @@ on:
   workflow_dispatch:
     inputs:
       package_desktop:
-        description: 'Empaquetar el desktop (macOS, sin firma) — no validado aún'
+        description: 'Empaquetar el desktop macOS (sin firma) — no validado aún'
+        type: boolean
+        default: false
+      package_desktop_linux:
+        description: 'Empaquetar el desktop Linux/AppImage (sin firmar) — no validado aún'
+        type: boolean
+        default: false
+      package_desktop_windows:
+        description: 'Empaquetar el desktop Windows/NSIS (sin firmar) — no validado aún'
         type: boolean
         default: false
 
@@ -99,10 +107,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # No se usa `pnpm run build`: ese script llama a
-      # ../scripts/check-snowflake-precision.sh, que NO existe (ni en upstream
-      # v2.1.0). El invariante de ids Snowflake de 64 bits sí está cubierto por
-      # los tests de vitest (messageMetadata / useTeamRunHistory / agentPickerLogic).
+      # El chequeo de precisión de ids Snowflake (64 bits) es ahora un script
+      # propio del paquete: `mateclaw-ui/scripts/check-snowflake-precision.mjs`,
+      # portado verbatim del upstream v2.3.0. El upstream v2.1.0 (nuestra base)
+      # invocaba `../scripts/check-snowflake-precision.sh`, que no existe en
+      # ningún release público → `pnpm run build`/`lint` fallaban de fábrica.
+      - name: Snowflake precision check
+        run: pnpm run lint:precision
+
       - name: Type check (vue-tsc)
         run: pnpm exec vue-tsc --noEmit
 
@@ -161,6 +173,113 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-macos-unsigned
+          path: mateclaw-desktop/release/
+          retention-days: 7
+          if-no-files-found: warn
+
+  # Los dos jobs siguientes existen desde que `download-jre.sh` soporta Linux y
+  # Windows (antes su URL de Adoptium era solo-macOS, así que empaquetar para
+  # esas plataformas era imposible). Siguen siendo MANUALES y NO validados: el
+  # primer `workflow_dispatch` con su flag es el que los valida.
+  desktop-linux:
+    name: Desktop packaging (manual, Linux, sin firma)
+    if: github.event_name == 'workflow_dispatch' && inputs.package_desktop_linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: mateclaw-desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: mateclaw-desktop/pnpm-lock.yaml
+
+      - name: Install desktop dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `pnpm run setup` = JAR del server + JRE de la plataforma actual
+      # (auto-detect → linux-x64 en este runner).
+      - name: Build server JAR + download embedded JRE
+        run: |
+          mvn -f ../pom.xml -N install -B -q
+          mvn -f ../pom.xml install -B -q -DskipTests -pl mateclaw-plugin-api
+          pnpm run setup
+
+      - name: Package (unsigned)
+        run: pnpm run package:linux
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-unsigned
+          path: mateclaw-desktop/release/
+          retention-days: 7
+          if-no-files-found: warn
+
+  desktop-windows:
+    name: Desktop packaging (manual, Windows, sin firma)
+    if: github.event_name == 'workflow_dispatch' && inputs.package_desktop_windows
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: mateclaw-desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: mateclaw-desktop/pnpm-lock.yaml
+
+      - name: Install desktop dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Los npm scripts llaman a `bash scripts/*.sh`; Git Bash viene en el
+      # runner de Windows (windows-latest), así que el mismo `pnpm run setup`
+      # sirve aquí (auto-detect → win-x64).
+      - name: Build server JAR + download embedded JRE
+        run: |
+          mvn -f ../pom.xml -N install -B -q
+          mvn -f ../pom.xml install -B -q -DskipTests -pl mateclaw-plugin-api
+          pnpm run setup
+
+      - name: Package (unsigned)
+        run: pnpm run package:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-unsigned
           path: mateclaw-desktop/release/
           retention-days: 7
           if-no-files-found: warn

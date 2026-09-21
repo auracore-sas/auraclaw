@@ -17,6 +17,13 @@ import baseConfig from './vitest.config'
  *   teamRunComponents.test.ts        → 2 failures (markdown in run summary)
  *   teamRunProjectionPrimitives.test.ts → 1 failure (outcome/deliverables render)
  *
+ * Re-check status when adopting a new upstream release. Known as of v2.3.0
+ * (2026-09-20): upstream edited the last two files plus their sources
+ * (`TeamRun*.vue`, `teamRunAttentionHandlers.ts`) adding new tests — that may
+ * or may not have fixed the 3 assertions this fork excludes; it has NOT been
+ * verified by running them. `product-cards` and `streaming-render` are
+ * untouched upstream.
+ *
  * `exclude` is set explicitly (not appended to the defaults) on purpose: the
  * base config already scopes `include` to `src/**`, so nothing outside the
  * suite can be picked up.
