@@ -422,6 +422,23 @@ html.dark body::before {
   cursor: zoom-in;
 }
 
+/* Inline citation marker ([n]) and source rows emitted by the wiki-citation
+   pre-processor. The element is an <a> WITHOUT href on purpose: the wiki lookup
+   resolves the page (useGlobalWikilinkClick), and a placeholder href made the
+   browser show the chat's own URL on hover and swallow real source URLs. Since
+   no href means no UA pointer cursor, restore the affordance here — and only
+   for citations, because a web-research source list is plain text now. */
+.wiki-citation {
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+.wiki-citation:hover {
+  color: var(--mc-primary);
+  border-bottom-style: solid;
+}
+
 /* headings */
 .markdown-body h1,
 .markdown-body h2,

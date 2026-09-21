@@ -84,6 +84,7 @@
                     :segment="seg"
                     :show-cursor="showCursor && seg.status === 'running'"
                     :generated-file-names="generatedFileNames"
+                    :wiki-citations="hasWikiCitations"
                   />
                 </template>
                 </template>

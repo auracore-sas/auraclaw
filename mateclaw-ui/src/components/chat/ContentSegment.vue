@@ -10,9 +10,17 @@ const props = withDefaults(defineProps<{
   showCursor?: boolean
   /** id → filename map for rewriting bare generated-file URLs into [name](url). */
   generatedFileNames?: Map<string, string>
+  /**
+   * Whether the turn's source table is a WIKI citation table. `false` leaves the
+   * model's own source list alone (web research), `undefined` keeps the legacy
+   * shape-based heuristic. It comes from MessageBubble, which knows the turn's
+   * tool calls — guessing from the text turned web sources into dead wiki links.
+   */
+  wikiCitations?: boolean
 }>(), {
   showCursor: false,
   generatedFileNames: undefined,
+  wikiCitations: undefined,
 })
 
 const isRunning = computed(() => props.segment.status === 'running')
@@ -27,6 +35,7 @@ const { html: renderedContent } = useStreamingMarkdown(
       : text
   },
   () => isRunning.value,
+  { get wikiCitations() { return props.wikiCitations } },
 )
 </script>
 
