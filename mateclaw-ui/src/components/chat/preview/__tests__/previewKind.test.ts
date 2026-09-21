@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { previewKindOf, textFlavorOf, extensionOf } from '../previewKind'
+import { previewKindOf, textFlavorOf, extensionOf, isImageName } from '../previewKind'
 
 describe('previewKindOf', () => {
   it('routes PDF by extension and by MIME', () => {
@@ -34,17 +34,41 @@ describe('previewKindOf', () => {
     }
   })
 
+  it('routes images to the image viewer, by extension or by MIME', () => {
+    // AuraClaw: charts/screenshots used to be download-only, so the chat could
+    // never SHOW a picture it had produced.
+    for (const ext of ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg']) {
+      expect(previewKindOf({ name: `chart.${ext}`, contentType: '' })).toBe('image')
+    }
+    expect(previewKindOf({ name: 'grafica', contentType: 'image/png' })).toBe('image')
+    expect(previewKindOf({ name: 'foto.PNG', contentType: '' })).toBe('image')
+  })
+
+  it('flags image names for links and thumbnails', () => {
+    expect(isImageName('g4_surtidor.png')).toBe(true)
+    expect(isImageName('cover.SVG')).toBe(true)
+    expect(isImageName('informe.pdf')).toBe(false)
+    expect(isImageName('sin-extension')).toBe(false)
+    expect(isImageName(undefined)).toBe(false)
+  })
+
   it('returns null (download-only) for unknown binary formats', () => {
     expect(previewKindOf({ name: 'archive.zip', contentType: 'application/zip' })).toBeNull()
     expect(previewKindOf({ name: 'firmware.bin', contentType: '' })).toBeNull()
     expect(previewKindOf({ name: 'noextension', contentType: '' })).toBeNull()
   })
 
-  it('does not treat images/video/audio/model as document previews (handled elsewhere)', () => {
-    // These carry image/* etc. MIME and are rendered by MessageBubble's own
-    // branches; previewKindOf only sees the fileAttachments residue, but guard
-    // anyway that a stray image name is not mis-routed to a doc kind.
-    expect(previewKindOf({ name: 'pic.png', contentType: 'image/png' })).toBeNull()
+  it('routes generated images to the image viewer (AuraClaw change)', () => {
+    // Upstream returned null here on purpose: attachment images are rendered by
+    // MessageBubble's own branches, so previewKindOf only saw the residue.
+    // AuraClaw changed the contract because GENERATED images (charts, rendered
+    // HTML, screenshots) had no way to be displayed: clicking one downloaded it.
+    // The image viewer is now the single place that shows a picture, whichever
+    // surface links it (message, conversation-file panel, history).
+    // Keep this expectation when merging upstream; if they add their own image
+    // preview, prefer theirs and drop ours (see docs/CUSTOMIZATIONS.md).
+    expect(previewKindOf({ name: 'pic.png', contentType: 'image/png' })).toBe('image')
+    expect(previewKindOf({ name: 'chart.PNG', contentType: '' })).toBe('image')
   })
 })
 

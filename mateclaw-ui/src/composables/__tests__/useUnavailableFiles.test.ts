@@ -16,9 +16,11 @@ vi.mock('@/api/index', () => ({
 vi.mock('@/composables/useMcToast', () => ({
   mcToast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
 }))
+vi.mock('@/components/chat/preview/previewBus', () => ({ openFilePreview: vi.fn() }))
 
 import { fetchAuthenticatedBlob } from '@/api/index'
 import { mcToast } from '@/composables/useMcToast'
+import { openFilePreview } from '@/components/chat/preview/previewBus'
 import { useGlobalFileDownloadClick } from '../useGlobalFileDownloadClick'
 import {
   isFileUnavailable,
@@ -118,6 +120,27 @@ describe('useGlobalFileDownloadClick', () => {
 
     expect(isFileUnavailable('/api/v1/files/generated/dead-1')).toBe(true)
     expect(mcToast.error).toHaveBeenCalledWith('Este archivo expiró')
+  })
+
+  it('opens a generated image in the viewer instead of downloading it', async () => {
+    mountHandler()
+    const img = document.createElement('img')
+    img.setAttribute('data-generated-image', '1')
+    img.setAttribute('data-generated-src', '/api/v1/files/generated/img-9')
+    img.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')
+    img.setAttribute('alt', 'g4_surtidor.png')
+    document.body.appendChild(img)
+
+    img.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    await settle()
+
+    // The dialog is what shows the picture (with zoom), and it renders the blob
+    // inside <img>, so a generated SVG can never run scripts.
+    expect(openFilePreview).toHaveBeenCalledWith({
+      name: 'g4_surtidor.png',
+      url: '/api/v1/files/generated/img-9',
+    })
+    expect(fetchAuthenticatedBlob).not.toHaveBeenCalled()
   })
 
   it('does not record a file for a transient error', async () => {

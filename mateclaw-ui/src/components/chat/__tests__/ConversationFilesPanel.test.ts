@@ -128,6 +128,7 @@ beforeEach(() => {
 afterEach(() => {
   apps.splice(0).forEach(app => app.unmount())
   document.body.innerHTML = ''
+  vi.unstubAllGlobals()
 })
 
 describe('ConversationFilesPanel', () => {
@@ -218,6 +219,35 @@ describe('ConversationFilesPanel', () => {
     await nextTick()
     expect([...host.querySelectorAll('.conv-files__name')].map(n => n.textContent))
       .toContain(deliverable)
+  })
+
+  it('gives image rows a lazily-mounted thumbnail the auth loader can pick up', async () => {
+    // Without IntersectionObserver the row mounts its thumbnail immediately.
+    vi.stubGlobal('IntersectionObserver', undefined)
+
+    const imageTurn = message({
+      id: 800,
+      createTime: '2026-09-21T15:00:00',
+      content: 'Listo',
+      metadata: {
+        generatedFiles: [
+          { filename: 'g4_surtidor.png', url: `${URL_BASE}img-1`, toolName: 'render_html_image' },
+          { filename: 'Informe.pdf', url: `${URL_BASE}pdf-1`, toolName: 'send_file' },
+        ],
+      },
+    })
+    const host = mount([imageTurn])
+    host.querySelector<HTMLButtonElement>('.conv-files__rail')!.click()
+    await nextTick()
+
+    // Exactly one thumbnail (the PDF row must not get one).
+    expect(host.querySelectorAll('.conv-files__thumb')).toHaveLength(1)
+    const thumb = host.querySelector<HTMLImageElement>('.conv-files__thumb img')!
+    expect(thumb.getAttribute('data-generated-image')).toBe('1')
+    // The real URL travels in the data attribute, so the browser never fires a
+    // doomed unauthenticated request (the loader swaps in an authenticated blob).
+    expect(thumb.getAttribute('data-generated-src')).toBe(`${URL_BASE}img-1`)
+    expect(thumb.getAttribute('src')).toContain('data:image/gif')
   })
 
   it('remembers the expanded state across mounts', async () => {

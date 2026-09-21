@@ -28,13 +28,23 @@ import { useI18n } from 'vue-i18n'
 import { fetchAuthenticatedBlob } from '@/api/index'
 import { mcToast } from '@/composables/useMcToast'
 import { isMissingFileStatus, markFileUnavailable } from '@/composables/useUnavailableFiles'
-import { previewKindOf } from '@/components/chat/preview/previewKind'
+import { previewKindOf, isImageName } from '@/components/chat/preview/previewKind'
 import { openFilePreview } from '@/components/chat/preview/previewBus'
 
 // Matches every backend-served file path: in-memory generated files
 // (`/api/v1/files/generated/<id>`) and conversation-scoped media/attachments
 // (`/api/v1/files/...`, `/api/v1/chat/files/...`).
 const FILE_PATH_RE = /^\/api\/v1\/(files|chat\/files)\//
+
+/** Keep the path+query of an absolute generated URL, so the fetch stays same-origin. */
+function relativePathOf(value: string): string {
+  try {
+    const url = new URL(value, window.location.href)
+    return url.pathname + url.search
+  } catch {
+    return value
+  }
+}
 
 function filenameFor(anchor: HTMLAnchorElement, pathname: string): string {
   const text = (anchor.textContent || '').trim()
@@ -55,32 +65,26 @@ export function useGlobalFileDownloadClick() {
     if (!target) return
 
     // Inline generated images (rendered by useMarkdownRenderer.link() as
-    // <img data-generated-image>) open full-size in a new tab on click, so the
-    // user can zoom without the picture ever becoming a download.
+    // <img data-generated-image>). Opening them in the shared preview dialog
+    // gives zoom/pan and — unlike a same-origin blob tab — cannot execute the
+    // scripts a generated SVG may contain. The `alt` carries the filename the
+    // markdown link used, which is what decides the preview kind.
     const genImg = target.closest<HTMLImageElement>('img[data-generated-image]')
     if (genImg) {
-      const src = genImg.getAttribute('src')
-      if (src) {
+      const src = genImg.dataset.generatedSrc || genImg.getAttribute('src')
+      const name = (genImg.getAttribute('alt') || '').trim()
+      // Without an image-looking name the dialog could not pick a renderer, so
+      // keep the previous behaviour (open the blob full size).
+      if (src && isImageName(name)) {
         e.preventDefault()
         e.stopPropagation()
-        if (src.startsWith('blob:')) {
-          window.open(src, '_blank', 'noopener,noreferrer')
-          return
-        }
-        const win = window.open('about:blank', '_blank', 'noopener,noreferrer')
-        if (!win) return
-        try {
-          const original = genImg.dataset.generatedSrc || src
-          const url = new URL(original, window.location.href)
-          const blob = await fetchAuthenticatedBlob(url.pathname + url.search)
-          const objectUrl = URL.createObjectURL(blob)
-          win.location.href = objectUrl
-          setTimeout(() => URL.revokeObjectURL(objectUrl), 300000)
-        } catch (err) {
-          // A refused image is a dead artifact too: remember it for the panel.
-          if (isMissingFileStatus((err as Error)?.message)) markFileUnavailable(src)
-          win.close()
-        }
+        openFilePreview({ name, url: relativePathOf(src) })
+        return
+      }
+      if (src && src.startsWith('blob:')) {
+        e.preventDefault()
+        e.stopPropagation()
+        window.open(src, '_blank', 'noopener,noreferrer')
         return
       }
     }

@@ -12,8 +12,19 @@ import type { ChatAttachment } from '@/types'
  * - 'office' — needs server-side conversion to PDF (soffice); the frontend
  *              requests `{url}/preview` and renders the result as 'pdf'.
  *              Falls back to download when the server has no converter (501).
+ * - 'image'  — shown as-is with zoom/pan (AuraClaw): charts and screenshots
+ *              produced by tools are pictures, and before this they could only
+ *              be DOWNLOADED, never displayed in the UI.
  */
-export type PreviewKind = 'pdf' | 'docx' | 'sheet' | 'text' | 'html' | 'office'
+export type PreviewKind = 'pdf' | 'docx' | 'sheet' | 'text' | 'html' | 'office' | 'image'
+
+/**
+ * Extensions rendered by the image viewer. Raster formats are opened in a new
+ * tab on request; `svg` deliberately is NOT (a same-origin blob document can run
+ * the scripts embedded in the file — it is only ever rendered inside `<img>`,
+ * which cannot execute them).
+ */
+export const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg'])
 
 /** Extensions rendered as markdown (full rich rendering). */
 const MARKDOWN_EXTS = new Set(['md', 'markdown'])
@@ -33,6 +44,11 @@ const PLAIN_TEXT_EXTS = new Set(['txt', 'log', 'csv-report', 'text'])
 const OFFICE_CONVERT_EXTS = new Set([
   'ppt', 'pptx', 'doc', 'xls', 'odt', 'ods', 'odp', 'rtf', 'wps',
 ])
+
+/** True for names that the image viewer can display (used by links/thumbnails). */
+export function isImageName(name: string | undefined): boolean {
+  return IMAGE_EXTS.has(extensionOf(name))
+}
 
 export function extensionOf(name: string | undefined): string {
   if (!name) return ''
@@ -67,6 +83,8 @@ export function previewKindOf(attachment: Pick<ChatAttachment, 'name' | 'content
     return 'sheet'
   }
   if (ext === 'html' || ext === 'htm' || mime === 'text/html') return 'html'
+  // Images: a chart or screenshot is meant to be SEEN, not downloaded.
+  if (IMAGE_EXTS.has(ext) || mime.startsWith('image/')) return 'image'
   if (MARKDOWN_EXTS.has(ext) || CODE_EXTS.has(ext) || PLAIN_TEXT_EXTS.has(ext)
       || mime.startsWith('text/')) {
     return 'text'

@@ -26,6 +26,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Message } from '@/types'
 import { isFileUnavailable } from '@/composables/useUnavailableFiles'
+import { isImageName } from '@/components/chat/preview/previewKind'
 import {
   messageMetadataFilesSource,
   summarizeConversationFiles,
@@ -128,6 +129,41 @@ function visibleFiles(files: ConversationFile[]): ConversationFile[] {
   return hideUnavailable.value ? files.filter(file => !isFileUnavailable(file.url)) : files
 }
 
+/**
+ * Thumbnails for image rows (charts, screenshots). The bytes need auth, so the
+ * `<img>` is handed to the app-wide `useGlobalGeneratedImageBlob` loader, which
+ * swaps the src for a blob URL after an authenticated fetch.
+ *
+ * Two details keep it cheap and quiet:
+ *   - the image is mounted only once its row scrolls into view: the loader
+ *     fetches on insertion, so mounting eagerly would download every chart of
+ *     the conversation the moment the panel is expanded;
+ *   - `data-generated-src` carries the real URL and `src` a transparent pixel,
+ *     so the browser does not fire a doomed unauthenticated request (401) that
+ *     would flash a broken image while the authenticated fetch is in flight.
+ */
+const TRANSPARENT_PIXEL =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+const loadedThumbs = ref(new Set<string>())
+const thumbTargets = new WeakMap<Element, string>()
+let thumbObserver: IntersectionObserver | null = null
+
+function isImageRow(file: ConversationFile): boolean {
+  return isImageName(file.name)
+}
+
+function observeThumb(file: ConversationFile, el: Element | null) {
+  if (!el || !isImageRow(file)) return
+  // No IntersectionObserver (tests/SSR): mount it right away.
+  if (!thumbObserver) {
+    loadedThumbs.value.add(file.url)
+    return
+  }
+  thumbTargets.set(el, file.url)
+  thumbObserver.observe(el)
+}
+
 // Narrow viewports: the expanded panel floats over the chat as a drawer instead
 // of squeezing the conversation column (same behaviour as the run-overview rail).
 const isNarrow = ref(false)
@@ -139,8 +175,26 @@ onMounted(() => {
   mql = window.matchMedia('(max-width: 1280px)')
   onMqlChange(mql)
   mql.addEventListener('change', onMqlChange)
+
+  if (typeof IntersectionObserver !== 'undefined') {
+    thumbObserver = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          const url = thumbTargets.get(entry.target)
+          if (url) loadedThumbs.value.add(url)
+          thumbObserver?.unobserve(entry.target)
+        }
+      },
+      { rootMargin: '160px' },
+    )
+  }
 })
-onBeforeUnmount(() => mql?.removeEventListener('change', onMqlChange))
+onBeforeUnmount(() => {
+  mql?.removeEventListener('change', onMqlChange)
+  thumbObserver?.disconnect()
+  thumbObserver = null
+})
 
 const showBackdrop = computed(() => isNarrow.value && !collapsed.value && hasFiles.value)
 
@@ -264,6 +318,20 @@ function reasonLabel(file: ConversationFile): string {
               rel="noopener"
               :title="isFileUnavailable(file.url) ? t('chat.filesPanel.unavailableHint') : reasonLabel(file)"
             >
+              <span
+                v-if="isImageRow(file) && !isFileUnavailable(file.url)"
+                class="conv-files__thumb"
+                :ref="el => observeThumb(file, el as Element | null)"
+              >
+                <img
+                  v-if="loadedThumbs.has(file.url)"
+                  :data-generated-src="file.url"
+                  :src="TRANSPARENT_PIXEL"
+                  :alt="file.name"
+                  class="conv-files__thumb-img"
+                  data-generated-image="1"
+                />
+              </span>
               <span class="conv-files__ext">{{ extensionOf(file.name) }}</span>
               <span class="conv-files__name">{{ file.name }}</span>
               <span v-if="isFileUnavailable(file.url)" class="conv-files__unavailable-chip">
@@ -286,6 +354,20 @@ function reasonLabel(file: ConversationFile): string {
               rel="noopener"
               :title="isFileUnavailable(file.url) ? t('chat.filesPanel.unavailableHint') : reasonLabel(file)"
             >
+              <span
+                v-if="isImageRow(file) && !isFileUnavailable(file.url)"
+                class="conv-files__thumb"
+                :ref="el => observeThumb(file, el as Element | null)"
+              >
+                <img
+                  v-if="loadedThumbs.has(file.url)"
+                  :data-generated-src="file.url"
+                  :src="TRANSPARENT_PIXEL"
+                  :alt="file.name"
+                  class="conv-files__thumb-img"
+                  data-generated-image="1"
+                />
+              </span>
               <span class="conv-files__ext">{{ extensionOf(file.name) }}</span>
               <span class="conv-files__name">{{ file.name }}</span>
               <span v-if="isFileUnavailable(file.url)" class="conv-files__unavailable-chip">
@@ -476,6 +558,23 @@ function reasonLabel(file: ConversationFile): string {
   border: 1px solid var(--mc-danger, #f56c6c);
   border-radius: 4px;
   padding: 0 3px;
+}
+/* Thumbnail of a generated image (chart/screenshot): the picture is the point of
+   the artifact, so show it instead of only its name. */
+.conv-files__thumb {
+  flex-shrink: 0;
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--mc-border-light);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--mc-bg-sunken, #f3f0ed);
+}
+.conv-files__thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .conv-files__ext {
   flex-shrink: 0;

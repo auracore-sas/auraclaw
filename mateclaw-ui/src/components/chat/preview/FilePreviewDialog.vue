@@ -84,6 +84,7 @@ const DocxPreview = defineAsyncComponent(() => import('./DocxPreview.vue'))
 const SheetPreview = defineAsyncComponent(() => import('./SheetPreview.vue'))
 const TextPreview = defineAsyncComponent(() => import('./TextPreview.vue'))
 const HtmlPreview = defineAsyncComponent(() => import('./HtmlPreview.vue'))
+const ImagePreview = defineAsyncComponent(() => import('./ImagePreview.vue'))
 
 const { downloadFile } = useAuthenticatedAttachment()
 
@@ -104,6 +105,7 @@ const previewComponent = computed(() => {
     case 'sheet': return SheetPreview
     case 'text': return TextPreview
     case 'html': return HtmlPreview
+    case 'image': return ImagePreview
     default: return null
   }
 })
