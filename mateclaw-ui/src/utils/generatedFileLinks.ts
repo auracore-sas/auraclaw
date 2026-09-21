@@ -30,6 +30,23 @@ export function isSafeFileUrl(value: unknown): value is string {
   }
 }
 
+/**
+ * Reduce a file-API URL to a same-origin path.
+ *
+ * Generated-file links carry the host the *server* knew about when the artifact
+ * was created (`http://localhost:18080/...` in a default deployment), and the
+ * model often echoes it back. A browser resolves that against ITSELF, so on any
+ * machine other than the server the request either 404s or, worse, silently hits
+ * a different machine. Every surface that fetches a generated file must strip
+ * the host and keep only `/api/v1/files/...` (or `/api/v1/chat/files/...`), which
+ * the current origin then resolves correctly. External URLs are returned as-is.
+ */
+export function sameOriginFilePath(value: unknown): string {
+  if (typeof value !== 'string' || !value) return ''
+  const stripped = /^https?:\/\/[^/]+(\/api\/v1\/(?:files|chat\/files)\/.+)$/i.exec(value)
+  return stripped ? stripped[1] : value
+}
+
 /** Build an id → display-name map from `metadata.generatedFiles`. */
 export function buildGeneratedFileNameMap(files: unknown): Map<string, string> {
   const names = new Map<string, string>()

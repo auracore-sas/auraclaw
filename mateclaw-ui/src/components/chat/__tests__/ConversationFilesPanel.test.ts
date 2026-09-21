@@ -250,6 +250,29 @@ describe('ConversationFilesPanel', () => {
     expect(thumb.getAttribute('src')).toContain('data:image/gif')
   })
 
+  it('normalises an absolute stored URL so a remote browser can load the thumbnail', async () => {
+    vi.stubGlobal('IntersectionObserver', undefined)
+    const host = mount([message({
+      id: 810,
+      createTime: '2026-09-21T15:30:00',
+      content: 'Listo',
+      metadata: {
+        generatedFiles: [
+          // Exactly what the server stores in a default deployment.
+          { filename: 'chart.png', url: 'http://localhost:18080/api/v1/files/generated/img-abs', toolName: 'render_html_image' },
+        ],
+      },
+    })])
+    host.querySelector<HTMLButtonElement>('.conv-files__rail')!.click()
+    await nextTick()
+
+    const thumb = host.querySelector<HTMLImageElement>('.conv-files__thumb img')!
+    // localhost would resolve against the CLIENT machine: it must never be used.
+    expect(thumb.getAttribute('data-generated-src')).toBe('/api/v1/files/generated/img-abs')
+    const row = host.querySelector<HTMLAnchorElement>('.conv-files__file')!
+    expect(row.getAttribute('href')).toBe('/api/v1/files/generated/img-abs')
+  })
+
   it('remembers the expanded state across mounts', async () => {
     const first = mount([deliverableTurn])
     first.querySelector<HTMLButtonElement>('.conv-files__rail')!.click()

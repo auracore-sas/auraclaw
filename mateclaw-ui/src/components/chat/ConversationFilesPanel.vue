@@ -27,6 +27,7 @@ import { useI18n } from 'vue-i18n'
 import type { Message } from '@/types'
 import { isFileUnavailable } from '@/composables/useUnavailableFiles'
 import { isImageName } from '@/components/chat/preview/previewKind'
+import { sameOriginFilePath } from '@/utils/generatedFileLinks'
 import {
   messageMetadataFilesSource,
   summarizeConversationFiles,
@@ -153,14 +154,19 @@ function isImageRow(file: ConversationFile): boolean {
   return isImageName(file.name)
 }
 
+/** Same-origin path for a row: the stored URL may carry the server's own host. */
+function filePath(file: ConversationFile): string {
+  return sameOriginFilePath(file.url)
+}
+
 function observeThumb(file: ConversationFile, el: Element | null) {
   if (!el || !isImageRow(file)) return
   // No IntersectionObserver (tests/SSR): mount it right away.
   if (!thumbObserver) {
-    loadedThumbs.value.add(file.url)
+    loadedThumbs.value.add(filePath(file))
     return
   }
-  thumbTargets.set(el, file.url)
+  thumbTargets.set(el, filePath(file))
   thumbObserver.observe(el)
 }
 
@@ -312,7 +318,7 @@ function reasonLabel(file: ConversationFile): string {
               :key="`p-${file.name}`"
               class="conv-files__file"
               :class="{ 'is-unavailable': isFileUnavailable(file.url) }"
-              :href="isFileUnavailable(file.url) ? undefined : file.url"
+              :href="isFileUnavailable(file.url) ? undefined : filePath(file)"
               :aria-disabled="isFileUnavailable(file.url) || undefined"
               target="_blank"
               rel="noopener"
@@ -324,8 +330,8 @@ function reasonLabel(file: ConversationFile): string {
                 :ref="el => observeThumb(file, el as Element | null)"
               >
                 <img
-                  v-if="loadedThumbs.has(file.url)"
-                  :data-generated-src="file.url"
+                  v-if="loadedThumbs.has(filePath(file))"
+                  :data-generated-src="filePath(file)"
                   :src="TRANSPARENT_PIXEL"
                   :alt="file.name"
                   class="conv-files__thumb-img"
@@ -348,7 +354,7 @@ function reasonLabel(file: ConversationFile): string {
               :key="`a-${file.name}`"
               class="conv-files__file is-auxiliary"
               :class="{ 'is-unavailable': isFileUnavailable(file.url) }"
-              :href="isFileUnavailable(file.url) ? undefined : file.url"
+              :href="isFileUnavailable(file.url) ? undefined : filePath(file)"
               :aria-disabled="isFileUnavailable(file.url) || undefined"
               target="_blank"
               rel="noopener"
@@ -360,8 +366,8 @@ function reasonLabel(file: ConversationFile): string {
                 :ref="el => observeThumb(file, el as Element | null)"
               >
                 <img
-                  v-if="loadedThumbs.has(file.url)"
-                  :data-generated-src="file.url"
+                  v-if="loadedThumbs.has(filePath(file))"
+                  :data-generated-src="filePath(file)"
                   :src="TRANSPARENT_PIXEL"
                   :alt="file.name"
                   class="conv-files__thumb-img"

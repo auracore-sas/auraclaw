@@ -66,6 +66,7 @@ import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, shallo
 import { Aim, Download, FullScreen } from '@element-plus/icons-vue'
 import { fetchAuthenticatedBlob } from '@/api/index'
 import { isMissingFileStatus, markFileUnavailable } from '@/composables/useUnavailableFiles'
+import { sameOriginFilePath } from '@/utils/generatedFileLinks'
 import { useAuthenticatedAttachment } from '@/composables/useAuthenticatedAttachment'
 import type { ChatAttachment } from '@/types'
 import { previewKindOf, type PreviewKind } from './previewKind'
@@ -148,11 +149,11 @@ async function open(target: PreviewTarget) {
   try {
     if (kind === 'office') {
       // Server-side office→PDF conversion; 501 means no converter installed.
-      const blob = await fetchAuthenticatedBlob(att.url.replace(/\/?$/, '') + '/preview')
+      const blob = await fetchAuthenticatedBlob(sameOriginFilePath(att.url).replace(/\/?$/, '') + '/preview')
       bytes.value = await blob.arrayBuffer()
       renderKind.value = 'pdf'
     } else {
-      const blob = await fetchAuthenticatedBlob(att.url)
+      const blob = await fetchAuthenticatedBlob(sameOriginFilePath(att.url))
       bytes.value = await blob.arrayBuffer()
       renderKind.value = kind
     }

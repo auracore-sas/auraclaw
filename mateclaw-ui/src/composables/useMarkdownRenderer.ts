@@ -1,4 +1,5 @@
 import { Marked } from 'marked'
+import { sameOriginFilePath } from '@/utils/generatedFileLinks'
 import type { Tokens } from 'marked'
 import hljs from 'highlight.js'
 import DOMPurify from 'dompurify'
@@ -289,6 +290,20 @@ function chartLoadingPlaceholder(): string {
 // Custom renderer (marked v15 requires a plain object — class instances are
 // NOT dispatched).
 // ---------------------------------------------------------------------------
+
+/**
+ * 1×1 transparent GIF used as the initial `src` of a tool-generated image. The
+ * bytes need an `Authorization` header, so the app-wide
+ * `useGlobalGeneratedImageBlob` loader swaps this for an authenticated blob URL;
+ * putting the real path in `src` would fire a doomed unauthenticated request
+ * (401) and flash a broken image while the fetch is in flight.
+ */
+const GENERATED_IMAGE_PLACEHOLDER =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+/** Same-origin file-API path, tolerating a host the model prepended. */
+const FILE_API_PATH_RE = /^\/api\/v1\/(files|chat\/files)\//
+
 const customRenderer = {
   code({ text, lang }: { type: string; raw: string; text: string; lang?: string }): string {
     const rawCode = text || ''
@@ -424,8 +439,7 @@ const customRenderer = {
     // https://ai-tools-system.com, …) when echoing the URL back, breaking the
     // download. Strip any prepended scheme://host so the link works regardless
     // of what the model wrote.
-    const hostStripped = /^https?:\/\/[^/]+(\/api\/v1\/files\/generated\/.+)$/i.exec(href)
-    const safeHref = hostStripped ? hostStripped[1] : href
+    const safeHref = sameOriginFilePath(href)
 
     let extra = ''
     try {
@@ -447,14 +461,41 @@ const customRenderer = {
     // Detection is by the link label's extension (the URL itself carries only
     // a UUID). Clicking the image opens it full-size in a new tab.
     const labelText = innerHtml.replace(/<[^>]*>/g, '').trim()
-    const isFileApi = /^\/api\/v1\/(files|chat\/files)\//.test(safeHref)
+    const isFileApi = FILE_API_PATH_RE.test(safeHref)
     if (isFileApi && /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(labelText)) {
       const alt = escapeHtml(labelText)
-      return `<img src="${escapeHtml(safeHref)}" alt="${alt}"`
-        + ` class="markdown-generated-image" data-generated-image="1"${titleAttr} />`
+      return `<img src="${GENERATED_IMAGE_PLACEHOLDER}" alt="${alt}"`
+        + ` class="markdown-generated-image" data-generated-image="1"`
+        + ` data-generated-src="${escapeHtml(safeHref)}"${titleAttr} />`
     }
 
     return `<a href="${escapeHtml(safeHref)}"${titleAttr}${extra}>${innerHtml}</a>`
+  },
+
+  /**
+   * Images written as markdown (`![chart.png](url)`) never reach {@link link},
+   * so before this override a tool-generated picture written that way was
+   * emitted as a bare `<img>` pointing at the URL the model echoed. Two failure
+   * modes came from that, and both are fixed here:
+   *   - the generated-file endpoint requires auth, and a plain `<img>` sends no
+   *     `Authorization` header → 401 and a broken picture;
+   *   - the echoed URL carried the server's own host (`http://localhost:18080`),
+   *     which any other machine resolves against ITSELF → never loads.
+   * Same-origin file-API images now go through the authenticated blob loader
+   * (the loader scans `img[data-generated-image]`), with the real path in
+   * `data-generated-src`. Everything else keeps marked's default rendering.
+   */
+  image({ href, title, text }: Tokens.Image): string {
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : ''
+    const alt = escapeHtml(text || '')
+    const src = sameOriginFilePath(href || '')
+    if (!FILE_API_PATH_RE.test(src)) {
+      return `<img src="${escapeHtml(href || '')}" alt="${alt}"${titleAttr} />`
+    }
+    const label = alt || escapeHtml(src.split('/').pop() || '')
+    return `<img src="${GENERATED_IMAGE_PLACEHOLDER}" alt="${label}"`
+      + ` class="markdown-generated-image" data-generated-image="1"`
+      + ` data-generated-src="${escapeHtml(src)}"${titleAttr} />`
   },
 }
 

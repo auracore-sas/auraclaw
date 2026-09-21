@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildGeneratedFileNameMap, isSafeFileUrl, linkifyGeneratedFileUrls } from '../generatedFileLinks'
+import {
+  buildGeneratedFileNameMap,
+  isSafeFileUrl,
+  linkifyGeneratedFileUrls,
+  sameOriginFilePath,
+} from '../generatedFileLinks'
 
 const FILES = [
   { name: '智能体技术培训_红色版.pptx', url: 'http://localhost:55793/api/v1/files/generated/ac38623b-7ed8-41f5-a80a-1e6761240ae0' },
@@ -65,5 +70,21 @@ describe('linkifyGeneratedFileUrls', () => {
   it('short-circuits when there is nothing to do', () => {
     expect(linkifyGeneratedFileUrls('普通文本', names)).toBe('普通文本')
     expect(linkifyGeneratedFileUrls('有 url /api/v1/files/generated/abc', new Map())).toBe('有 url /api/v1/files/generated/abc')
+  })
+})
+
+describe('sameOriginFilePath', () => {
+  it('drops the host the server minted, keeping the file-API path', () => {
+    expect(sameOriginFilePath('http://localhost:18080/api/v1/files/generated/abc-1'))
+      .toBe('/api/v1/files/generated/abc-1')
+    expect(sameOriginFilePath('https://mateclaw.example.com/api/v1/chat/files/xyz?v=2'))
+      .toBe('/api/v1/chat/files/xyz?v=2')
+  })
+
+  it('leaves same-origin paths and external URLs untouched', () => {
+    expect(sameOriginFilePath('/api/v1/files/generated/abc-1')).toBe('/api/v1/files/generated/abc-1')
+    expect(sameOriginFilePath('https://example.com/logo.png')).toBe('https://example.com/logo.png')
+    expect(sameOriginFilePath('')).toBe('')
+    expect(sameOriginFilePath(undefined)).toBe('')
   })
 })

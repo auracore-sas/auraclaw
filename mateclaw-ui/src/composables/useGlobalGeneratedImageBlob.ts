@@ -1,5 +1,6 @@
 import { onBeforeUnmount, onMounted } from 'vue'
 import { fetchAuthenticatedBlob } from '@/api/index'
+import { sameOriginFilePath } from '@/utils/generatedFileLinks'
 
 const GENERATED_IMAGE_RE = /^\/api\/v1\/files\/generated\//
 
@@ -19,8 +20,12 @@ export function useGlobalGeneratedImageBlob() {
 
   async function loadImage(img: HTMLImageElement) {
     if (img.dataset.generatedImageLoaded === '1' || img.dataset.generatedImageLoading === '1') return
-    const original = img.dataset.generatedSrc || relativeFilePath(img.getAttribute('src') || '')
-    if (!original) return
+    // Normalise first: callers may hand us the absolute URL the server minted
+    // (`http://localhost:18080/...`), which a browser would resolve against
+    // itself — on any other machine the picture silently never loaded.
+    const declared = img.dataset.generatedSrc || img.getAttribute('src') || ''
+    const original = relativeFilePath(declared) || sameOriginFilePath(declared)
+    if (!original || !relativeFilePath(original)) return
     img.dataset.generatedSrc = original
     img.dataset.generatedImageLoading = '1'
     try {
