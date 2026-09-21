@@ -1,7 +1,7 @@
 # NEXT_SESSION.md — Resumen de la sesión y pendientes
 
 > Documento de contexto para retomar el trabajo en la siguiente sesión.
-> Última sesión: 13ª (2026-09-19 → 2026-09-21) · Rama: `main` (**base v2.2.0**, tag `v2.2.0-mc.1`) · Fork: `auracore-sas/auraclaw`
+> Última sesión: 14ª (2026-09-21) · Rama: `main` (**base v2.2.0**, tag `v2.2.0-mc.1`) · Fork: `auracore-sas/auraclaw`
 > **Sesión 2026-08-21 (2ª): completados P1 (docs es), P4/P5 (prompts + marcadores), pruebas de regresión, y corrección del matiz de memoria.**
 > **Sesión 2026-08-21 (3ª): P2 completado (OmniRoute) + verificación visual P4/P5 con 3 fixes de renderizado bilingüe en frontend.**
 > **Sesión 2026-08-21 (4ª): P7 completado (inmersión en el código) → nuevo `docs/CODE_MAP.md` (7 módulos del núcleo mapeados).**
@@ -23,6 +23,157 @@
 > **Sesión 2026-09-16 (12ª-b): fix del falso "evidencia insuficiente" del Wiki (bug del upstream #334, presente también aquí) — portado a `main` desde la rama de v2.2.0 y verificado en vivo.** Detalle abajo.
 > **Sesión 2026-09-16 (12ª-c): runbook de canal de Telegram por miembro (opción A) + protocolo de pruebas en `AGENTS.md` + cierre. Queda PENDIENTE PROBAR TELEGRAM como gate para declarar v2.2.0 listo para producción.** Detalle abajo.
 > **Sesión 2026-09-19 → 2026-09-21 (13ª): plan de integración de Pi (F0, 10 documentos) + cierre de la deuda de CI/desktop (checker de Snowflake, empaquetado Linux/Windows) + adopción de v2.2.0 en `main` con tag `v2.2.0-mc.1`.** Detalle abajo.
+> **Sesión 2026-09-21 (14ª): diagnóstico medido del bucle de agentes (241,5 s / 3 M tokens / 62 iteraciones en una pregunta simple) + capa de métricas sobre datos ya persistidos + spike de DSH verificado end-to-end (37–58 s / 9 iteraciones). Nueva carpeta `docs/agent-runtime/**` (7 documentos) y plan M0–M6.** Detalle abajo.
+
+---
+
+## ✅ Sesión 14ª (2026-09-21) — Diagnóstico del bucle de agentes y evaluación de DSH
+
+### 0. El detonante
+
+Prueba de usuario real: la pregunta *"investiga cuántas personas hay en el planeta y muéstrame una
+ gráfica de pastel de hombres vs mujeres"* tardó **241,5 s** (DeepSeek Flash) y **329,5 s**
+(GPT-5-mini). El mismo prompt y el mismo modelo DeepSeek Flash en un harness directo (Pi): **~9 s**.
+
+**El modelo quedó descartado como causa** (p50 2.068 ms por llamada; el sistema lo llamó 64 veces).
+
+### 1. Diagnóstico medido — `docs/agent-runtime/01` y `02`
+
+| | DeepSeek Flash | GPT-5-mini |
+|---|---|---|
+| Turno / iteraciones / tool calls | 241,5 s · **62** · 70 | 329,5 s · **29** · 29 |
+| Tiempo en LLM vs herramientas | 142,3 s (59 %) · **86,3 s (36 %)** | **293,1 s (89 %)** · 17,5 s |
+| Tokens de entrada | **3.007.919** | **1.030.302** |
+
+**5 causas raíz**, todas con `archivo:línea`:
+
+1. **El bucle no converge** — 29 navegaciones, **10 con 404**, `worldometers.info/world-population/`
+   abierta **5 veces**; 28 `eval`, 2 de ellos devolviendo 2 caracteres.
+2. **`ToolLoopGuard` no lo ve** — **0 avisos** en toda la corrida: `browser_use` no está en
+   `IDEMPOTENT_TOOLS` (`:67`), un `title=404` no cuenta como fallo (`isFailure`, `:181`), y el
+   no-progreso exige hash idéntico **y consecutivo**.
+3. **La compactación borra la evidencia** — `KEEP_RECENT_TOOL_RESPONSES = 3` hardcodeado
+   (`ReasoningNode.java:140`); `Aged-compacted 60 tool response entries (keepRecent=3)`; el
+   placeholder dice literalmente *"can be called again if its result is needed"*. Y
+   `buildInformativeCleared()` (`ConversationWindowManager.java:1152`) **existe sin usarse**.
+4. **117 herramientas en cada llamada** — `toolSchemas=33222` tokens; las **38 filas de `mate_tool`
+   están todas en `disclosure_tier='core'`** → el progressive disclosure es un no-op.
+5. **`max_iterations = 100`** en los 4 agentes (tres migraciones subiendo el mismo número: V47/V48/V124).
+
+**Hallazgos colaterales de la misma sesión** (aparecieron al mirar datos que no buscábamos):
+
+- Los **turnos de seguimiento del mismo chat fueron rápidos** (18,2 s / 6,9 s / 23,8 s) → el coste
+  patológico está en el **primer turno de investigación**, no en el caso normal.
+- ⚠️ **Regresión de idioma**: un turno respondió **íntegramente en chino** en un producto es-ES.
+  Es un fallo de producto, no un matiz (no confundir con el parsing bilingüe de marcadores).
+- **El agente niega capacidades reales de la plataforma** (dijo que no podía mostrar una imagen
+  inline cuando la UI sí lo hace) → ver M6.
+
+### 2. Hallazgo que abarata el arreglo: la materia prima **ya está en la BD**
+
+No hay que instrumentar nada. Ya persistido: `mate_message.metadata.segments[]` (con `type`,
+`toolName`, `toolArgs`, `toolResult`, `toolSuccess`, `timestamp`), las columnas de tokens, y
+`mate_usage_daily` (que **ya trae `tool_call_count`**).
+
+Demostrado: reconstruyendo el turno **desde la BD sola** se obtienen **239,0 s** (real 241,5 s, −1 %)
+y **318,2 s** (real 329,5 s, −3,4 %); y `browser_use` aparece con **59 llamadas y solo 52 argumentos
+distintos → 7 repeticiones exactas**, que es el detector de bucles funcionando sobre datos existentes.
+
+→ Lo que falta es **agregar, mostrar y poner umbral**, no capturar.
+
+### 3. Spike de DSH — `docs/agent-runtime/03` y `04`
+
+DSH (`deepseek-ai/deepseek-harness`) es **MIT, 232.285 ★, 60 paquetes**, y su server JSON-RPC es un
+**perfil** (`dsh --profile sdk`). Compila en **~5,5 min**.
+
+**3 desajustes doc↔realidad** (los tres verificados):
+
+1. El artefacto que la doc del upstream exige (`dsh-jsonrpc-agent-pkg-<platform>`) **no existe**: el
+   build real es `scripts/build-exe-for-python-sdk.ts` (+ `pkg --sea`) y produce
+   `dist-exe/deepseek-harness-sdk-runtime-<platform>-<arch>`. `pnpm run build` **no genera `dist-exe/`**.
+2. **`DSH_CORDIS_CONFIG` no lo lee DSH** (0 referencias en los 60 paquetes): es un contrato del
+   wrapper propio del upstream.
+3. El **auto-instalador es imposible**: exige un asset `*macos*arm64*` con `sha256:` y los **18
+   releases tienen 0 assets**.
+
+**Vía corta que SÍ funciona** (cero código Java):
+
+```
+DSH_JSONRPC_AGENT="/usr/bin/node …/apps/cli/lib/bin.js --profile sdk --patch /ruta/llm-deepseek.patch.yml"
+```
+
+El patch monta `@deepseek-ai/dsh-llm-deepseek` (el `dsh-base` monta la extensión pero **no el
+adaptador**). Handshake verificado: `serverInfo.name = deepseek-harness-sdk-runtime`. Y el `provider`
+que AuraClaw manda hardcodeado (`deepseek-official`) **coincide exactamente** con el `PROVIDER` de
+`llm-deepseek` → **el puente de AuraClaw está bien escrito**; lo que faltaba era la composición.
+
+**Test end-to-end, misma pregunta y mismo modelo:** **37–58 s, 9 iteraciones, 15 tool calls** (vs 241 s
+/ 62 / 70 del nativo), con **respuesta mejor documentada** (4 fuentes, UN WPP 2024). Además DSH trae
+`permission/preset`, `sandbox/mode` y `approval/policy` de fábrica.
+
+**Defecto que bloquea usarlo como empleado:** `DshRuntimeService.java:245` genera
+`conversationId + "-" + UUID.randomUUID()` **por turno** y (`:296`) envía **solo el mensaje actual**
+→ **sin memoria entre turnos**. La versión con historial (40 msgs / 4096 tokens) que describe el doc
+ del upstream **no está en nuestro `main`** (re-verificado en código).
+
+### 4. El hallazgo que unifica los tres motores
+
+Ni DSH ni Pi ven la wiki, la memoria, la BD ni Telegram. Evidencia: `DshToolDispatcher`,
+`DshToolCatalog`, `DshToolPolicyEvaluator` y compañía son **código muerto** (solo se referencian a sí
+mismos y a sus tests; cero llamadores en `src/main`), y **AuraClaw no tiene servidor MCP** (`ls
+…/vip/mate/mcp/` no existe; solo `skill/mcp` y `tool/mcp`, de consumo). El doc del upstream lo dice:
+*"DSH as the employee runtime, **MCP as the tool layer**"*.
+
+→ **La decisión crítica no es DSH vs Pi: es el puente de tools.** Se propone un **servidor MCP**
+(opción A de `04` §4) con superficie mínima: memoria, wiki, artefactos, Telegram, consulta de datos
+(solo lectura).
+
+### 5. Punto de vista registrado: ¿construir una plataforma nueva?
+
+Se midió el cuerpo para responder con números, no con retórica: **1.460 archivos Java / 233.739
+líneas, 613 endpoints, 43 controllers, 205 `.vue`, 185 migraciones × 3 dialectos, 33+ tablas, 9
+canales IM, 14.430 líneas de i18n, 732 archivos de test**. **Y la evidencia de que el problema no es
+el cuerpo:** lo roto son 5 defectos del bucle. Conclusión registrada en `README` §1–4: conservar el
+cuerpo, cambiar/arreglar el cerebro, y **añadir medición** — porque *"paso a paso y bien probado"* es
+exactamente lo que produjo los `V47/V48/V124` y un guard con 0 avisos sobre 62 iteraciones.
+
+### 6. Entrega
+
+- **`docs/agent-runtime/**` — 7 documentos nuevos**: `README` + `01-diagnostico-bucle-agente`,
+  `02-metricas-y-presupuestos`, `03-evaluacion-dsh`, `04-comparativa-runtimes`,
+  `05-plan-de-mejoras`, `06-reproduccion-y-entorno`.
+- **`docs/CUSTOMIZATIONS.md`** — fila nueva con la carpeta, los 3 desajustes de DSH y el manejo de
+  conflicto (incluida la advertencia de que **M2 y M3 tocan código del upstream** y necesitarán su
+  propia fila al implementarse).
+- **Premisas corregidas** de `docs/pi-integration`: `05` §1 y `08` dan F3 por **bloqueado** por el
+  merge de v2.2.0 — pero el contrato, el paquete `dsh/` y la migración `V186` **ya están en `main`**.
+
+### 7. Pendientes (plan M0–M6, `docs/agent-runtime/05`)
+
+| Fase | Qué | Nota |
+|---|---|---|
+| **M0** | Config: `max_iterations` 100 → 15; `mate_tool` de `core` a `extension`; presupuesto de esquemas | SQL, sin código. Depende de M2 para no cortar sin converger |
+| **M1** | Telemetría + presupuesto por turno sobre los datos ya persistidos | La inversión que evita la recaída |
+| **M2** | `browser_use` en `IDEMPOTENT_TOOLS`; 404 como fallo; no-progreso por `tool+args`; compactación | **Código del upstream** → fila propia en `CUSTOMIZATIONS.md` |
+| **M3** | Historial en el puente DSH + agente piloto `runtime_type='dsh'` | **Código del upstream** |
+| **M4** | Puente de tools MCP | El que da acceso a wiki/memoria/BD/Telegram |
+| **M5** | Política de aprobación por clase de herramienta | Decisión de producto |
+| **M6** | Conciencia de capacidades del canal | Prompt |
+
+**Antes de empezar:** congelar la línea base de `conv_1790029096976_tsdw26` y
+`conv_1790028986606_53abf0` como referencia inmutable (protocolo A/B en `06` §5).
+
+⚠️ **Los artefactos del spike están en `/tmp`** (`/tmp/dsh-spike/`, `/tmp/dsh-llm.patch.yml`,
+`/tmp/dsh-e2e2.py`): **se pierden al reiniciar**. Mover el patch y el driver a un sitio versionado si
+se va a repetir.
+
+### 8. Verificaciones hechas (sin ejecutar la suite de tests)
+
+Conteos y métricas sobre logs reales del contenedor y sobre la BD viva; build completo de DSH;
+handshake JSON-RPC y turno completo con DeepSeek real; SQL de reconstrucción del turno desde
+`metadata.segments`; `grep` de confirmación de que `DSH_CORDIS_CONFIG` no aparece en DSH y de que
+`DshToolDispatcher` no tiene llamadores. **No se ejecutó la suite de tests de AuraClaw** (no hubo
+cambios de código).
 
 ---
 
