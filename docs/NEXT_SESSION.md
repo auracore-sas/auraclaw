@@ -1,7 +1,7 @@
 # NEXT_SESSION.md — Resumen de la sesión y pendientes
 
 > Documento de contexto para retomar el trabajo en la siguiente sesión.
-> Fecha de la sesión: 2026-08-21 · Rama: `main` (base v2.1.0) · Fork: `auracore-sas/auraclaw`
+> Última sesión: 13ª (2026-09-19 → 2026-09-21) · Rama: `main` (**base v2.2.0**, tag `v2.2.0-mc.1`) · Fork: `auracore-sas/auraclaw`
 > **Sesión 2026-08-21 (2ª): completados P1 (docs es), P4/P5 (prompts + marcadores), pruebas de regresión, y corrección del matiz de memoria.**
 > **Sesión 2026-08-21 (3ª): P2 completado (OmniRoute) + verificación visual P4/P5 con 3 fixes de renderizado bilingüe en frontend.**
 > **Sesión 2026-08-21 (4ª): P7 completado (inmersión en el código) → nuevo `docs/CODE_MAP.md` (7 módulos del núcleo mapeados).**
@@ -19,14 +19,74 @@
 > **Sesión 2026-09-01 (10ª-b): conexión MCP PowerFin operativa — proxy bridge por GET 405 + negociación de versión; fix de loop del agente (structuredContent descartado) y schemas en el caché. Desplegado y verificado en vivo.** Detalle abajo.
 > **Sesión 2026-08-27 (9ª-g): Token Usage acotado por usuario (mismo patrón del Panel) — desplegado y verificado.** Detalle abajo.
 > **Sesión 2026-09-15 (11ª): release `v2.1.0-mc.2` (38 commits sin tag) + presupuesto de disclosure persistido en `docker-compose.yml` + CI/CD (P6) creado — que a su vez destapó y corrigió 12 fallos de test nuestros.** Detalle abajo.
-> **Sesión 2026-09-15 (12ª): adopción del upstream v2.2.0 en rama `feature/upstream-v2.2.0` — merge desde el commit de release de `dev` (4 conflictos, no 313), 5 arreglos, suite completa 5022 tests verde y despliegue en vivo con Flyway out-of-order. Pendiente: mergear a `main`.** Detalle arriba.
-> Rama `feature/upstream-v2.2.0`. **Pendiente de decisión: mergear a `main` + tag `v2.2.0-mc.1`.**
+> **Sesión 2026-09-15 (12ª): adopción del upstream v2.2.0 en rama `feature/upstream-v2.2.0` — merge desde el commit de release de `dev` (4 conflictos, no 313), 5 arreglos, suite completa 5022 tests verde y despliegue en vivo con Flyway out-of-order. Pendiente: mergear a `main`.** Detalle abajo.
 > **Sesión 2026-09-16 (12ª-b): fix del falso "evidencia insuficiente" del Wiki (bug del upstream #334, presente también aquí) — portado a `main` desde la rama de v2.2.0 y verificado en vivo.** Detalle abajo.
 > **Sesión 2026-09-16 (12ª-c): runbook de canal de Telegram por miembro (opción A) + protocolo de pruebas en `AGENTS.md` + cierre. Queda PENDIENTE PROBAR TELEGRAM como gate para declarar v2.2.0 listo para producción.** Detalle abajo.
-> Portado a `main` con `cherry-pick` desde `feature/upstream-v2.2.0` (commits `ed00c36f` y `f534099b`).
-> **No es una regresión de v2.2.0: el bug existe también en v2.1.0.**
+> **Sesión 2026-09-19 → 2026-09-21 (13ª): plan de integración de Pi (F0, 10 documentos) + cierre de la deuda de CI/desktop (checker de Snowflake, empaquetado Linux/Windows) + adopción de v2.2.0 en `main` con tag `v2.2.0-mc.1`.** Detalle abajo.
 
 ---
+
+## ✅ Sesión 13ª (2026-09-19 → 2026-09-21) — Pi F0, deuda de CI/desktop y adopción de v2.2.0
+
+### 1. Plan de integración de Pi — F0 (2026-09-19)
+
+**Decisión:** Pi **no sustituye** a AuraClaw, se integra **dentro**. AuraClaw es el *cuerpo empresarial*
+(usuarios, RBAC, audit, aprobaciones, canales, Wiki, memoria, documentos, i18n español); Pi es el
+*motor* para lo que el grafo de agentes no debe intentar solo: informes con gráficas, vídeo, análisis
+de datos y ficheros complejos vía bash arbitrario.
+
+- **Entregable:** `docs/pi-integration/**` — 10 documentos, ~1.630 líneas. Orden de lectura recomendado: 01 → 03 → 04 → 06 → 07 → 08.
+- **Reglas de la integración:** código propio en `com.auracore.*`; la base va por el **registro de tools** (Módulo 3 de `CODE_MAP.md`), **no** por el grafo (`AgentGraphBuilder`/`*Node` = superficie caliente de merges); cada cambio se registra en `CUSTOMIZATIONS.md`; nada de secretos en prompt/args/logs; verificación funcional en vivo antes de declarar algo "listo".
+- **Camino A** (`pi_worker`: tool + sandbox de contenedor + skill `informe-ejecutivo`): **puede empezar ya** (fases F1/F2).
+- **Camino B** (`PiAgentRuntimeProvider` sobre el contrato `AgentRuntimeProvider`): estaba bloqueado por v2.2.0 → **desbloqueado por el merge de hoy** (fase F3, después de F1/F2).
+- Registrado en `CUSTOMIZATIONS.md` con su manejo de conflicto (carpeta aditiva = sin conflicto).
+
+### 2. Deuda de CI/desktop cerrada (2026-09-21)
+
+| Pendiente de la sesión 11ª | Resolución |
+|---|---|
+| `check-snowflake-precision.sh` no existía → `pnpm run build`/`lint` rotos de fábrica | **✅ Portado verbatim del upstream v2.3.0**: `mateclaw-ui/scripts/check-snowflake-precision.{mjs,sh}` + 3 líneas de `package.json`. Verificado: `✓ Snowflake ID precision check: clean`. Las líneas de script y los dos archivos son **idénticos** al tag `v2.3.0` y al release commit `a2f35f7c` de `dev` → merge limpio con cualquiera de los dos |
+| Empaquetado Windows/Linux imposible (`download-jre.sh` era solo-macOS) | **✅ Reescrito**: matriz mac/linux/win × x64/arm64, autodetección de OS+arch, `tar.gz` vs `zip`, layout por plataforma (mac conserva `Contents/Home`), symlink `win32-x64` para modo dev, `--dry-run`, `JRE_DIR=`. Validado con descargas reales de Temurin 21.0.12.1 |
+| `build-all-platforms.sh` no construía el frontend ni descargaba el JRE (empaquetaba `dist-electron/` obsoleto) | **✅ Reescrito**: pipeline documentada (JAR → JRE por plataforma → frontend → electron-builder) + `--local|--remote` × `--mac-only|--win-only|--linux-only|--all-platforms`; en `--remote` omite JAR y JRE |
+| `package:linux` inexistente (el target AppImage ya estaba en `electron-builder.cjs`) | **✅ Añadidos** `package:linux`, `package:linux:local`, `package:linux:remote` + `scripts/README.md` actualizado |
+| Job `desktop` del CI sin validar | **⚠️ Parcial**: siguen **sin validar**, pero ahora existen jobs manuales `desktop-linux` (ubuntu-latest/AppImage) y `desktop-windows` (windows-latest/NSIS) que **sí se pueden** ejecutar (antes eran imposibles con el script macOS-only). El primer `workflow_dispatch` con su flag es el que los valida |
+| 8 fallos de test de UI = deuda del upstream | **⏳ Sin cambios**: las 4 exclusiones siguen vigentes. Dato nuevo: en v2.3.0 el upstream editó 2 de esos 4 archivos **y sus fuentes** (`TeamRun*.vue`, `teamRunAttentionHandlers.ts`) → revisar al adoptar v2.3.0 (anotado en `vitest.config.ci.ts`) |
+
+**Verificaciones hechas (sin ejecutar ninguna suite de tests):** checker en verde; descargas reales de JRE
+(linux-x64, linux-arm64, win-x64) con layout correcto y `bin/java` ejecutable; las 6 URLs de Adoptium
+responden 200; resolución de targets de `download-jre.sh` con `--dry-run`; `ci.yml` parsea como YAML
+(5 jobs, 3 inputs); `bash -n` sobre los dos scripts.
+
+### 3. Adopción de upstream v2.2.0 en `main` — tag `v2.2.0-mc.1`
+
+- `git merge feature/upstream-v2.2.0` (44 commits, punta `0a583d65`) → **2 conflictos, ambos en NUESTROS docs** (`CUSTOMIZATIONS.md` y `NEXT_SESSION.md`), resueltos conservando **las filas de ambos lados** (la rama traía las suyas de la sesión 12ª; `main` las de 12ª-b/12ª-c). `rerere` grabó las dos resoluciones.
+- **0 archivos borrados** y **delta vs la rama verificada = 23 archivos, ninguno de Java** (docs, Pi, CI, scripts de desktop, `package.json`) → el código Java es exactamente el que ya pasó **5.025 tests** en la rama. Por eso **no se re-corrió la suite completa** (además el usuario lo pidió expresamente para esta sesión).
+- Verificación pre-push: `mvn -q test-compile -pl mateclaw-server -am` con JDK 21 → **OK**.
+- ⚠️ **El stack Docker ya corría v2.2.0**, así que el despliegue iba por delante de `main`; ahora `main` lo alcanza. El delta no toca Java → **no hace falta reconstruir la imagen**.
+- **Upstream ya publicó v2.3.0** (tag `472d184d`, 2026-09-20): su commit de release **es un squash** de todo el trabajo de `dev` — **369 archivos / +21.330 líneas en un solo commit**. Para mergearlo hay que usar el release commit de `dev` (`a2f35f7c`), no el tag, por la misma razón que con v2.2.0 (ver `AGENTS.md` §5.1).
+
+### Estado al cerrar la sesión (2026-09-21)
+
+| Elemento | Estado |
+|---|---|
+| `main` | merge de `v2.2.0` + tag `v2.2.0-mc.1`, sincronizado con `origin/main` |
+| `feature/upstream-v2.2.0` | ya integrada en `main` (se conserva como referencia histórica) |
+| Contenido de `main` | **v2.2.0** + todas nuestras personalizaciones (marcadores bilingües, i18n/docs es, V900+, branding) |
+| Stack Docker | corriendo v2.2.0 (misma base que `main`); rollback: imagen `mateclaw-mateclaw-server:pre-v220` |
+| Suite (Java) | 5.025 tests verdes en la rama integrada; el delta del merge no toca Java → no se re-corrió |
+| `test-compile` | ✅ JDK 21 |
+| Pendiente bloqueante | **probar Telegram** (ahora `main` = v2.2.0) |
+| Upstream nuevo | **v2.3.0** (369 archivos en un squash) — adopción aparte, no gratuita |
+
+### Errores/lecciones de esta sesión
+- **Un `git merge` sobre un archivo de documentación propio puede duplicar líneas de contexto**: al resolver
+  `NEXT_SESSION.md` conservando "ambos lados", mi script recogió TODAS las líneas `> …` del bloque en
+  conflicto (no solo las de la cabecera) y movió 3 citas internas a la lista de sesiones. **Lección:** en
+  conflictos de docs, resolver a mano o verificar el resultado leyendo la zona afectada, no solo que no
+  queden marcadores `<<<<<<<`.
+- **`git diff --stat <rama> HEAD | tail -N` trunca por ARRIBA**: casi me hizo concluir que el merge había
+  perdido `.github/workflows/ci.yml`. Comparar siempre el conteo total (`--name-only | wc -l`) antes de sacar conclusiones.
+
 
 ## ✅ Sesión 12ª (2026-09-15) — Adopción de upstream **v2.2.0** (spike verificado, en rama)
 
@@ -630,7 +690,7 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 
 ### 🔴 BLOQUEANTE — Probar Telegram (única cosa que falta para declarar v2.2.0 listo para producción)
 
-**Estado**: v2.2.0 está mergeado en `feature/upstream-v2.2.0` (pusheada), **desplegado y corriendo en el stack Docker**, con la suite completa verde (5025 tests) y el fix del Wiki verificado en vivo. Lo único sin ejercitar es **Telegram**, que es justo donde más personalizamos.
+**Estado**: v2.2.0 es ya la base de `main` (tag `v2.2.0-mc.1`, sesión 13ª), **desplegado y corriendo en el stack Docker**, con la suite completa verde (5.025 tests) y el fix del Wiki verificado en vivo. Lo único sin ejercitar es **Telegram**, que es justo donde más personalizamos.
 
 **Por qué es el gate**: upstream reescribió archivos donde inyectamos lógica (`ReasoningNode` +173 líneas, `ChatController` +178) y tocó código de canales. Los tests cubren piezas unitarias, **no el flujo real de un mensaje**.
 
@@ -645,10 +705,15 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 
 **Sinergia**: hacer estas pruebas configurando el canal de un miembro (`pvalarezo` o `ebermeo`) valida **dos cosas a la vez**: el canal de Telegram y el runbook de `docs/TELEGRAM_PER_MEMBER.md`.
 
-### Decisión pendiente — adoptar v2.2.0 en `main`
-- La rama `feature/upstream-v2.2.0` está verificada y pusheada pero **NO mergeada**: `main` sigue en v2.1.0.
-- Pasos cuando se decida: re-correr la suite de la rama limpia (una corrida se invalidó por corrupción del H2), `git checkout main && git merge feature/upstream-v2.2.0`, tag `v2.2.0-mc.1`, push.
-- ⚠️ El **stack Docker ya corre v2.2.0** → hoy el despliegue va por delante de `main`. Rollback disponible: imagen `mateclaw-mateclaw-server:pre-v220`.
+### ✅ RESUELTO (13ª, 2026-09-21) — v2.2.0 adoptado en `main`
+- `feature/upstream-v2.2.0` está **mergeada en `main`** con el tag **`v2.2.0-mc.1`**. Detalle del merge (2 conflictos de docs, 0 archivos borrados, delta de 23 archivos sin Java) en la **sesión 13ª** de este documento.
+- El stack Docker ya corría v2.2.0, así que el despliegue dejó de ir por delante de `main`. Rollback disponible: imagen `mateclaw-mateclaw-server:pre-v220`.
+
+### 🔜 SIGUIENTE ADOPCIÓN — upstream v2.3.0 (ya publicado)
+- Tag `v2.3.0` = `472d184d` (2026-09-20) y su commit de release **es un squash de todo `dev`**: 369 archivos / +21.330 líneas. El release commit equivalente en `dev` es **`a2f35f7c`**.
+- Procedimiento: `AGENTS.md` §5.1, **usando el release commit de `dev`** (`git log --grep='^release: v2.3.0$' upstream/dev`), nunca el tag ni `upstream/main`. No es un merge gratuito: son ~21k líneas y toca nodos del grafo donde inyectamos lógica.
+- Antes de empezar: revisar si arregla los 8 fallos de test de UI excluidos en `vitest.config.ci.ts` (v2.3.0 edita 2 de esos 4 archivos) y si trae algún cambio en `mateclaw-desktop/scripts/` (nuestros dos scripts de empaquetado están reescritos).
+- Recordatorio: los tags propios se reinician → al integrar v2.3.0 el tag será **`v2.3.0-mc.1`**.
 
 ### De la sesión 7ª (2026-08-24) — datos/Postgres
 - ~~**Persistir ajuste de disclosure en el repo**~~ → **✅ RESUELTO en la sesión 11ª (2026-09-15)**: las dos vars viven ahora en `docker-compose.yml` (commiteado) con defaults 40000 / 0.30, verificado con `docker compose config` y en vivo (`toolSchemas=32774` < 40000, **0 degradaciones**). El ratio pasó al nombre canónico `MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO` (el alias `MATECLAW_TOOL_SCHEMA_RATIO` se retiró de `.env`)
@@ -658,8 +723,8 @@ El usuario necesitaba que AuraClaw (Docker) consultara su **Postgres local del h
 - **PowerFin estaba caído** (2026-09-15): el MCP queda `error` al arrancar (`Connection refused` a `localhost:8080`) — **no es regresión**, el proxy (8090) responde 502 correctamente. Para probar MCP hay que levantar primero PowerFin y luego reiniciar el server (o esperar al reconnect)
 
 ### Nuevos pendientes detectados en la sesión 11ª (2026-09-15)
-- **El job `desktop` del CI no está validado end-to-end** — `pnpm run package:mac` + JRE embebido solo se ha escrito, nunca ejecutado en un runner. Además `mateclaw-desktop/scripts/download-jre.sh` es **solo macOS** (URL de Adoptium con `/mac` hardcodeado) → empaquetar para Windows/Linux necesitaría extender ese script
-- **`scripts/check-snowflake-precision.sh` NO existe** (ni en upstream v2.1.0), pero `mateclaw-ui/package.json` lo invoca en `build` y `lint` → `pnpm run build` y `pnpm run lint` están rotos de fábrica. El invariante de Snowflake 64-bit sí está cubierto por vitest (`messageMetadata`, `useTeamRunHistory`, `agentPickerLogic`). Opciones: (a) recrear el script (grep de patrones de truncado) y hacer que `build`/`lint` funcionen, o (b) quitar la referencia muerta del `package.json` (customización del upstream, registrar). **Decidir con el usuario**
+- ~~**El job `desktop` del CI no está validado end-to-end**~~ → **⚠️ sigue sin validar** (13ª): `download-jre.sh` ya soporta Linux y Windows, así que los jobs manuales `desktop-linux`/`desktop-windows` existen y son ejecutables; falta el primer `workflow_dispatch`. Detalle original: — `pnpm run package:mac` + JRE embebido solo se ha escrito, nunca ejecutado en un runner. Además `mateclaw-desktop/scripts/download-jre.sh` es **solo macOS** (URL de Adoptium con `/mac` hardcodeado) → empaquetar para Windows/Linux necesitaría extender ese script
+- ~~**`scripts/check-snowflake-precision.sh` NO existe**~~ → **✅ RESUELTO (13ª)**: portado el checker del upstream v2.3.0 a `mateclaw-ui/scripts/check-snowflake-precision.mjs` (+ `.sh`), con las 3 líneas de `package.json`; `✓ clean` sobre el árbol actual. Detalle original: (ni en upstream v2.1.0), pero `mateclaw-ui/package.json` lo invoca en `build` y `lint` → `pnpm run build` y `pnpm run lint` están rotos de fábrica. El invariante de Snowflake 64-bit sí está cubierto por vitest (`messageMetadata`, `useTeamRunHistory`, `agentPickerLogic`). Opciones: (a) recrear el script (grep de patrones de truncado) y hacer que `build`/`lint` funcionen, o (b) quitar la referencia muerta del `package.json` (customización del upstream, registrar). **Decidir con el usuario**
 - **8 fallos de test de UI son deuda del upstream** (4 archivos excluidos en `vitest.config.ci.ts`): `product-cards`, `streaming-render`, `teamRunComponents`, `teamRunProjectionPrimitives`. Verificado que fallan igual en `v2.1.0` limpio. Revisar si upstream los arregla en la próxima versión estable y quitar las exclusiones
 - **La suite del server son 4794 tests / ~15 min** en 8 cores → en runners de GitHub será bastante más. Si el consumo de minutos se vuelve un problema: sharding por paquetes o mover el suite completo a nightly dejando un subconjunto rápido en push
 
