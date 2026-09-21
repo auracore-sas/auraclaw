@@ -283,6 +283,9 @@ export default {
       showAuxiliary: '显示中间文件（{count}）',
       hideAuxiliary: '隐藏中间文件',
       versions: '{count} 个版本',
+      expired: '已过期',
+      expiredHint: '生成文件保留 7 天；请让助手重新生成',
+      expiredTitle: '已过期的链接（超过 7 天）',
       reason: {
         cited: '已在最终回答中引用',
         deliveryTool: '由交付类工具生成',

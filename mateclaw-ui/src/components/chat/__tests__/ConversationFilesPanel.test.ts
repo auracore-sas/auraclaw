@@ -24,12 +24,18 @@ function message(partial: Partial<Omit<Message, 'metadata'>> & { metadata?: any 
   } as Message
 }
 
+// Relative timestamps: the panel derives the "expired" label from the turn
+// date, so a hardcoded date would make these tests expire with time.
+function hoursAgo(hours: number): string {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
+}
+
 const deliverable = 'Informe_Ventas.pdf'
 const intermediate = 'g4_surtidor.png'
 
 const deliverableTurn = message({
   id: 741,
-  createTime: '2026-09-21T14:32:00',
+  createTime: hoursAgo(2),
   content: `Informe listo: [${deliverable}](/api/v1/files/generated/pdf-cited)`,
   metadata: {
     generatedFiles: [
@@ -61,6 +67,9 @@ function mount(messages: Message[]) {
               showAuxiliary: 'Mostrar intermedios ({count})',
               hideAuxiliary: 'Ocultar intermedios',
               versions: '{count} versiones',
+              expired: 'caducado',
+              expiredHint: 'Los archivos generados se conservan 7 días',
+              expiredTitle: 'Enlaces caducados',
               reason: {
                 cited: 'Citado en la respuesta final',
                 deliveryTool: 'Generado por una herramienta de entrega',
@@ -175,6 +184,33 @@ describe('ConversationFilesPanel', () => {
     expect(link.getAttribute('target')).toBe('_blank')
     // The row explains why it is a deliverable.
     expect(link.getAttribute('title')).toBe('Citado en la respuesta final')
+  })
+
+  it('flags rows that are past the 7-day TTL without dropping them', async () => {
+    const stale = message({
+      id: 900,
+      createTime: hoursAgo(24 * 8),
+      content: 'informe viejo',
+      metadata: {
+        generatedFiles: [
+          { filename: 'Informe_viejo.pdf', url: `${URL_BASE}old-pdf`, toolName: 'send_file' },
+        ],
+      },
+    })
+    const host = mount([stale])
+
+    // The collapsed rail warns before the user even opens the list…
+    expect(host.querySelector('.conv-files__rail-badge.is-expired')?.textContent).toBe('1')
+
+    host.querySelector<HTMLButtonElement>('.conv-files__rail')!.click()
+    await nextTick()
+
+    const link = host.querySelector<HTMLAnchorElement>('.conv-files__file')!
+    expect(link.classList.contains('is-expired')).toBe(true)
+    expect(link.querySelector('.conv-files__expired')?.textContent).toBe('caducado')
+    // …but the row stays listed (traceability) and the link is untouched.
+    expect(link.getAttribute('href')).toBe(`${URL_BASE}old-pdf`)
+    expect(link.getAttribute('title')).toContain('Los archivos generados se conservan 7 días')
   })
 
   it('remembers the expanded state across mounts', async () => {

@@ -283,6 +283,9 @@ export default {
       showAuxiliary: 'Mostrar intermedios ({count})',
       hideAuxiliary: 'Ocultar intermedios',
       versions: '{count} versiones',
+      expired: 'caducado',
+      expiredHint: 'Los archivos generados se conservan 7 días; pide al asistente que lo genere de nuevo',
+      expiredTitle: 'Enlaces caducados (más de 7 días)',
       reason: {
         cited: 'Citado en la respuesta final',
         deliveryTool: 'Generado por una herramienta de entrega',

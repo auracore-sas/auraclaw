@@ -79,6 +79,20 @@ responden 200; resolución de targets de `download-jre.sh` con `--dry-run`; `ci.
 
 **Verificado:** `vue-tsc --noEmit` limpio · 11 + 5 tests nuevos verdes · los 2 tests que montan `ChatConsole` siguen verdes (30/30). **No se corrió la suite completa** (la corre el CI).
 
+**TTL de los archivos generados — 7 días (medido con datos reales, 2026-09-21):** al revisar el panel apareció el aviso *"Este archivo expiró o ya no está disponible"*. **Sí expiran de verdad**: `GeneratedFileCache.TTL = Duration.ofDays(7)` y la expiración se valida **en cada lectura** (`get(id)` → `expired()` → 404), además de un barrido cada 6 h. Medición sobre las 101 referencias de `metadata.generatedFiles` en la BD, comprobando existencia en el volumen:
+
+| Día del mensaje | Vivos / referenciados |
+|---|---|
+| 2026-08-21 | 0/4 |
+| 2026-08-24 | 0/1 |
+| 2026-08-27 | 0/4 |
+| 2026-09-02 | 0/2 |
+| 2026-09-16 | 3/3 |
+| 2026-09-17 | 37/37 |
+| 2026-09-18 | 50/50 |
+
+**90 vivas / 11 muertas**, corte exacto a 7 días → nada se perdió por el rebuild (`/app/data` es el volumen nombrado `mateclaw_server_data`, así que los bytes sobreviven a recrear el contenedor). Consecuencia de UX: el panel **marca los caducados** (badge en el riel + fila tachada, sin ocultarlos ni romper el enlace, por si el TTL cambiara).
+
 ⚠️ **Para verlo en el navegador hay que reconstruir la imagen Docker** (`docker compose build mateclaw-server && docker compose up -d mateclaw-server`): la UI se sirve desde dentro del JAR. **Pendiente de hacer.**
 
 ### Estado al cerrar la sesión (2026-09-21)
