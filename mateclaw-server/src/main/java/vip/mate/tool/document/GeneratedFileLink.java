@@ -28,8 +28,8 @@ public final class GeneratedFileLink {
                                   GeneratedFileCache cache, String typeLabel,
                                   @Nullable ToolContext ctx) {
         String url = stash(bytes, displayName, mimeType, cache, ctx);
-        return typeLabel + "已生成：[" + displayName + "](" + url + ")（链接 "
-                + GeneratedFileCache.TTL.toDays() + " 天内有效）。\n"
+        String validity = cache.neverExpires() ? "永久有效" : cache.ttl().toDays() + " 天内有效";
+        return typeLabel + "已生成：[" + displayName + "](" + url + ")（链接 " + validity + "）。\n"
                 + "重要：回答用户时**必须**使用上述 markdown 链接格式 [" + displayName + "](" + url + ")，"
                 + "保持链接地址**原样照抄**，**不要**用反引号包裹，**不要**增删任何域名或 http(s):// 前缀。";
     }
@@ -50,8 +50,10 @@ public final class GeneratedFileLink {
         String prefix = sourceFileCount > 1
                 ? typeLabel + " generated from " + sourceFileCount + " files"
                 : typeLabel + " generated";
-        return prefix + ": [" + displayName + "](" + url + ") (link valid for "
-                + GeneratedFileCache.TTL.toDays() + " days).\n"
+        String validity = cache.neverExpires()
+                ? " (link valid indefinitely).\n"
+                : " (link valid for " + cache.ttl().toDays() + " days).\n";
+        return prefix + ": [" + displayName + "](" + url + ")" + validity
                 + "IMPORTANT: when replying to the user you **must** keep the markdown link form ["
                 + displayName + "](" + url + ") above. Copy the URL verbatim — do **not** wrap it "
                 + "in backticks and do **not** add or remove any https://, http:// or domain.";

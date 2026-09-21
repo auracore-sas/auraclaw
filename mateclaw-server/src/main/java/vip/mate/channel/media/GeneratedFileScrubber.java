@@ -24,7 +24,7 @@ import java.util.regex.Matcher;
  *       put, so its absence here is proof the file was never generated
  *       this turn.</li>
  *   <li>The persisted entry was swept after its retention window
- *       ({@link GeneratedFileCache#TTL}) elapsed before the IM client
+ *       (the configured {@code mateclaw.generated-file.ttl}) elapsed before the IM client
  *       got around to clicking.</li>
  * </ol>
  * Without this rewrite, IM clients tap a markdown link that returns

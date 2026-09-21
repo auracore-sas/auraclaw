@@ -91,7 +91,7 @@ responden 200; resolución de targets de `download-jre.sh` con `--dry-run`; `ci.
 | 2026-09-17 | 37/37 |
 | 2026-09-18 | 50/50 |
 
-**90 vivas / 11 muertas**, corte exacto a 7 días → nada se perdió por el rebuild (`/app/data` es el volumen nombrado `mateclaw_server_data`, así que los bytes sobreviven a recrear el contenedor). Consecuencia de UX: el panel **marca los caducados** (badge en el riel + fila tachada, sin ocultarlos ni romper el enlace, por si el TTL cambiara).
+**90 vivas / 11 muertas**, corte exacto a 7 días → nada se perdió por el rebuild (`/app/data` es el volumen nombrado `mateclaw_server_data`, así que los bytes sobreviven a recrear el contenedor). **Decisión inmediata (misma sesión):** la caducidad es una **desventaja comercial** (regenerar cuesta otra corrida del modelo), así que el TTL dejó de ser una constante de 7 días y pasó a ser **configurable**: `mateclaw.generated-file.ttl` / `MATECLAW_GENERATED_FILE_TTL`, por defecto **365d** (`0` = nunca caducan). Al arrancar, `extendLiveEntries()` **amplía** (nunca acorta) la vigencia de los archivos que siguen vivos → subir el TTL recupera los que aún no habían caducado; los 11 ya borrados por el barrido son **irrecuperables**. El texto que el tool devuelve al modelo también usa el TTL efectivo (`365 days` / `indefinitely`). El panel **no** marca caducados a propósito: con la vigencia configurable, un constante en el cliente divergiría (el 404 ya lo reporta con precisión).
 
 ⚠️ **Para verlo en el navegador hay que reconstruir la imagen Docker** (`docker compose build mateclaw-server && docker compose up -d mateclaw-server`): la UI se sirve desde dentro del JAR. **Pendiente de hacer.**
 

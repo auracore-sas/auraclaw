@@ -17,7 +17,10 @@
  * Interaction: rows are plain `<a href="/api/v1/files/generated/…">` anchors, so
  * the app-wide `useGlobalFileDownloadClick` delegator handles them — preview for
  * previewable formats, authenticated blob download otherwise, and a toast when
- * the file expired (7-day server TTL). No download logic here on purpose.
+ * the artifact is gone (its server-side lifetime is
+ * `mateclaw.generated-file.ttl`, 365 days by default). No download logic here on
+ * purpose — and no client-side expiry label either, so the UI cannot drift from
+ * the configured TTL.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -107,12 +110,7 @@ function formatTime(value?: string): string {
   return Number.isNaN(date.getTime()) ? '' : dateFormatter.value.format(date)
 }
 
-/** Row tooltip: the classification, plus the expiry warning when it applies. */
-function fileTitle(file: ConversationFile): string {
-  const reason = reasonLabel(file)
-  return file.expired ? `${reason} · ${t('chat.filesPanel.expiredHint')}` : reason
-}
-
+/** Row tooltip: why the row is in the deliverable or the collapsed list. */
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.')
   return dot < 0 ? '' : name.slice(dot + 1).toUpperCase().slice(0, 4)
@@ -170,11 +168,6 @@ function reasonLabel(file: ConversationFile): string {
         class="conv-files__rail-badge is-aux"
         :title="t('chat.filesPanel.auxiliaryTitle')"
       >{{ summary.auxiliary }}</span>
-      <span
-        v-if="summary.expired"
-        class="conv-files__rail-badge is-expired"
-        :title="t('chat.filesPanel.expiredTitle')"
-      >{{ summary.expired }}</span>
     </button>
 
     <template v-else>
@@ -215,15 +208,13 @@ function reasonLabel(file: ConversationFile): string {
               v-for="file in turn.primary"
               :key="`p-${file.name}`"
               class="conv-files__file"
-              :class="{ 'is-expired': file.expired }"
               :href="file.url"
               target="_blank"
               rel="noopener"
-              :title="fileTitle(file)"
+              :title="reasonLabel(file)"
             >
               <span class="conv-files__ext">{{ extensionOf(file.name) }}</span>
               <span class="conv-files__name">{{ file.name }}</span>
-              <span v-if="file.expired" class="conv-files__expired">{{ t('chat.filesPanel.expired') }}</span>
               <span v-if="file.versions.length > 1" class="conv-files__versions">
                 {{ t('chat.filesPanel.versions', { count: file.versions.length }) }}
               </span>
@@ -234,15 +225,13 @@ function reasonLabel(file: ConversationFile): string {
               v-for="file in turn.auxiliary"
               :key="`a-${file.name}`"
               class="conv-files__file is-auxiliary"
-              :class="{ 'is-expired': file.expired }"
               :href="file.url"
               target="_blank"
               rel="noopener"
-              :title="fileTitle(file)"
+              :title="reasonLabel(file)"
             >
               <span class="conv-files__ext">{{ extensionOf(file.name) }}</span>
               <span class="conv-files__name">{{ file.name }}</span>
-              <span v-if="file.expired" class="conv-files__expired">{{ t('chat.filesPanel.expired') }}</span>
               <span v-if="file.versions.length > 1" class="conv-files__versions">
                 {{ t('chat.filesPanel.versions', { count: file.versions.length }) }}
               </span>
@@ -325,9 +314,6 @@ function reasonLabel(file: ConversationFile): string {
 .conv-files__rail-badge.is-aux {
   color: var(--mc-text-tertiary);
 }
-.conv-files__rail-badge.is-expired {
-  color: var(--mc-warning, #e6a23c);
-}
 .conv-files__header {
   display: flex;
   align-items: center;
@@ -398,23 +384,6 @@ function reasonLabel(file: ConversationFile): string {
 .conv-files__file.is-auxiliary {
   color: var(--mc-text-secondary);
   opacity: 0.85;
-}
-/* Past the 7-day server TTL: still listed (traceability) but flagged, so the
-   user does not click a link that will only toast a 404. */
-.conv-files__file.is-expired {
-  color: var(--mc-text-tertiary);
-}
-.conv-files__file.is-expired .conv-files__name {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-}
-.conv-files__expired {
-  flex-shrink: 0;
-  font-size: 10px;
-  color: var(--mc-warning, #e6a23c);
-  border: 1px solid var(--mc-warning, #e6a23c);
-  border-radius: 4px;
-  padding: 0 3px;
 }
 .conv-files__ext {
   flex-shrink: 0;

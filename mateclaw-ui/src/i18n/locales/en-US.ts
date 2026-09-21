@@ -283,9 +283,6 @@ export default {
       showAuxiliary: 'Show intermediates ({count})',
       hideAuxiliary: 'Hide intermediates',
       versions: '{count} versions',
-      expired: 'expired',
-      expiredHint: 'Generated files are kept for 7 days; ask the assistant to produce it again',
-      expiredTitle: 'Expired links (older than 7 days)',
       reason: {
         cited: 'Cited in the final answer',
         deliveryTool: 'Produced by a delivery tool',

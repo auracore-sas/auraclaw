@@ -1,6 +1,7 @@
 package vip.mate.tool.document;
 
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.Nullable;
@@ -36,7 +37,8 @@ import java.util.stream.Stream;
  * <p>Persistence is what makes download links durable: the bytes survive both
  * cache eviction and a JVM restart, so a link a user clicks minutes — or days —
  * after generation still resolves instead of 404ing. Entries are retained for
- * {@link #TTL} and a scheduled sweep removes expired files. The download URL
+ * {@link #DEFAULT_TTL} by default (configurable, see {@link #setTtl(Duration)})
+ * and a scheduled sweep removes expired files. The download URL
  * embeds a random {@link UUID}; web downloads additionally verify the stored
  * workspace owner so links cannot cross workspace boundaries.
  */
@@ -44,8 +46,25 @@ import java.util.stream.Stream;
 @Component
 public class GeneratedFileCache {
 
-    /** How long a generated file remains downloadable after creation. */
-    public static final Duration TTL = Duration.ofDays(7);
+    /**
+     * Default lifetime of a generated file, overridable per deployment through
+     * {@code mateclaw.generated-file.ttl} (env {@code MATECLAW_GENERATED_FILE_TTL}).
+     *
+     * <p>Deliberately long: these are deliverables users come back to (reports,
+     * spreadsheets, decks, chart images), and regenerating one costs the customer
+     * another full model run plus the waiting time. Disk is cheap, tokens are not,
+     * so the default keeps a year and operators shorten it per commercial plan
+     * (e.g. {@code 30d}) or set {@code 0} to keep artifacts forever.
+     */
+    public static final Duration DEFAULT_TTL = Duration.ofDays(365);
+
+    /**
+     * Effective lifetime. {@link Duration#ZERO} (or a negative value) means
+     * "never expire". Field-injected from the configuration; built directly with
+     * {@link #DEFAULT_TTL} when this class is instantiated outside Spring
+     * (unit tests), where {@link #setTtl(Duration)} can override it.
+     */
+    private Duration ttl = DEFAULT_TTL;
 
     /** Default on-disk location for persisted generated files. */
     public static final Path DEFAULT_STORAGE_DIR = Paths.get("data", "generated-files");
@@ -74,7 +93,7 @@ public class GeneratedFileCache {
 
     /**
      * Upper bound on bytes held in memory. Disk is the source of truth and
-     * retains entries for {@link #TTL}; this map is only a hot-read cache, so
+     * retains entries for the configured TTL; this map is only a hot-read cache, so
      * capping it keeps heap bounded regardless of how many files are produced
      * within the retention window. A miss simply reloads from disk.
      */
@@ -133,6 +152,34 @@ public class GeneratedFileCache {
         }
     }
 
+    /**
+     * Configure the artifact lifetime: {@code 365d}, {@code 12h}, {@code P365D}
+     * or {@code 0} to never expire. Resolved from
+     * {@code mateclaw.generated-file.ttl} / {@code MATECLAW_GENERATED_FILE_TTL}.
+     */
+    @Value("${mateclaw.generated-file.ttl:365d}")
+    public void setTtl(Duration ttl) {
+        if (ttl != null) {
+            this.ttl = ttl;
+        }
+    }
+
+    /** Effective lifetime as configured ({@link Duration#ZERO} = never expires). */
+    public Duration ttl() {
+        return ttl == null ? DEFAULT_TTL : ttl;
+    }
+
+    /** True when the operator disabled expiration. */
+    public boolean neverExpires() {
+        Duration effective = ttl();
+        return effective.isZero() || effective.isNegative();
+    }
+
+    /** Absolute expiry for an entry created at {@code now}. */
+    private long expiryFor(long now) {
+        return neverExpires() ? Long.MAX_VALUE : now + ttl().toMillis();
+    }
+
     public record Owner(@Nullable Long workspaceId,
                         @Nullable Long ownerUserId,
                         @Nullable String conversationId) {
@@ -168,7 +215,7 @@ public class GeneratedFileCache {
 
     public String put(byte[] bytes, String filename, String mimeType, @Nullable Owner owner) {
         String id = UUID.randomUUID().toString();
-        long expireAt = System.currentTimeMillis() + TTL.toMillis();
+        long expireAt = expiryFor(System.currentTimeMillis());
         Entry entry = new Entry(bytes, filename, mimeType, expireAt,
                 owner != null ? owner.workspaceId() : null,
                 owner != null ? owner.ownerUserId() : null,
@@ -344,20 +391,87 @@ public class GeneratedFileCache {
         }
         try {
             Files.write(storageDir.resolve(id), entry.bytes());
-            // expireAt \t mimeType \t base64(filename) \t workspaceId
-            // \t ownerUserId \t base64(conversationId). Base64 keeps unicode and
-            // separators round-trippable without custom escaping.
-            String meta = entry.expireAt()
-                    + "\t" + (entry.mimeType() == null ? "" : entry.mimeType())
-                    + "\t" + b64(entry.filename())
-                    + "\t" + (entry.workspaceId() == null ? "" : entry.workspaceId())
-                    + "\t" + (entry.ownerUserId() == null ? "" : entry.ownerUserId())
-                    + "\t" + b64(entry.conversationId());
-            Files.writeString(storageDir.resolve(id + META_SUFFIX), meta);
+            Files.writeString(storageDir.resolve(id + META_SUFFIX),
+                    metaLine(entry.expireAt(), entry.mimeType(), entry.filename(),
+                            entry.workspaceId(), entry.ownerUserId(), entry.conversationId()));
         } catch (IOException e) {
             // Best-effort: an in-memory entry still serves the current process.
             log.warn("Could not persist generated file id={}: {}", id, e.toString());
         }
+    }
+
+    /**
+     * expireAt \t mimeType \t base64(filename) \t workspaceId \t ownerUserId \t
+     * base64(conversationId). Base64 keeps unicode and separators round-trippable
+     * without custom escaping.
+     */
+    private static String metaLine(long expireAt, @Nullable String mimeType, String filename,
+                                   @Nullable Long workspaceId, @Nullable Long ownerUserId,
+                                   @Nullable String conversationId) {
+        return expireAt
+                + "\t" + (mimeType == null ? "" : mimeType)
+                + "\t" + b64(filename)
+                + "\t" + (workspaceId == null ? "" : workspaceId)
+                + "\t" + (ownerUserId == null ? "" : ownerUserId)
+                + "\t" + b64(conversationId);
+    }
+
+    /**
+     * Widen the expiry of artifacts that are still alive when the configured TTL
+     * grows (7d → 365d, or a plan upgrade). Only ever EXTENDS, never shortens,
+     * and only for entries whose bytes are still on disk: a file the sweep
+     * already deleted cannot be brought back, so a TTL increase applies to the
+     * future and to whatever survived.
+     *
+     * <p>Runs once at startup ({@link PostConstruct}) and is idempotent, so a
+     * restart is always safe. The file's last-modified time is used as the
+     * creation instant because the meta line does not store one; it is at least
+     * as old as the file, which makes the extension conservative.
+     *
+     * @return how many entries were extended
+     */
+    @PostConstruct
+    public int extendLiveEntries() {
+        if (neverExpires() || !Files.isDirectory(storageDir)) {
+            return 0;
+        }
+        long now = System.currentTimeMillis();
+        long ttlMillis = ttl().toMillis();
+        List<Path> metas;
+        try (Stream<Path> files = Files.list(storageDir)) {
+            metas = files.filter(p -> p.getFileName().toString().endsWith(META_SUFFIX)).toList();
+        } catch (IOException e) {
+            log.debug("TTL extension scan failed: {}", e.toString());
+            return 0;
+        }
+        int extended = 0;
+        for (Path metaPath : metas) {
+            try {
+                String id = idFromMetaPath(metaPath);
+                Path data = storageDir.resolve(id);
+                if (!Files.isRegularFile(data)) {
+                    continue;
+                }
+                Metadata meta = parseMeta(Files.readString(metaPath), id);
+                if (meta.expireAt() <= now) {
+                    continue; // already expired — the bytes may not even exist
+                }
+                long wanted = Files.getLastModifiedTime(data).toMillis() + ttlMillis;
+                if (wanted <= meta.expireAt()) {
+                    continue; // nothing to gain
+                }
+                Files.writeString(metaPath, metaLine(wanted, meta.mimeType(), meta.filename(),
+                        meta.workspaceId(), meta.ownerUserId(), meta.conversationId()));
+                extended++;
+            } catch (Exception ignore) {
+                // Best-effort: a malformed/removed meta must not break startup.
+            }
+        }
+        if (extended > 0) {
+            log.info("Extended the expiry of {} existing generated file(s) to the configured TTL ({})",
+                    extended, ttl());
+        }
+        return extended;
     }
 
     private Entry loadFromDisk(String id) {

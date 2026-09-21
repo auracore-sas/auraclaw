@@ -66,14 +66,6 @@ export interface ConversationFile {
   /** True when this is (very likely) a deliverable of its turn. */
   isPrimary: boolean
   reason: FileClassificationReason
-  /**
-   * True when the download link is past the server TTL, so clicking it would
-   * only produce a 404 toast. Derived from the turn timestamp (see
-   * `GENERATED_FILE_TTL_MS`) because there is no "does this file exist"
-   * endpoint; a missing timestamp stays `false` (never scare the user with a
-   * guess).
-   */
-  expired: boolean
 }
 
 /** Files grouped by the assistant turn that produced them, newest turn first. */
@@ -84,17 +76,6 @@ export interface ConversationFileTurn {
   primary: ConversationFile[]
   auxiliary: ConversationFile[]
 }
-
-/**
- * Server-side lifetime of a generated file, mirrored from
- * `GeneratedFileCache.TTL` (`Duration.ofDays(7)`). The downloads are served
- * from disk but every read checks the entry's own expiry, so a link older than
- * this answers 404. Used only to LABEL a row (never to hide it): the panel has
- * no "does this file still exist" endpoint, and the turn timestamp is always
- * >= the file's creation time, so the label is conservative — it can miss a
- * file that died in the last few minutes, but it never marks a live one dead.
- */
-export const GENERATED_FILE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
  * Data source seam. Today the inventory comes from message metadata; a future
@@ -197,12 +178,14 @@ export function classifyFile(
  * Build the inventory for a conversation. Messages are walked newest-first, so
  * the resulting turns (and the versions inside each row) are newest-first.
  *
- * @param now injectable clock (tests); defaults to `Date.now()`.
+ * <p>No expiry labelling here on purpose: the artifact lifetime is a server
+ * setting (`mateclaw.generated-file.ttl`), so a client-side constant would drift
+ * from it as soon as an operator changes it. The rare dead link is reported
+ * accurately by the download handler (`useGlobalFileDownloadClick` toasts on
+ * 404/410). If a commercial plan ever ships a short TTL, drive such a label
+ * from a server-provided value instead of a constant.
  */
-export function collectConversationFileTurns(
-  messages: Message[],
-  now: number = Date.now(),
-): ConversationFileTurn[] {
+export function collectConversationFileTurns(messages: Message[]): ConversationFileTurn[] {
   const turns: ConversationFileTurn[] = []
   if (!Array.isArray(messages)) return turns
 
@@ -210,12 +193,6 @@ export function collectConversationFileTurns(
     const message = messages[i]
     const files = (message?.metadata?.generatedFiles || []) as GeneratedFile[]
     if (!files.length) continue
-
-    // Everything produced in a turn is stamped with that turn's id/time, so the
-    // expiry label is derived once per turn. Unparseable/missing timestamp =>
-    // not expired (fail-open: never tell the user a live file is gone).
-    const createdAtMs = message.createTime ? new Date(message.createTime).getTime() : NaN
-    const expired = Number.isFinite(createdAtMs) && now - createdAtMs > GENERATED_FILE_TTL_MS
 
     const cited = citedFileIds(message.content)
     const byName = new Map<string, ConversationFile>()
@@ -239,7 +216,6 @@ export function collectConversationFileTurns(
           toolName: file?.toolName,
           isPrimary,
           reason,
-          expired,
         })
         continue
       }
@@ -284,18 +260,15 @@ export function collectConversationFileTurns(
 export function summarizeConversationFiles(turns: ConversationFileTurn[]): {
   primary: number
   auxiliary: number
-  expired: number
   total: number
 } {
   let primary = 0
   let auxiliary = 0
-  let expired = 0
   for (const turn of turns) {
     primary += turn.primary.length
     auxiliary += turn.auxiliary.length
-    expired += [...turn.primary, ...turn.auxiliary].filter(file => file.expired).length
   }
-  return { primary, auxiliary, expired, total: primary + auxiliary }
+  return { primary, auxiliary, total: primary + auxiliary }
 }
 
 /** Default source: the persisted metadata of every message in the conversation. */

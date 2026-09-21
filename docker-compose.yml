@@ -180,6 +180,14 @@ services:
       # conserve el ajuste y no reintroduzca las degradaciones.
       MATECLAW_TOOL_SCHEMA_MAX_TOKENS: ${MATECLAW_TOOL_SCHEMA_MAX_TOKENS:-40000}
       MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO: ${MATECLAW_CONTEXT_PREFIX_BUDGET_TOOL_SCHEMA_RATIO:-0.30}
+      # AuraClaw: vigencia de los archivos que producen los agentes (PDF, DOCX,
+      # XLSX, imágenes, entregables hechos por código…). Por defecto 365d porque
+      # regenerar un entregable cuesta otra corrida completa del modelo; bajar el
+      # valor es una decisión comercial por plan (p. ej. 30d). Usar 0 = nunca
+      # caducan. Formato de duración de Spring: 365d, 12h, P365D.
+      # Al arrancar, la vigencia se AMPLÍA (nunca se acorta) para los archivos que
+      # siguen vivos, así subir el TTL recupera los que aún no habían caducado.
+      MATECLAW_GENERATED_FILE_TTL: ${MATECLAW_GENERATED_FILE_TTL:-365d}
     # Chromium needs a real /dev/shm. Docker defaults to 64MB which causes
     # SIGBUS / "Target page closed" errors under load. 2GB is the usual
     # recommendation for Playwright / headless chrome.

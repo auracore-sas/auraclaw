@@ -20,12 +20,6 @@ import type { Message } from '@/types'
 
 const URL_BASE = '/api/v1/files/generated/'
 
-/**
- * Fixed clock: `collectConversationFileTurns` derives the expiry label from the
- * turn timestamp, so tests must not depend on the day they run.
- */
-const NOW = Date.parse('2026-09-21T15:00:00')
-const DAY_MS = 24 * 60 * 60 * 1000
 
 function file(filename: string, id: string, toolName?: string) {
   return { filename, url: `${URL_BASE}${id}`, toolName }
@@ -143,7 +137,7 @@ describe('collectConversationFileTurns', () => {
   }
 
   it('keeps one row per filename, merges versions and promotes the cited one', () => {
-    const [turn] = collectConversationFileTurns([noisyTurn()], NOW)
+    const [turn] = collectConversationFileTurns([noisyTurn()])
 
     expect(turn.primary).toHaveLength(1)
     const deliverable = turn.primary[0]
@@ -155,7 +149,7 @@ describe('collectConversationFileTurns', () => {
 
     // 19 entries collapse to 17 rows: 8 charts + 7 scratch + informe_final.md + 1 PDF.
     expect(turn.auxiliary).toHaveLength(16)
-    expect(summarizeConversationFiles([turn])).toEqual({ primary: 1, auxiliary: 16, expired: 0, total: 17 })
+    expect(summarizeConversationFiles([turn])).toEqual({ primary: 1, auxiliary: 16, total: 17 })
   })
 
   it('classifies a render-tool image as a deliverable and keeps the intermediates', () => {
@@ -175,7 +169,7 @@ describe('collectConversationFileTurns', () => {
         ],
       },
     })
-    const [grouped] = collectConversationFileTurns([turn], NOW)
+    const [grouped] = collectConversationFileTurns([turn])
     expect(grouped.primary.map(f => f.name).sort()).toEqual([
       'v2_g4_surtidor.png', 'v2_g7_turno.png', 'v2_g8_clientes.png',
     ])
@@ -197,7 +191,7 @@ describe('collectConversationFileTurns', () => {
         ],
       },
     })
-    const [grouped] = collectConversationFileTurns([turn], NOW)
+    const [grouped] = collectConversationFileTurns([turn])
     expect(grouped.primary).toHaveLength(4)
     expect(grouped.primary.every(f => f.reason === 'fallback')).toBe(true)
     expect(grouped.auxiliary).toHaveLength(0)
@@ -224,7 +218,7 @@ describe('collectConversationFileTurns', () => {
       },
     })
 
-    const turns = collectConversationFileTurns([older, newer], NOW)
+    const turns = collectConversationFileTurns([older, newer])
     expect(turns.map(t => t.messageId)).toEqual([200, 100])
     expect(turns[0].createdAt).toBe('2026-09-21T09:00:00')
     expect(turns[1].primary).toHaveLength(1)
@@ -232,37 +226,6 @@ describe('collectConversationFileTurns', () => {
       `${URL_BASE}a1`, `${URL_BASE}a2`,
     ])
     expect(turns[0].primary[0].reason).toBe('delivery-tool')
-  })
-
-  it('labels files past the server TTL as expired, and only those', () => {
-    const stale = message({
-      id: 900,
-      createTime: new Date(NOW - 8 * DAY_MS).toISOString(),
-      content: 'ok',
-      metadata: { generatedFiles: [file('viejo.pdf', 'old-1', 'send_file')] },
-    })
-    const fresh = message({
-      id: 901,
-      createTime: new Date(NOW - 6 * DAY_MS).toISOString(),
-      content: 'ok',
-      metadata: { generatedFiles: [file('nuevo.pdf', 'new-1', 'send_file')] },
-    })
-    const undated = message({
-      id: 902,
-      content: 'ok',
-      metadata: { generatedFiles: [file('sin-fecha.pdf', 'n-1', 'send_file')] },
-    })
-
-    const turns = collectConversationFileTurns([stale, fresh, undated], NOW)
-    const byId = new Map(turns.map(t => [t.messageId, t.primary[0]]))
-    expect(byId.get(900)?.expired).toBe(true)
-    expect(byId.get(901)?.expired).toBe(false)
-    // No timestamp => no guess (never claim a live file is gone).
-    expect(byId.get(902)?.expired).toBe(false)
-
-    expect(summarizeConversationFiles(turns)).toEqual({
-      primary: 3, auxiliary: 0, expired: 1, total: 3,
-    })
   })
 
   it('ignores messages without files and tolerates malformed entries', () => {
@@ -275,12 +238,12 @@ describe('collectConversationFileTurns', () => {
         content: 'raro',
         metadata: { generatedFiles: [{ filename: 'sin-url.pdf' }, { url: `${URL_BASE}ok-id` }] },
       }),
-    ], NOW)
+    ])
     expect(turns).toHaveLength(1)
     // `sin-url.pdf` carries no URL, so it is skipped entirely.
     expect(turns[0].primary).toHaveLength(1)
     expect(turns[0].primary[0].name).toBe('ok-id')
-    expect(collectConversationFileTurns([], NOW)).toEqual([])
-    expect(collectConversationFileTurns(undefined as unknown as Message[], NOW)).toEqual([])
+    expect(collectConversationFileTurns([])).toEqual([])
+    expect(collectConversationFileTurns(undefined as unknown as Message[])).toEqual([])
   })
 })

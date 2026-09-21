@@ -23,7 +23,8 @@ import java.util.Map;
 /**
  * Serves bytes produced by tools and stashed in {@link GeneratedFileCache}.
  *
- * <p>Entries expire after {@link GeneratedFileCache#TTL}. Web downloads require
+ * <p>Entries expire after the configured
+ * {@code mateclaw.generated-file.ttl} (see {@link GeneratedFileCache#setTtl}). Web downloads require
  * an authenticated caller in the same current workspace as the generated file.
  */
 @Tag(name = "Generated Files")
