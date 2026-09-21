@@ -60,6 +60,7 @@ public class GeneratedFileController {
                     // Images and HTML previews render inline; everything else downloads.
                     boolean isImage = mime != null && mime.startsWith("image/");
                     boolean isHtml = mime != null && mime.toLowerCase().startsWith("text/html");
+                    boolean isSvg = mime != null && mime.toLowerCase().startsWith("image/svg+xml");
                     String disposition = (isImage || isHtml) ? "inline" : "attachment";
                     if (isHtml) {
                         // The bytes are model/tool-generated HTML served from the app's
@@ -69,6 +70,15 @@ public class GeneratedFileController {
                         headers.add("Content-Security-Policy",
                                 "default-src 'none'; img-src * data:; style-src 'unsafe-inline'; "
                                         + "font-src * data:; media-src *; base-uri 'none'; form-action 'none'");
+                        headers.add("X-Content-Type-Options", "nosniff");
+                    }
+                    if (isSvg) {
+                        // An SVG opened as a top-level document runs the scripts it
+                        // embeds — with this app's origin, so it could read the session.
+                        // `sandbox` (no allow-scripts) neutralises that while the file
+                        // stays renderable as a picture; `<img>` never runs scripts, so
+                        // the chat's inline rendering is unaffected.
+                        headers.add("Content-Security-Policy", "sandbox");
                         headers.add("X-Content-Type-Options", "nosniff");
                     }
                     headers.add(HttpHeaders.CONTENT_DISPOSITION,

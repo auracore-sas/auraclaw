@@ -112,7 +112,7 @@ public class ScreenshotTool {
         }
 
         log.info("[Screenshot] captured {} ({} bytes, fullPage={})", p, png.length, full);
-        return GeneratedFileLink.resultZh(png, displayName, PNG_MIME, cache, "截图", ctx);
+        return GeneratedFileLink.imageZh(png, displayName, PNG_MIME, cache, "截图", ctx);
     }
 
     private byte[] render(String url, String token, boolean fullPage, int settleMs) {

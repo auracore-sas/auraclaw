@@ -67,8 +67,15 @@ public final class WorkspaceArtifactSurfacer {
                     byte[] bytes = Files.readAllBytes(p);
                     totalBytes += size;
                     String name = p.getFileName().toString();
-                    String id = cache.put(bytes, name, probeMime(p, name), ctx);
-                    links.add("[" + name + "](" + cache.downloadUrl(id, ctx) + ")");
+                    String mime = probeMime(p, name);
+                    String id = cache.put(bytes, name, mime, ctx);
+                    String url = cache.downloadUrl(id, ctx);
+                    // Images are handed back already written as markdown IMAGES, not
+                    // download links: a chart is meant to be SEEN, and a model that
+                    // echoes the block then produces an inline picture in the web chat
+                    // (a bare URL would only be linkified into a clickable link).
+                    boolean image = mime != null && mime.startsWith("image/");
+                    links.add((image ? "![" : "[") + name + "](" + url + ")");
                 } catch (Exception perFile) {
                     log.debug("[ArtifactSurfacer] skip {}: {}", p, perFile.getMessage());
                 }

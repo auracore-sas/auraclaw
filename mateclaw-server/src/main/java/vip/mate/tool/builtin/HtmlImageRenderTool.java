@@ -120,7 +120,7 @@ public class HtmlImageRenderTool {
 
         log.info("[HtmlImageRender] rendered {} ({} bytes, viewport={}x{}, fullPage={})",
                 displayName, pngBytes.length, vw, vh, full);
-        return GeneratedFileLink.resultZh(pngBytes, displayName, PNG_MIME, cache, "图片", ctx);
+        return GeneratedFileLink.imageZh(pngBytes, displayName, PNG_MIME, cache, "图片", ctx);
     }
 
     private String resolveHtml(String filePath, String inlineHtml) throws Exception {

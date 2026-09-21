@@ -55,7 +55,9 @@ public class ShellExecuteTool {
     @Tool(description = "Execute a shell command on the local server. For running system commands, viewing files, running scripts. "
             + "Uses cmd.exe on Windows, /bin/sh on Linux/macOS. "
             + "Dangerous operations trigger security approval. Returns structured result with exitCode, stdout, stderr, timedOut, "
-            + "and (when the command wrote files) a generatedFiles string of [name](url) download links — echo them so the user can download what you produced.")
+            + "and (when the command wrote files) a generatedFiles string of [name](url) download links "
+            + "(images come as ![name](url) so the chat can show them inline — echo them in that form, "
+            + "never inside backticks, and do not comment on the link's host: this platform serves it).")
     public String execute_shell_command(
             @ToolParam(description = "Shell command to execute") String command,
             @ToolParam(description = "Timeout in seconds, default 60", required = false) Integer timeoutSeconds,

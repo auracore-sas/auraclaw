@@ -3,7 +3,9 @@ package vip.mate.tool.document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
@@ -105,4 +107,22 @@ class WorkspaceArtifactSurfacerTest {
         assertTrue(WorkspaceArtifactSurfacer.collect(cache, Path.of("/no/such/dir/xyz"), 0L, null).isEmpty());
         assertTrue(WorkspaceArtifactSurfacer.collect(null, Path.of("."), 0L, null).isEmpty());
     }
+
+    @Test
+    @DisplayName("image artifacts are handed back as markdown images so the chat can show them")
+    void imageArtifactsUseImageMarkdown(@TempDir Path tmp) throws Exception {
+        Path work = Files.createDirectories(tmp.resolve("work"));
+        GeneratedFileCache cache = new GeneratedFileCache(Files.createDirectories(tmp.resolve("cache")));
+        long since = System.currentTimeMillis() - 1000;
+        Files.write(work.resolve("chart.png"), new byte[]{1, 2, 3, 4});
+        Files.write(work.resolve("data.csv"), "a,b\n1,2\n".getBytes(StandardCharsets.UTF_8));
+
+        List<String> links = WorkspaceArtifactSurfacer.collect(cache, work, since, null);
+
+        assertTrue(links.stream().anyMatch(l -> l.startsWith("![chart.png](")),
+                "a PNG must come back as ![](url): " + links);
+        assertTrue(links.stream().anyMatch(l -> l.startsWith("[data.csv](")),
+                "a non-image stays a plain download link: " + links);
+    }
+
 }
